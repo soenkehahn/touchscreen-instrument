@@ -6,3 +6,4 @@ authors = ["Sönke Hahn <soenkehahn@gmail.com>"]
 [dependencies]
 futures = "*"
 futures-fs = "*"
+bytes = "*"

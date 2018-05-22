@@ -16,6 +16,7 @@ dependencies = [
 name = "dev"
 version = "0.1.0"
 dependencies = [
+ "bytes 0.4.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "futures 0.1.21 (registry+https://github.com/rust-lang/crates.io-index)",
  "futures-fs 0.0.4 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
