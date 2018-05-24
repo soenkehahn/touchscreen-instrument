@@ -1,6 +1,10 @@
+#![feature(type_ascription)]
+
 extern crate jack;
+extern crate rand;
 
 use jack::*;
+use rand::Rng;
 use std::*;
 
 fn main() {
@@ -19,10 +23,7 @@ fn main_() -> Result<(), Error> {
     let port = client.register_port("mono-output", AudioOut)?;
 
     let notification_handler = ();
-    let process_handler = Generator {
-        port: port,
-        phase: 0.0,
-    };
+    let process_handler = Generator { port: port };
     let _active_client = client.activate_async(notification_handler, process_handler)?;
     sleep_forever();
     Ok(())
@@ -36,14 +37,14 @@ fn sleep_forever() {
 
 struct Generator {
     port: Port<AudioOut>,
-    phase: f32,
 }
 
 impl ProcessHandler for Generator {
     fn process(&mut self, _client: &Client, scope: &ProcessScope) -> Control {
+        let mut rng = rand::thread_rng();
         let buffer: &mut [f32] = self.port.as_mut_slice(scope);
         for sample_index in 0..buffer.len() {
-            buffer[sample_index] = 0.4;
+            buffer[sample_index] = rng.gen_range(-1.0, 1.0) * 0.1;
         }
         Control::Continue
     }
