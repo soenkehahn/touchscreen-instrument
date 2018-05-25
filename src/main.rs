@@ -55,24 +55,19 @@ struct ProcessHandler_ {
 }
 
 struct Generator {
-    sample_in_second: i32,
     phase: f32,
 }
 
 impl Generator {
     fn new() -> Generator {
-        Generator {
-            sample_in_second: 0,
-            phase: 0.0,
-        }
+        Generator { phase: 0.0 }
     }
 
     fn crank_phase(&mut self, sample_rate: i32) {
-        self.sample_in_second += 1;
-        if self.sample_in_second >= sample_rate {
-            self.sample_in_second -= sample_rate;
+        self.phase += TAU / sample_rate as f32;
+        if self.phase >= TAU {
+            self.phase -= TAU
         }
-        self.phase = self.sample_in_second as f32 * TAU / sample_rate as f32;
     }
 
     fn generate(&mut self, sample_rate: i32, buffer: &mut [f32]) {
@@ -100,7 +95,14 @@ impl ProcessHandler for ProcessHandler_ {
 test_suite! {
     use super::*;
 
-    const SAMPLE_RATE : i32 = 44100;
+    const SAMPLE_RATE : i32 = 100;
+
+    fn assert_close(a: f32, b: f32) {
+        let epsilon = 0.00001;
+        if (a - b).abs() > epsilon {
+            panic!(format!("assert_close: {} too far from {}", a, b));
+        }
+    }
 
     fixture generator() -> Generator {
         setup(&mut self) {
@@ -112,7 +114,10 @@ test_suite! {
         for _ in 0..(SAMPLE_RATE - 1) {
             generator.val.crank_phase(SAMPLE_RATE);
         }
-        assert_eq!(generator.val.phase, TAU * (SAMPLE_RATE - 1) as f32 / SAMPLE_RATE as f32);
+        assert_close(
+            generator.val.phase,
+            TAU * (SAMPLE_RATE - 1) as f32 / SAMPLE_RATE as f32
+        );
     }
 
     test crank_phase_increases_the_phase_for_one_sample(generator) {
@@ -125,7 +130,7 @@ test_suite! {
         for _ in 0..SAMPLE_RATE {
             generator.val.crank_phase(SAMPLE_RATE);
         }
-        assert_eq!(generator.val.phase, 0.0);
+        assert_close(generator.val.phase, 0.0);
     }
 
     test it_starts_at_zero(generator) {
