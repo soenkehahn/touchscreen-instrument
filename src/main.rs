@@ -1,5 +1,3 @@
-#![feature(type_ascription)]
-
 extern crate jack;
 #[macro_use]
 extern crate galvanic_test;
@@ -63,8 +61,8 @@ impl Generator {
         Generator { phase: 0.0 }
     }
 
-    fn crank_phase(&mut self, sample_rate: i32) {
-        self.phase += TAU / sample_rate as f32;
+    fn crank_phase(&mut self, sample_rate: i32, frequency: f32) {
+        self.phase += frequency * TAU / sample_rate as f32;
         if self.phase >= TAU {
             self.phase -= TAU
         }
@@ -72,9 +70,9 @@ impl Generator {
 
     fn generate(&mut self, sample_rate: i32, buffer: &mut [f32]) {
         for sample_index in 0..buffer.len() {
-            let sample = (300.0 * self.phase).sin();
+            let sample = self.phase.sin();
             buffer[sample_index] = sample;
-            self.crank_phase(sample_rate);
+            self.crank_phase(sample_rate, 300.0);
         }
     }
 }
@@ -95,10 +93,10 @@ impl ProcessHandler for ProcessHandler_ {
 test_suite! {
     use super::*;
 
-    const SAMPLE_RATE : i32 = 100;
+    const SAMPLE_RATE : i32 = 44100;
 
     fn assert_close(a: f32, b: f32) {
-        let epsilon = 0.00001;
+        let epsilon = 0.004;
         if (a - b).abs() > epsilon {
             panic!(format!("assert_close: {} too far from {}", a, b));
         }
@@ -111,24 +109,25 @@ test_suite! {
     }
 
     test crank_phase_reaches_2_pi_after_1_second(generator) {
-        for _ in 0..(SAMPLE_RATE - 1) {
-            generator.val.crank_phase(SAMPLE_RATE);
+        let sample_rate = 100;
+        for _ in 0..(sample_rate - 1) {
+            generator.val.crank_phase(sample_rate, 1.0);
         }
         assert_close(
             generator.val.phase,
-            TAU * (SAMPLE_RATE - 1) as f32 / SAMPLE_RATE as f32
+            TAU * (sample_rate - 1) as f32 / sample_rate as f32
         );
     }
 
     test crank_phase_increases_the_phase_for_one_sample(generator) {
         assert_eq!(generator.val.phase, 0.0);
-        generator.val.crank_phase(SAMPLE_RATE);
+        generator.val.crank_phase(SAMPLE_RATE, 1.0);
         assert_eq!(generator.val.phase, TAU / SAMPLE_RATE as f32);
     }
 
     test crank_phase_wraps_around_at_2_pi(generator) {
         for _ in 0..SAMPLE_RATE {
-            generator.val.crank_phase(SAMPLE_RATE);
+            generator.val.crank_phase(SAMPLE_RATE, 1.0);
         }
         assert_close(generator.val.phase, 0.0);
     }
