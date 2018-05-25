@@ -2,16 +2,21 @@ use std::io::Read;
 use std::iter::Iterator;
 use std::*;
 
-fn chunks<'a, R: Read>(read: &'a mut R) -> Chunks<'a> {
-    Chunks { read }
+// * chunks
+
+struct Chunks<R: Read> {
+    read: Box<R>,
 }
 
-struct Chunks<'a> {
-    read: &'a mut Read,
+impl<R: Read> Chunks<R> {
+    fn new(read: R) -> Chunks<R> {
+        Chunks {
+            read: Box::new(read),
+        }
+    }
 }
 
-impl<'a> Iterator for Chunks<'a> {
-    // fixme: dynamic size?
+impl<'a, R: Read> Iterator for Chunks<R> {
     type Item = [u8; 3];
 
     fn next(&mut self) -> Option<[u8; 3]> {
@@ -27,17 +32,65 @@ impl<'a> Iterator for Chunks<'a> {
     }
 }
 
+// * diffs
+
 #[derive(PartialEq, Debug)]
 struct Diffs {
-    x_diff: i8,
-    y_diff: i8,
+    x: i8,
+    y: i8,
 }
 
 fn parse(chunk: [u8; 3]) -> Diffs {
     unsafe {
         Diffs {
-            x_diff: mem::transmute::<u8, i8>(chunk[1]),
-            y_diff: mem::transmute::<u8, i8>(chunk[2]),
+            x: mem::transmute::<u8, i8>(chunk[1]),
+            y: mem::transmute::<u8, i8>(chunk[2]),
+        }
+    }
+}
+
+// * Position
+
+#[derive(PartialEq, Debug, Clone, Copy)]
+struct Position {
+    x: i32,
+    y: i32,
+}
+
+// * mouse input
+
+struct MouseInput<R: Read> {
+    first: bool,
+    chunks: Box<Chunks<R>>,
+    position: Position,
+}
+
+impl<R: Read> MouseInput<R> {
+    fn new(read: R) -> MouseInput<R> {
+        MouseInput {
+            first: true,
+            chunks: Box::new(Chunks::new(read)),
+            position: Position { x: 0, y: 0 },
+        }
+    }
+}
+
+impl<R: Read> Iterator for MouseInput<R> {
+    type Item = Position;
+
+    fn next(&mut self) -> Option<Position> {
+        if self.first {
+            self.first = false;
+            return Some(self.position);
+        }
+        match self.chunks.next() {
+            None => None,
+            Some(chunk) => {
+                let diff = parse(chunk);
+                self.position.x += diff.x as i32;
+                self.position.y += diff.y as i32;
+                Some(self.position)
+            }
         }
     }
 }
@@ -56,32 +109,53 @@ test_suite! {
     }
     impl Read for ReadMock {
         fn read(&mut self, buffer: &mut [u8]) -> io::Result<usize> {
-            for (i, e) in self.vec.iter().nth(self.current).unwrap().iter().enumerate() {
-                buffer[i] = *e;
+            match self.vec.iter().nth(self.current){
+                None => {
+                    panic!("empty read mock");
+                }
+                Some(chunk) => {
+                    for (i, e) in chunk.iter().enumerate() {
+                        buffer[i] = *e;
+                    }
+                    self.current += 1;
+                    Ok(self.vec.len())
+                }
             }
-            self.current += 1;
-            Ok(self.vec.len())
         }
     }
 
     test chunks_converts_single_chunk() {
         let mut read_mock = ReadMock::new(vec![vec![1, 2, 3]]);
-        let mut iterator = chunks(&mut read_mock);
+        let mut iterator = Chunks::new(&mut read_mock);
         assert_eq!(iterator.next(), Some([1, 2, 3]));
     }
 
     test chunks_converts_multiple_chunks() {
         let mut read_mock = ReadMock::new(vec![vec![1, 2, 3], vec![4, 5, 6]]);
-        let mut iterator = chunks(&mut read_mock);
+        let mut iterator = Chunks::new(&mut read_mock);
         iterator.next();
         assert_eq!(iterator.next(), Some([4, 5, 6]));
     }
 
     test parse_parses_chunks() {
-        assert_eq!(parse([0, 1, 2]), Diffs {x_diff: 1, y_diff: 2});
+        assert_eq!(parse([0, 1, 2]), Diffs {x: 1, y: 2});
     }
 
     test parse_parses_as_signed_integers() {
-        assert_eq!(parse([0, 255, 254]), Diffs {x_diff: -1, y_diff: -2});
+        assert_eq!(parse([0, 255, 254]), Diffs {x: -1, y: -2});
+    }
+
+    test mouse_input_starts_with_an_initial_position() {
+        let read_mock = &mut ReadMock::new(vec![]);
+        let mut input = MouseInput::new(read_mock);
+        assert_eq!(input.next(), Some(Position{x: 0, y: 0}));
+    }
+
+    test mouse_input_maintains_position_state() {
+        let read_mock = &mut ReadMock::new(vec![vec![0, 1, 2], vec![0, 3, 4]]);
+        let mut input = MouseInput::new(read_mock);
+        input.next();
+        assert_eq!(input.next(), Some(Position{x: 1, y: 2}));
+        assert_eq!(input.next(), Some(Position{x: 4, y: 6}));
     }
 }

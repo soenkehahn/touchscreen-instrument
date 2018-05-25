@@ -3,6 +3,7 @@ extern crate galvanic_test;
 extern crate jack;
 
 mod generator;
+mod input;
 mod run_jack;
 
 use generator::Generator;
