@@ -52,21 +52,21 @@ fn parse(chunk: [u8; 3]) -> Diffs {
 // * Position
 
 #[derive(PartialEq, Debug, Clone, Copy)]
-struct Position {
-    x: i32,
-    y: i32,
+pub struct Position {
+    pub x: i32,
+    pub y: i32,
 }
 
 // * mouse input
 
-struct MouseInput<R: Read> {
+pub struct MouseInput<R: Read> {
     first: bool,
     chunks: Box<Chunks<R>>,
     position: Position,
 }
 
 impl<R: Read> MouseInput<R> {
-    fn new(read: R) -> MouseInput<R> {
+    pub fn new(read: R) -> MouseInput<R> {
         MouseInput {
             first: true,
             chunks: Box::new(Chunks::new(read)),

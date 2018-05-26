@@ -1,7 +1,7 @@
 const TAU: f32 = 6.2831855;
 
 pub struct Generator {
-    frequency: f32,
+    pub frequency: f32,
     phase: f32,
 }
 
@@ -84,11 +84,23 @@ test_suite! {
         assert_eq!(buffer[2], (2.0 * TAU / SAMPLE_RATE as f32).sin());
     }
 
-    test it_allows_to_change_the_frequency(generator) {
+    test it_works_for_different_frequencies(generator) {
         let buffer: &mut [f32] = &mut [42.0; 10];
         generator.val.frequency = 300.0;
         generator.val.generate(SAMPLE_RATE, buffer);
         assert_eq!(buffer[1], (300.0 * TAU / SAMPLE_RATE as f32).sin());
         assert_eq!(buffer[2], (2.0 * 300.0 * TAU / SAMPLE_RATE as f32).sin());
+        assert_eq!(buffer[9], (9.0 * 300.0 * TAU / SAMPLE_RATE as f32).sin());
+    }
+
+    test it_allows_to_change_the_frequency_later(generator) {
+        let buffer: &mut [f32] = &mut [42.0; 10];
+        generator.val.frequency = 300.0;
+        generator.val.generate(SAMPLE_RATE, buffer);
+        generator.val.frequency = 500.0;
+        generator.val.generate(SAMPLE_RATE, buffer);
+        assert_eq!(buffer[0], ((10.0 * 300.0) * TAU / SAMPLE_RATE as f32).sin());
+        assert_eq!(buffer[1], ((10.0 * 300.0 + 500.0) * TAU / SAMPLE_RATE as f32).sin());
+        assert_eq!(buffer[2], ((10.0 * 300.0 + 2.0 * 500.0) * TAU / SAMPLE_RATE as f32).sin());
     }
 }
