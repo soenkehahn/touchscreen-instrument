@@ -35,7 +35,7 @@ impl From<std::io::Error> for AppError {
 fn main() -> Result<(), AppError> {
     let mutex = Arc::new(Mutex::new(Generator::new(300.0)));
     let _active_client = run_jack_generator(mutex.clone())?;
-    let mouse_input = MouseInput::new(File::open("/dev/input/mouse0")?);
+    let mouse_input = MouseInput::new(File::open("/dev/input/mice")?);
     mouse_input.for_each(|position| {
         let frequency = 300.0 + position.x as f32;
         match mutex.lock() {
