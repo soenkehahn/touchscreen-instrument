@@ -14,15 +14,6 @@ use std::fs::File;
 use std::sync::{Arc, Mutex};
 use std::*;
 
-fn main() {
-    match main_() {
-        Ok(()) => {}
-        Err(e) => {
-            panic!("error thrown: {:?}", e);
-        }
-    }
-}
-
 #[derive(Debug)]
 enum AppError {
     JackError(jack::Error),
@@ -41,7 +32,7 @@ impl From<std::io::Error> for AppError {
     }
 }
 
-fn main_() -> Result<(), AppError> {
+fn main() -> Result<(), AppError> {
     let mutex = Arc::new(Mutex::new(Generator::new(300.0)));
     let _active_client = run_jack_generator(mutex.clone())?;
     let mouse_input = MouseInput::new(File::open("/dev/input/mouse0")?);

@@ -40,11 +40,11 @@ impl ProcessHandler for ProcessHandler_ {
         match self.generator.lock() {
             Ok(mut generator) => {
                 let left_buffer: &mut [f32] = self.ports.left.as_mut_slice(scope);
-                let right_buffer: &mut [f32] = self.ports.right.as_mut_slice(scope);
                 generator.generate(client.sample_rate() as i32, left_buffer);
-                for sample_index in 0..right_buffer.len() {
-                    right_buffer[sample_index] = left_buffer[sample_index];
-                }
+                self.ports
+                    .right
+                    .as_mut_slice(scope)
+                    .copy_from_slice(left_buffer);
             }
             Err(e) => {
                 println!("process: error: {:?}", e);

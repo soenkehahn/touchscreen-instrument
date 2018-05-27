@@ -1,4 +1,4 @@
-const TAU: f32 = 6.2831855;
+const TAU: f32 = ::std::f32::consts::PI * 2.0;
 
 pub struct Generator {
     pub frequency: f32,
@@ -21,9 +21,8 @@ impl Generator {
     }
 
     pub fn generate(&mut self, sample_rate: i32, buffer: &mut [f32]) {
-        for sample_index in 0..buffer.len() {
-            let sample = self.phase.sin();
-            buffer[sample_index] = sample;
+        for sample in buffer.iter_mut() {
+            *sample = self.phase.sin();
             self.crank_phase(sample_rate);
         }
     }

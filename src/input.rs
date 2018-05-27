@@ -4,15 +4,13 @@ use std::*;
 
 // * chunks
 
-struct Chunks<R: Read> {
-    read: Box<R>,
+struct Chunks<R: Read + Sized> {
+    read: R,
 }
 
 impl<R: Read> Chunks<R> {
     fn new(read: R) -> Chunks<R> {
-        Chunks {
-            read: Box::new(read),
-        }
+        Chunks { read: read }
     }
 }
 
@@ -26,7 +24,7 @@ impl<'a, R: Read> Iterator for Chunks<R> {
                 return Some(buffer);
             }
             Err(e) => {
-                panic!(e);
+                panic!("read_exact failed: {:?}", e);
             }
         };
     }
@@ -41,11 +39,9 @@ struct Diffs {
 }
 
 fn parse(chunk: [u8; 3]) -> Diffs {
-    unsafe {
-        Diffs {
-            x: mem::transmute::<u8, i8>(chunk[1]),
-            y: mem::transmute::<u8, i8>(chunk[2]),
-        }
+    Diffs {
+        x: chunk[1] as i8,
+        y: chunk[2] as i8,
     }
 }
 
@@ -61,7 +57,7 @@ pub struct Position {
 
 pub struct MouseInput<R: Read> {
     first: bool,
-    chunks: Box<Chunks<R>>,
+    chunks: Chunks<R>,
     position: Position,
 }
 
@@ -69,7 +65,7 @@ impl<R: Read> MouseInput<R> {
     pub fn new(read: R) -> MouseInput<R> {
         MouseInput {
             first: true,
-            chunks: Box::new(Chunks::new(read)),
+            chunks: Chunks::new(read),
             position: Position { x: 0, y: 0 },
         }
     }
