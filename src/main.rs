@@ -7,7 +7,7 @@ mod generator;
 mod input;
 mod run_jack;
 
-use evdev::Events;
+use evdev::*;
 use generator::Generator;
 use input::MouseInput;
 use run_jack::run_jack_generator;
@@ -57,8 +57,11 @@ fn main() -> Result<(), AppError> {
 
 fn fork_evdev_logging() {
     thread::spawn(|| {
-        for event in Events::new("/dev/input/event15").unwrap() {
-            println!("{:?}", event);
+        for chunk in SynChunks::new(Events::new("/dev/input/event15").unwrap()) {
+            for event in chunk {
+                println!("{:?}", event);
+            }
+            println!("=============================================",);
         }
     });
 }
