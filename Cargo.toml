@@ -6,3 +6,4 @@ authors = ["Sönke Hahn <soenkehahn@gmail.com>"]
 [dependencies]
 jack = "*"
 galvanic-test = "*"
+evdev-rs = { git = "https://github.com/soenkehahn/evdev-rs", rev = "016b9e11a21a939ae6dceb010fe7fd80422f6f3d" }
