@@ -143,6 +143,20 @@ pub enum TouchState {
     Touch(Position),
 }
 
+impl TouchState {
+    pub fn if_touch<F>(self, f: F)
+    where
+        F: FnOnce(Position),
+    {
+        match self {
+            TouchState::NoTouch => {}
+            TouchState::Touch(position) => {
+                f(position);
+            }
+        }
+    }
+}
+
 impl Iterator for Positions {
     type Item = TouchState;
 
