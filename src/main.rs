@@ -57,11 +57,8 @@ fn main() -> Result<(), AppError> {
 
 fn fork_evdev_logging() {
     thread::spawn(|| {
-        for chunk in SynChunks::new(Events::new("/dev/input/event15").unwrap()) {
-            for event in chunk {
-                println!("{:?}", event);
-            }
-            println!("=============================================",);
+        for position in Positions::new("/dev/input/event15").unwrap() {
+            println!("{:?}", position);
         }
     });
 }
