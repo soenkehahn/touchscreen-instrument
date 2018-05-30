@@ -5,7 +5,6 @@ use evdev::evdev_rs::enums::EventType::*;
 use evdev::evdev_rs::enums::EV_ABS;
 use evdev::evdev_rs::enums::EV_SYN::*;
 use evdev::evdev_rs::*;
-use input::Position;
 use std::fs::File;
 use AppError;
 
@@ -115,6 +114,12 @@ impl Iterator for SynChunks {
         }
         Some(result)
     }
+}
+
+#[derive(PartialEq, Debug, Clone, Copy)]
+pub struct Position {
+    pub x: i32,
+    pub y: i32,
 }
 
 #[derive(Debug)]

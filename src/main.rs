@@ -5,7 +5,6 @@ extern crate jack;
 mod areas;
 mod evdev;
 mod generator;
-mod input;
 mod run_jack;
 
 use areas::{Areas, Frequencies};
