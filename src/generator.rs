@@ -1,6 +1,7 @@
 const TAU: f32 = ::std::f32::consts::PI * 2.0;
 
 pub struct Generator {
+    muted: bool,
     pub frequency: f32,
     phase: f32,
 }
@@ -8,6 +9,7 @@ pub struct Generator {
 impl Generator {
     pub fn new(frequency: f32) -> Generator {
         Generator {
+            muted: true,
             frequency: frequency,
             phase: 0.0,
         }
@@ -22,7 +24,11 @@ impl Generator {
 
     pub fn generate(&mut self, sample_rate: i32, buffer: &mut [f32]) {
         for sample in buffer.iter_mut() {
-            *sample = self.phase.sin();
+            if self.muted {
+                *sample = 0.0;
+            } else {
+                *sample = self.phase.sin();
+            }
             self.crank_phase(sample_rate);
         }
     }
@@ -42,7 +48,9 @@ test_suite! {
 
     fixture generator() -> Generator {
         setup(&mut self) {
-            Generator::new(1.0)
+            let mut generator = Generator::new(1.0);
+            generator.muted = false;
+            generator
         }
     }
 
@@ -101,5 +109,23 @@ test_suite! {
         assert_eq!(buffer[0], ((10.0 * 300.0) * TAU / SAMPLE_RATE as f32).sin());
         assert_eq!(buffer[1], ((10.0 * 300.0 + 500.0) * TAU / SAMPLE_RATE as f32).sin());
         assert_eq!(buffer[2], ((10.0 * 300.0 + 2.0 * 500.0) * TAU / SAMPLE_RATE as f32).sin());
+    }
+
+    test it_is_initially_muted() {
+        let mut generator = Generator::new(1.0);
+        let buffer: &mut [f32] = &mut [42.0; 10];
+        generator.generate(SAMPLE_RATE, buffer);
+        assert_eq!(buffer[1], 0.0);
+        assert_eq!(buffer[2], 0.0);
+    }
+
+    test it_can_be_muted(generator) {
+        let buffer: &mut [f32] = &mut [42.0; 10];
+        generator.val.muted = false;
+        generator.val.generate(SAMPLE_RATE, buffer);
+        generator.val.muted = true;
+        generator.val.generate(SAMPLE_RATE, buffer);
+        assert_eq!(buffer[1], 0.0);
+        assert_eq!(buffer[2], 0.0);
     }
 }

@@ -8,7 +8,7 @@ mod generator;
 mod input;
 mod run_jack;
 
-use areas::Areas;
+use areas::{Areas, Frequencies};
 use evdev::*;
 use generator::Generator;
 use input::MouseInput;
@@ -59,12 +59,10 @@ fn main() -> Result<(), AppError> {
 
 fn fork_evdev_logging() {
     thread::spawn(|| {
-        let areas = Areas::new(100);
-        for position in Positions::new("/dev/input/event15").unwrap() {
-            println!("{:?}", position);
-            position.if_touch(&|position| {
-                println!("{:?}", areas.frequency(position));
-            });
+        let touches = Positions::new("/dev/input/event15").unwrap();
+        let areas = Areas::new(500);
+        for frequency in Frequencies::new(areas, touches) {
+            println!("{:?}", frequency);
         }
     });
 }

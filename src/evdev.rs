@@ -15,11 +15,14 @@ pub struct Events {
 }
 
 impl Events {
-    pub fn new(file: &str) -> Result<Events, AppError> {
-        let file = File::open(file)?;
+    pub fn new(path: &str) -> Result<Events, AppError> {
+        let file =
+            File::open(path).map_err(|_| AppError::new(format!("file not found: {}", path)))?;
         let mut device =
             Device::new().ok_or(AppError::new("evdev: can't initialize device".to_string()))?;
-        device.set_fd(&file)?;
+        device
+            .set_fd(&file)
+            .map_err(|e| AppError::new(format!("set_fd failed on {} ({:?})", path, e)))?;
         device.grab(GrabMode::Grab)?;
         Ok(Events {
             _file: file,
@@ -138,29 +141,39 @@ impl Positions {
 }
 
 #[derive(Debug, PartialEq)]
-pub enum TouchState {
+pub enum TouchState<T> {
     NoTouch,
-    Touch(Position),
+    Touch(T),
 }
 
-impl TouchState {
+impl<T> TouchState<T> {
     pub fn if_touch<F>(self, f: F)
     where
-        F: FnOnce(Position),
+        F: FnOnce(T),
     {
         match self {
             TouchState::NoTouch => {}
-            TouchState::Touch(position) => {
-                f(position);
+            TouchState::Touch(t) => {
+                f(t);
             }
+        }
+    }
+
+    pub fn map<F, U>(self, f: F) -> TouchState<U>
+    where
+        F: FnOnce(T) -> U,
+    {
+        match self {
+            TouchState::NoTouch => TouchState::NoTouch,
+            TouchState::Touch(t) => TouchState::Touch(f(t)),
         }
     }
 }
 
 impl Iterator for Positions {
-    type Item = TouchState;
+    type Item = TouchState<Position>;
 
-    fn next(&mut self) -> Option<TouchState> {
+    fn next(&mut self) -> Option<TouchState<Position>> {
         match self.syn_chunks.next() {
             None => None,
             Some(chunk) => {

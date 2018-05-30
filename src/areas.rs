@@ -1,3 +1,4 @@
+use evdev::TouchState;
 use input::Position;
 
 fn midi_to_frequency(midi: i32) -> f32 {
@@ -15,6 +16,33 @@ impl Areas {
 
     pub fn frequency(&self, position: Position) -> f32 {
         midi_to_frequency(48 + (position.x as f32 / self.area_size as f32) as i32)
+    }
+}
+
+pub struct Frequencies {
+    areas: Areas,
+    iterator: Box<Iterator<Item = TouchState<Position>>>,
+}
+
+impl Frequencies {
+    pub fn new(
+        areas: Areas,
+        iterator: impl Iterator<Item = TouchState<Position>> + 'static,
+    ) -> Frequencies {
+        Frequencies {
+            areas,
+            iterator: Box::new(iterator),
+        }
+    }
+}
+
+impl Iterator for Frequencies {
+    type Item = TouchState<f32>;
+
+    fn next(&mut self) -> Option<TouchState<f32>> {
+        self.iterator
+            .next()
+            .map(|touchstate| touchstate.map(|position| self.areas.frequency(position)))
     }
 }
 
@@ -65,5 +93,22 @@ mod test {
         let areas = Areas::new(12);
         assert_eq!(areas.frequency(pos(11)), midi_to_frequency(48));
         assert_eq!(areas.frequency(pos(12)), midi_to_frequency(49));
+    }
+
+    #[test]
+    fn frequencies_yields_frequencies() {
+        let areas = Areas::new(10);
+        let mut frequencies = Frequencies::new(areas, vec![TouchState::Touch(pos(5))].into_iter());
+        assert_eq!(
+            frequencies.next(),
+            Some(TouchState::Touch(midi_to_frequency(48)))
+        );
+    }
+
+    #[test]
+    fn frequencies_yields_notouch_for_pauses() {
+        let areas = Areas::new(10);
+        let mut frequencies = Frequencies::new(areas, vec![TouchState::NoTouch].into_iter());
+        assert_eq!(frequencies.next(), Some(TouchState::NoTouch));
     }
 }
