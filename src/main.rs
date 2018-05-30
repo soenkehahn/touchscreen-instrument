@@ -11,12 +11,9 @@ mod run_jack;
 use areas::{Areas, Frequencies};
 use evdev::*;
 use generator::Generator;
-use input::MouseInput;
 use run_jack::run_jack_generator;
 use std::clone::Clone;
-use std::fs::File;
 use std::sync::{Arc, Mutex};
-use std::*;
 
 #[derive(Debug)]
 pub enum AppError {
@@ -39,30 +36,26 @@ impl<E: std::error::Error> From<E> for AppError {
 }
 
 fn main() -> Result<(), AppError> {
-    fork_evdev_logging();
     let mutex = Arc::new(Mutex::new(Generator::new(300.0)));
     let _active_client = run_jack_generator(mutex.clone()).map_err(AppError::JackError)?;
-    let mouse_input = MouseInput::new(File::open("/dev/input/mice")?);
-    mouse_input.for_each(|position| {
-        let frequency = 300.0 + position.x as f32;
+    let file = "/dev/input/event15";
+    let touches = Positions::new(file)?;
+    let frequencies = Frequencies::new(Areas::new(1200), touches);
+    for frequency_update in frequencies {
         match mutex.lock() {
             Err(e) => {
                 println!("main_: error: {:?}", e);
             }
-            Ok(mut generator) => {
-                generator.frequency = frequency;
-            }
+            Ok(mut generator) => match frequency_update {
+                TouchState::NoTouch => {
+                    generator.muted = true;
+                }
+                TouchState::Touch(frequency) => {
+                    generator.muted = false;
+                    generator.frequency = frequency;
+                }
+            },
         }
-    });
+    }
     Ok(())
-}
-
-fn fork_evdev_logging() {
-    thread::spawn(|| {
-        let touches = Positions::new("/dev/input/event15").unwrap();
-        let areas = Areas::new(500);
-        for frequency in Frequencies::new(areas, touches) {
-            println!("{:?}", frequency);
-        }
-    });
 }

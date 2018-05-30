@@ -1,7 +1,7 @@
 const TAU: f32 = ::std::f32::consts::PI * 2.0;
 
 pub struct Generator {
-    muted: bool,
+    pub muted: bool,
     pub frequency: f32,
     phase: f32,
 }

@@ -147,18 +147,6 @@ pub enum TouchState<T> {
 }
 
 impl<T> TouchState<T> {
-    pub fn if_touch<F>(self, f: F)
-    where
-        F: FnOnce(T),
-    {
-        match self {
-            TouchState::NoTouch => {}
-            TouchState::Touch(t) => {
-                f(t);
-            }
-        }
-    }
-
     pub fn map<F, U>(self, f: F) -> TouchState<U>
     where
         F: FnOnce(T) -> U,
