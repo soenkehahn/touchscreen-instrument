@@ -6,15 +6,19 @@ fn midi_to_frequency(midi: i32) -> f32 {
 
 pub struct Areas {
     area_size: i32,
+    start_midi_note: i32,
 }
 
 impl Areas {
-    pub fn new(area_size: i32) -> Areas {
-        Areas { area_size }
+    pub fn new(area_size: i32, start_midi_note: i32) -> Areas {
+        Areas {
+            area_size,
+            start_midi_note,
+        }
     }
 
     pub fn frequency(&self, position: Position) -> f32 {
-        midi_to_frequency(48 + (position.x as f32 / self.area_size as f32) as i32)
+        midi_to_frequency(self.start_midi_note + (position.x as f32 / self.area_size as f32) as i32)
     }
 }
 
@@ -70,33 +74,33 @@ mod test {
 
     #[test]
     fn frequency_maps_x_values_to_frequencies() {
-        let areas = Areas::new(10);
+        let areas = Areas::new(10, 48);
         assert_eq!(areas.frequency(pos(5)), midi_to_frequency(48));
     }
 
     #[test]
     fn frequency_maps_higher_x_values_to_higher_frequencies() {
-        let areas = Areas::new(10);
+        let areas = Areas::new(10, 48);
         assert_eq!(areas.frequency(pos(15)), midi_to_frequency(49));
     }
 
     #[test]
     fn frequency_has_non_continuous_steps() {
-        let areas = Areas::new(10);
+        let areas = Areas::new(10, 48);
         assert_eq!(areas.frequency(pos(9)), midi_to_frequency(48));
         assert_eq!(areas.frequency(pos(10)), midi_to_frequency(49));
     }
 
     #[test]
     fn frequency_allows_to_change_area_size() {
-        let areas = Areas::new(12);
+        let areas = Areas::new(12, 48);
         assert_eq!(areas.frequency(pos(11)), midi_to_frequency(48));
         assert_eq!(areas.frequency(pos(12)), midi_to_frequency(49));
     }
 
     #[test]
     fn frequencies_yields_frequencies() {
-        let areas = Areas::new(10);
+        let areas = Areas::new(10, 48);
         let mut frequencies = Frequencies::new(areas, vec![TouchState::Touch(pos(5))].into_iter());
         assert_eq!(
             frequencies.next(),
@@ -106,8 +110,18 @@ mod test {
 
     #[test]
     fn frequencies_yields_notouch_for_pauses() {
-        let areas = Areas::new(10);
+        let areas = Areas::new(10, 48);
         let mut frequencies = Frequencies::new(areas, vec![TouchState::NoTouch].into_iter());
         assert_eq!(frequencies.next(), Some(TouchState::NoTouch));
+    }
+
+    #[test]
+    fn frequencies_allows_to_specify_the_starting_note() {
+        let areas = Areas::new(10, 49);
+        let mut frequencies = Frequencies::new(areas, vec![TouchState::Touch(pos(5))].into_iter());
+        assert_eq!(
+            frequencies.next(),
+            Some(TouchState::Touch(midi_to_frequency(49)))
+        );
     }
 }

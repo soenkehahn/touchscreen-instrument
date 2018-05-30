@@ -39,7 +39,7 @@ fn main() -> Result<(), AppError> {
     let _active_client = run_jack_generator(mutex.clone()).map_err(AppError::JackError)?;
     let file = "/dev/input/event15";
     let touches = Positions::new(file)?;
-    let frequencies = Frequencies::new(Areas::new(1200), touches);
+    let frequencies = Frequencies::new(Areas::new(1200, 36), touches);
     for frequency_update in frequencies {
         match mutex.lock() {
             Err(e) => {
