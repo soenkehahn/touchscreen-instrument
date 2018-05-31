@@ -4,14 +4,16 @@ pub struct Generator {
     pub muted: bool,
     pub frequency: f32,
     phase: f32,
+    wave_form: fn(f32) -> f32,
 }
 
 impl Generator {
-    pub fn new(frequency: f32) -> Generator {
+    pub fn new(frequency: f32, f: fn(f32) -> f32) -> Generator {
         Generator {
             muted: true,
             frequency: frequency,
             phase: 0.0,
+            wave_form: f,
         }
     }
 
@@ -27,7 +29,7 @@ impl Generator {
             if self.muted {
                 *sample = 0.0;
             } else {
-                *sample = self.phase.sin();
+                *sample = (self.wave_form)(self.phase);
             }
             self.crank_phase(sample_rate);
         }
@@ -48,7 +50,7 @@ test_suite! {
 
     fixture generator() -> Generator {
         setup(&mut self) {
-            let mut generator = Generator::new(1.0);
+            let mut generator = Generator::new(1.0, |x| x.sin());
             generator.muted = false;
             generator
         }
@@ -112,7 +114,7 @@ test_suite! {
     }
 
     test it_is_initially_muted() {
-        let mut generator = Generator::new(1.0);
+        let mut generator = Generator::new(1.0, |x| x.sin());
         let buffer: &mut [f32] = &mut [42.0; 10];
         generator.generate(SAMPLE_RATE, buffer);
         assert_eq!(buffer[1], 0.0);
@@ -127,5 +129,21 @@ test_suite! {
         generator.val.generate(SAMPLE_RATE, buffer);
         assert_eq!(buffer[1], 0.0);
         assert_eq!(buffer[2], 0.0);
+    }
+
+    fn assert_eq_eps(a: f32, b: f32) {
+        let epsilon = 0.00000001;
+        if (a - b).abs() > epsilon {
+            panic!("a and b are too different");
+        }
+    }
+
+    test it_allows_to_specify_the_wave_form() {
+        let mut generator = Generator::new(1.0, |phase| phase * 5.0);
+        generator.muted = false;
+        let buffer: &mut [f32] = &mut [42.0; 10];
+        generator.generate(SAMPLE_RATE, buffer);
+        assert_eq!(buffer[0], 0.0);
+        assert_eq_eps(buffer[1], 5.0 * TAU / SAMPLE_RATE as f32);
     }
 }

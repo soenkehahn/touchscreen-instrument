@@ -12,6 +12,7 @@ use evdev::*;
 use generator::Generator;
 use run_jack::run_jack_generator;
 use std::clone::Clone;
+use std::f32::consts::PI;
 use std::sync::{Arc, Mutex};
 
 #[derive(Debug)]
@@ -35,7 +36,13 @@ impl<E: std::error::Error> From<E> for AppError {
 }
 
 fn main() -> Result<(), AppError> {
-    let mutex = Arc::new(Mutex::new(Generator::new(300.0)));
+    let mutex = Arc::new(Mutex::new(Generator::new(300.0, |phase| {
+        if phase < PI {
+            -1.0
+        } else {
+            1.0
+        }
+    })));
     let _active_client = run_jack_generator(mutex.clone()).map_err(AppError::JackError)?;
     let file = "/dev/input/event15";
     let touches = Positions::new(file)?;
