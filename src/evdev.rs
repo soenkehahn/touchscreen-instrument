@@ -198,15 +198,11 @@ impl Iterator for Positions {
                         _ => {}
                     }
                 }
-                if !self.slot_active {
-                    self.next()
+                Some(if self.btn_touch {
+                    TouchState::Touch(self.position)
                 } else {
-                    Some(if self.btn_touch {
-                        TouchState::Touch(self.position)
-                    } else {
-                        TouchState::NoTouch
-                    })
-                }
+                    TouchState::NoTouch
+                })
             }
         }
     }
@@ -261,6 +257,7 @@ mod test {
         let vec = vec![
             Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_SLOT), 1),
             Mock::ev(EV_SYN, EventCode::EV_SYN(SYN_REPORT), 0),
+            //
             Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_SLOT), 2),
             Mock::ev(EV_SYN, EventCode::EV_SYN(SYN_REPORT), 0),
         ];
@@ -306,6 +303,7 @@ mod test {
             Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_POSITION_X), 23),
             Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_POSITION_Y), 42),
             Mock::ev(EV_SYN, EventCode::EV_SYN(SYN_REPORT), 0),
+            //
             Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_POSITION_X), 51),
             Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_POSITION_Y), 84),
             Mock::ev(EV_SYN, EventCode::EV_SYN(SYN_REPORT), 0),
@@ -322,6 +320,7 @@ mod test {
             Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_POSITION_X), 23),
             Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_POSITION_Y), 42),
             Mock::ev(EV_SYN, EventCode::EV_SYN(SYN_REPORT), 0),
+            //
             Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_POSITION_X), 51),
             Mock::ev(EV_SYN, EventCode::EV_SYN(SYN_REPORT), 0),
         ]);
@@ -337,6 +336,7 @@ mod test {
             Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_POSITION_X), 23),
             Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_POSITION_Y), 42),
             Mock::ev(EV_SYN, EventCode::EV_SYN(SYN_REPORT), 0),
+            //
             Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_POSITION_Y), 84),
             Mock::ev(EV_SYN, EventCode::EV_SYN(SYN_REPORT), 0),
         ]);
@@ -352,6 +352,7 @@ mod test {
             Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_POSITION_X), 23),
             Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_POSITION_Y), 42),
             Mock::ev(EV_SYN, EventCode::EV_SYN(SYN_REPORT), 0),
+            //
             Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_TRACKING_ID), -1),
             Mock::ev(EV_SYN, EventCode::EV_SYN(SYN_REPORT), 0),
         ]);
@@ -367,16 +368,19 @@ mod test {
             Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_POSITION_X), 23),
             Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_POSITION_Y), 42),
             Mock::ev(EV_SYN, EventCode::EV_SYN(SYN_REPORT), 0),
+            //
             Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_SLOT), 1),
             Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_POSITION_X), 1000),
             Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_POSITION_Y), 1000),
             Mock::ev(EV_SYN, EventCode::EV_SYN(SYN_REPORT), 0),
+            //
             Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_SLOT), 0),
             Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_POSITION_X), 51),
             Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_POSITION_Y), 84),
             Mock::ev(EV_SYN, EventCode::EV_SYN(SYN_REPORT), 0),
         ]);
         positions.next();
+        assert_eq!(positions.next(), Some(Touch(Position { x: 23, y: 42 })));
         assert_eq!(positions.next(), Some(Touch(Position { x: 51, y: 84 })));
     }
 
@@ -388,19 +392,24 @@ mod test {
             Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_POSITION_X), 23),
             Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_POSITION_Y), 42),
             Mock::ev(EV_SYN, EventCode::EV_SYN(SYN_REPORT), 0),
+            //
             Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_SLOT), 1),
             Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_TRACKING_ID), 2),
             Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_POSITION_X), 1000),
             Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_POSITION_Y), 1000),
             Mock::ev(EV_SYN, EventCode::EV_SYN(SYN_REPORT), 0),
+            //
             Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_TRACKING_ID), -1),
             Mock::ev(EV_SYN, EventCode::EV_SYN(SYN_REPORT), 0),
+            //
             Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_SLOT), 0),
             Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_POSITION_X), 51),
             Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_POSITION_Y), 84),
             Mock::ev(EV_SYN, EventCode::EV_SYN(SYN_REPORT), 0),
         ]);
         positions.next();
+        assert_eq!(positions.next(), Some(Touch(Position { x: 23, y: 42 })));
+        assert_eq!(positions.next(), Some(Touch(Position { x: 23, y: 42 })));
         assert_eq!(positions.next(), Some(Touch(Position { x: 51, y: 84 })));
     }
 
@@ -413,5 +422,24 @@ mod test {
             Mock::ev(EV_SYN, EventCode::EV_SYN(SYN_REPORT), 0),
         ]);
         assert_eq!(positions.next(), Some(Touch(Position { x: 23, y: 42 })));
+    }
+
+    #[test]
+    fn positions_tracks_slot_changes_and_touch_releases_in_the_same_syn_chunk_correctly() {
+        let mut positions = Mock::positions(vec![
+            Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_TRACKING_ID), 1),
+            Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_POSITION_X), 23),
+            Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_POSITION_Y), 42),
+            Mock::ev(EV_SYN, EventCode::EV_SYN(SYN_REPORT), 0),
+            //
+            Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_TRACKING_ID), -1),
+            Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_SLOT), 1),
+            Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_TRACKING_ID), 2),
+            Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_POSITION_X), 1000),
+            Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_POSITION_Y), 1000),
+            Mock::ev(EV_SYN, EventCode::EV_SYN(SYN_REPORT), 0),
+        ]);
+        assert_eq!(positions.next(), Some(Touch(Position { x: 23, y: 42 })));
+        assert_eq!(positions.next(), Some(NoTouch));
     }
 }
