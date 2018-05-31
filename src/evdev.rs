@@ -1,10 +1,7 @@
 extern crate evdev_rs;
 
 use AppError;
-use evdev::evdev_rs::enums::EV_ABS;
-use evdev::evdev_rs::enums::EV_SYN::*;
-use evdev::evdev_rs::enums::EventCode;
-use evdev::evdev_rs::enums::EventType::*;
+use evdev::evdev_rs::enums::{EV_SYN::*, EventCode, EventType::*, EV_ABS};
 use evdev::evdev_rs::*;
 use std::fs::File;
 
@@ -212,9 +209,7 @@ impl Iterator for Positions {
 mod test {
     use super::TouchState::*;
     use super::*;
-    use evdev::evdev_rs::enums::EV_ABS::*;
-    use evdev::evdev_rs::enums::EventCode;
-    use evdev::evdev_rs::enums::EventType;
+    use evdev::evdev_rs::enums::{EV_ABS::*, EventCode, EventType};
 
     struct Mock;
 
