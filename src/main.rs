@@ -7,6 +7,7 @@ mod evdev;
 mod generator;
 mod run_jack;
 
+use areas::render::{SCREEN_HEIGHT, SCREEN_WIDTH};
 use areas::{Areas, Frequencies};
 use evdev::*;
 use generator::Generator;
@@ -46,7 +47,12 @@ fn main() -> Result<(), AppError> {
     let _active_client = run_jack_generator(mutex.clone()).map_err(AppError::JackError)?;
     let file = "/dev/input/event15";
     let touches = Positions::new(file)?;
-    let areas = Areas::new(1200, 36);
+    let areas = Areas::new(
+        800,
+        36,
+        SCREEN_WIDTH as f32 / 16383.0,
+        SCREEN_HEIGHT as f32 / 9570.0,
+    );
     areas.spawn_ui();
     let frequencies = Frequencies::new(areas, touches);
     for frequency_update in frequencies {

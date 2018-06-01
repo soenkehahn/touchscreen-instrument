@@ -3,30 +3,33 @@ extern crate sdl;
 use self::sdl::event::{Event, Key};
 use self::sdl::video::{Surface, SurfaceFlag, VideoFlag};
 use areas::Areas;
+use areas::Color;
+use areas::Rectangle;
 
-const SCREEN_WIDTH: u16 = 1920;
-const SCREEN_HEIGHT: u16 = 1080;
+pub const SCREEN_WIDTH: u16 = 1920;
+pub const SCREEN_HEIGHT: u16 = 1080;
 
 impl Areas {
     pub fn spawn_ui(self) {
         ::std::thread::spawn(move || {
-            Ui::run_ui();
+            Ui::run_ui(self);
         });
     }
 }
 
 struct Ui {
     surface: Surface,
+    ui_elements: Vec<Rectangle>,
 }
 
 impl Ui {
-    fn run_ui() {
-        let ui = Ui::new();
+    fn run_ui(areas: Areas) {
+        let ui = Ui::new(areas);
         ui.run_main_loop();
         ui.quit();
     }
 
-    fn new() -> Ui {
+    fn new(areas: Areas) -> Ui {
         sdl::init(&[sdl::InitFlag::Video]);
         let surface = match sdl::video::set_video_mode(
             SCREEN_WIDTH as isize,
@@ -42,7 +45,10 @@ impl Ui {
             Ok(surface) => surface,
             Err(err) => panic!("failed to set video mode: {}", err),
         };
-        let ui = Ui { surface };
+        let ui = Ui {
+            surface,
+            ui_elements: areas.ui_elements(),
+        };
         ui.move_to_touch_screen();
         ui.draw();
         ui
@@ -87,27 +93,26 @@ impl Ui {
         ::std::process::exit(0);
     }
 
+    fn convert_color(&self, Color { r, g, b }: &Color) -> sdl::video::Color {
+        sdl::video::Color::RGB(*r, *g, *b)
+    }
+
     fn draw(&self) {
-        let rect_size: u16 = 100;
-        let blue = sdl::video::Color::RGB(0, 0, 255);
-        self.surface.fill_rect(
-            Some(sdl::Rect {
-                x: 0,
-                y: 0,
-                w: rect_size,
-                h: rect_size,
-            }),
-            blue,
-        );
-        self.surface.fill_rect(
-            Some(sdl::Rect {
-                x: (SCREEN_WIDTH - rect_size) as i16,
-                y: (SCREEN_HEIGHT - rect_size) as i16,
-                w: SCREEN_WIDTH,
-                h: SCREEN_HEIGHT,
-            }),
-            blue,
-        );
+        for element in &self.ui_elements {
+            match element {
+                Rectangle { x, y, w, h, color } => {
+                    self.surface.fill_rect(
+                        Some(sdl::Rect {
+                            x: *x as i16,
+                            y: *y as i16,
+                            w: *w as u16,
+                            h: *h as u16,
+                        }),
+                        self.convert_color(&color),
+                    );
+                }
+            }
+        }
         self.surface.flip();
     }
 }
