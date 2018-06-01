@@ -1,9 +1,12 @@
+mod render;
+
 use evdev::{Position, TouchState};
 
 fn midi_to_frequency(midi: i32) -> f32 {
     440.0 * 2.0_f32.powf(((midi - 69) as f32) / 12.0)
 }
 
+#[derive(Copy, Clone)]
 pub struct Areas {
     area_size: i32,
     start_midi_note: i32,

@@ -7,3 +7,4 @@ authors = ["Sönke Hahn <soenkehahn@gmail.com>"]
 jack = "*"
 galvanic-test = "*"
 evdev-rs = { git = "https://github.com/ndesh26/evdev-rs", rev = "c271060" }
+sdl = "*"
