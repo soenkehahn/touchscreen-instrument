@@ -6,10 +6,11 @@ use std::sync::{Arc, Mutex};
 use std::*;
 
 pub fn run_jack_generator(
+    name: String,
     generator: Arc<Mutex<Generator>>,
 ) -> Result<AsyncClient<(), ProcessHandler_>, Error> {
     let (client, _status) =
-        jack::Client::new("my-rust-client", jack::ClientOptions::NO_START_SERVER)?;
+        jack::Client::new(&name.to_string(), jack::ClientOptions::NO_START_SERVER)?;
 
     let left_port = client.register_port("left-output", AudioOut)?;
     let right_port = client.register_port("right-output", AudioOut)?;

@@ -4,6 +4,7 @@ use AppError;
 use evdev::evdev_rs::enums::{EV_SYN::*, EventCode, EventType::*, EV_ABS};
 use evdev::evdev_rs::*;
 use std::fs::File;
+use to_app_error;
 
 pub struct Events {
     _file: File,
@@ -14,8 +15,7 @@ impl Events {
     pub fn new(path: &str) -> Result<Events, AppError> {
         let file =
             File::open(path).map_err(|_| AppError::new(format!("file not found: {}", path)))?;
-        let mut device =
-            Device::new().ok_or(AppError::new("evdev: can't initialize device".to_string()))?;
+        let mut device = to_app_error(Device::new(), "evdev: can't initialize device")?;
         device
             .set_fd(&file)
             .map_err(|e| AppError::new(format!("set_fd failed on {} ({:?})", path, e)))?;

@@ -30,6 +30,10 @@ impl AppError {
     }
 }
 
+fn to_app_error<T>(option: Option<T>, message: &str) -> Result<T, AppError> {
+    option.ok_or(AppError::new(message.to_string()))
+}
+
 impl<E: std::error::Error> From<E> for AppError {
     fn from(e: E) -> Self {
         AppError::AppError {
@@ -38,12 +42,22 @@ impl<E: std::error::Error> From<E> for AppError {
     }
 }
 
+fn get_binary_name() -> Result<String, AppError> {
+    let current_exe = std::env::current_exe()?;
+    let binary_name = to_app_error(
+        to_app_error(current_exe.file_name(), "invalid current executable")?.to_str(),
+        "executable not valid unicode",
+    )?;
+    Ok(binary_name.to_string())
+}
+
 fn main() -> Result<(), AppError> {
-    let cli_args = cli::parse(clap::App::new("rust-device-reading")).map_err(AppError::new)?;
+    let cli_args = cli::parse(clap::App::new(get_binary_name()?)).map_err(AppError::new)?;
     let mutex = Arc::new(Mutex::new(Generator::new(300.0, move |phase| {
         cli_args.volume * if phase < PI { -1.0 } else { 1.0 }
     })));
-    let _active_client = run_jack_generator(mutex.clone()).map_err(AppError::JackError)?;
+    let _active_client =
+        run_jack_generator(get_binary_name()?, mutex.clone()).map_err(AppError::JackError)?;
     let file = "/dev/input/event15";
     let touches = Positions::new(file)?;
     let areas = Areas::new(
