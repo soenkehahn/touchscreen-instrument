@@ -19,7 +19,7 @@ impl Areas {
 
 struct Ui {
     surface: Surface,
-    ui_elements: Vec<Rectangle>,
+    ui_elements: Vec<(Rectangle, Color)>,
 }
 
 impl Ui {
@@ -93,22 +93,22 @@ impl Ui {
         ::std::process::exit(0);
     }
 
-    fn convert_color(&self, Color { r, g, b }: &Color) -> sdl::video::Color {
-        sdl::video::Color::RGB(*r, *g, *b)
+    fn convert_color(&self, color: &Color) -> sdl::video::Color {
+        sdl::video::Color::RGB(color.red, color.green, color.blue)
     }
 
     fn draw(&self) {
         for element in &self.ui_elements {
-            match element {
-                Rectangle { x, y, w, h, color } => {
+            match element.0 {
+                Rectangle { x, y, w, h } => {
                     self.surface.fill_rect(
                         Some(sdl::Rect {
-                            x: *x as i16,
-                            y: *y as i16,
-                            w: *w as u16,
-                            h: *h as u16,
+                            x: x as i16,
+                            y: y as i16,
+                            w: w as u16,
+                            h: h as u16,
                         }),
-                        self.convert_color(&color),
+                        self.convert_color(&element.1),
                     );
                 }
             }
