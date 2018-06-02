@@ -9,3 +9,4 @@ galvanic-test = "*"
 evdev-rs = { git = "https://github.com/ndesh26/evdev-rs", rev = "c271060" }
 sdl = "*"
 palette = "*"
+clap = "*"

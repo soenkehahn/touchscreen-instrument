@@ -4,16 +4,16 @@ pub struct Generator {
     pub muted: bool,
     pub frequency: f32,
     phase: f32,
-    wave_form: fn(f32) -> f32,
+    wave_form: Box<Fn(f32) -> f32 + 'static + Send>,
 }
 
 impl Generator {
-    pub fn new(frequency: f32, f: fn(f32) -> f32) -> Generator {
+    pub fn new<F: Fn(f32) -> f32 + 'static + Send>(frequency: f32, f: F) -> Generator {
         Generator {
             muted: true,
             frequency: frequency,
             phase: 0.0,
-            wave_form: f,
+            wave_form: Box::new(f),
         }
     }
 

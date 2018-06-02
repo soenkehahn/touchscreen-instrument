@@ -1,8 +1,10 @@
 #[macro_use]
 extern crate galvanic_test;
+extern crate clap;
 extern crate jack;
 
 mod areas;
+mod cli;
 mod evdev;
 mod generator;
 mod run_jack;
@@ -37,19 +39,16 @@ impl<E: std::error::Error> From<E> for AppError {
 }
 
 fn main() -> Result<(), AppError> {
-    let mutex = Arc::new(Mutex::new(Generator::new(300.0, |phase| {
-        if phase < PI {
-            -1.0
-        } else {
-            1.0
-        }
+    let cli_args = cli::parse(clap::App::new("rust-device-reading")).map_err(AppError::new)?;
+    let mutex = Arc::new(Mutex::new(Generator::new(300.0, move |phase| {
+        cli_args.volume * if phase < PI { -1.0 } else { 1.0 }
     })));
     let _active_client = run_jack_generator(mutex.clone()).map_err(AppError::JackError)?;
     let file = "/dev/input/event15";
     let touches = Positions::new(file)?;
     let areas = Areas::new(
         800,
-        36,
+        cli_args.start_note,
         SCREEN_WIDTH as f32 / 16383.0,
         SCREEN_HEIGHT as f32 / 9570.0,
     );
