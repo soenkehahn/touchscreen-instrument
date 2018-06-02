@@ -1,5 +1,5 @@
 [package]
-name = "dev"
+name = "rust-device-reading"
 version = "0.1.0"
 authors = ["Sönke Hahn <soenkehahn@gmail.com>"]
 
