@@ -32,11 +32,14 @@ impl Areas {
         midi_to_frequency(self.start_midi_note + (position.x as f32 / self.area_size as f32) as i32)
     }
 
-    fn make_color(&self, i: usize) -> Color {
+    fn make_color(&self, i_in_cycle_of_fifths: usize) -> Color {
         use self::palette::Hsv;
         use self::palette::rgb::Rgb;
 
-        let c: Rgb<_, u8> = Srgb::from(Hsv::new(i as f32 * 30.0 + 240.0, 1.0, 1.0)).into_format();
+        let chromatic = (i_in_cycle_of_fifths * 7) % 12;
+
+        let c: Rgb<_, u8> =
+            Srgb::from(Hsv::new(chromatic as f32 * 30.0 + 240.0, 1.0, 1.0)).into_format();
         Srgb::new(c.red, c.green, c.blue)
     }
 
@@ -169,14 +172,16 @@ mod test {
             }
 
             #[test]
-            fn cycles_through_twelve_colors_by_hue() {
+            fn cycles_through_twelve_colors_by_hue_in_cycle_of_fifth() {
                 use self::palette::Hsv;
                 use self::palette::Srgb;
 
                 let areas = Areas::new(10, 48, 1.0, 1.0);
-                let mut blue = Hsv::from(Srgb::new(0.0, 0.0, 1.0));
-                blue.hue = blue.hue + 360.0 / 12.0;
-                assert_eq!(areas.make_color(1), Srgb::from(blue).into_format());
+                let mut color = Hsv::from(Srgb::new(0.0, 0.0, 1.0));
+                color.hue = color.hue + 360.0 / 12.0;
+                assert_eq!(areas.make_color(7), Srgb::from(color).into_format());
+                color.hue = color.hue + 360.0 / 12.0;
+                assert_eq!(areas.make_color(2), Srgb::from(color).into_format());
             }
         }
 
