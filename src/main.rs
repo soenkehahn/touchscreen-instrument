@@ -1,5 +1,3 @@
-#[macro_use]
-extern crate galvanic_test;
 extern crate clap;
 extern crate jack;
 
