@@ -1,5 +1,6 @@
 extern crate clap;
 extern crate jack;
+extern crate nix;
 
 mod areas;
 mod cli;
@@ -14,48 +15,80 @@ use generator::Generator;
 use run_jack::run_jack_generator;
 use std::clone::Clone;
 use std::f32::consts::PI;
+use std::fmt::Debug;
 use std::sync::{Arc, Mutex};
 
-#[derive(Debug)]
-pub enum AppError {
-    JackError(jack::Error),
-    AppError { description: String },
-}
+pub struct ErrorString(String);
 
-impl AppError {
-    fn new(description: String) -> AppError {
-        AppError::AppError { description }
+impl Debug for ErrorString {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        let ErrorString(string) = self;
+        string.fmt(f)
     }
 }
 
-fn to_app_error<T>(option: Option<T>, message: &str) -> Result<T, AppError> {
-    option.ok_or(AppError::new(message.to_string()))
+trait AddMessage<T>: Sized {
+    fn add_message(self, message: String) -> Result<T, ErrorString>;
 }
 
-impl<E: std::error::Error> From<E> for AppError {
-    fn from(e: E) -> Self {
-        AppError::AppError {
-            description: String::from(e.description()),
-        }
+impl<T, E> AddMessage<T> for Result<T, E>
+where
+    ErrorString: From<E>,
+{
+    fn add_message(self, message: String) -> Result<T, ErrorString> {
+        self.map_err(|e| {
+            let ErrorString(string) = ErrorString::from(e);
+            ErrorString(format!("{}: {}", message, string))
+        })
     }
 }
 
-fn get_binary_name() -> Result<String, AppError> {
+impl From<std::io::Error> for ErrorString {
+    fn from(e: std::io::Error) -> ErrorString {
+        ErrorString(format!("{}", e))
+    }
+}
+
+impl From<String> for ErrorString {
+    fn from(e: String) -> ErrorString {
+        ErrorString(format!("{}", e))
+    }
+}
+
+impl From<&'static str> for ErrorString {
+    fn from(e: &str) -> ErrorString {
+        ErrorString(format!("{}", e))
+    }
+}
+
+impl From<nix::Errno> for ErrorString {
+    fn from(e: nix::Errno) -> ErrorString {
+        ErrorString(format!("{}", e))
+    }
+}
+
+impl From<jack::Error> for ErrorString {
+    fn from(e: jack::Error) -> ErrorString {
+        ErrorString(format!("{:?}", e))
+    }
+}
+
+fn get_binary_name() -> Result<String, ErrorString> {
     let current_exe = std::env::current_exe()?;
-    let binary_name = to_app_error(
-        to_app_error(current_exe.file_name(), "invalid current executable")?.to_str(),
-        "executable not valid unicode",
-    )?;
+    let binary_name = current_exe
+        .file_name()
+        .ok_or("invalid current executable")?
+        .to_str()
+        .ok_or("executable not valid unicode")?;
     Ok(binary_name.to_string())
 }
 
-fn main() -> Result<(), AppError> {
-    let cli_args = cli::parse(clap::App::new(get_binary_name()?)).map_err(AppError::new)?;
+fn main() -> Result<(), ErrorString> {
+    let cli_args = cli::parse(clap::App::new(get_binary_name()?))?;
     let mutex = Arc::new(Mutex::new(Generator::new(300.0, move |phase| {
         cli_args.volume * if phase < PI { -1.0 } else { 1.0 }
     })));
-    let _active_client =
-        run_jack_generator(get_binary_name()?, mutex.clone()).map_err(AppError::JackError)?;
+    let _active_client = run_jack_generator(get_binary_name()?, mutex.clone())?;
     let file = "/dev/input/event15";
     let touches = Positions::new(file)?;
     let areas = Areas::new(

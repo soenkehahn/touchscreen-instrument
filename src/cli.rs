@@ -1,6 +1,7 @@
 extern crate clap;
 
 use self::clap::{App, Arg};
+use ErrorString;
 use std::fmt::Display;
 use std::str::FromStr;
 
@@ -10,7 +11,7 @@ pub struct CliArgs {
     pub start_note: i32,
 }
 
-pub fn parse<'a, 'b>(app: App<'a, 'b>) -> Result<CliArgs, String> {
+pub fn parse<'a, 'b>(app: App<'a, 'b>) -> Result<CliArgs, ErrorString> {
     let matches = app.version("0.1.0")
         .author("Sönke Hahn <soenkehahn@gmail.com>")
         .about("musical instrument for touch screens")
@@ -34,13 +35,15 @@ pub fn parse<'a, 'b>(app: App<'a, 'b>) -> Result<CliArgs, String> {
     Ok(CliArgs { volume, start_note })
 }
 
-fn parse_with_default<N>(input: Option<&str>, default: N) -> Result<N, String>
+fn parse_with_default<N>(input: Option<&str>, default: N) -> Result<N, ErrorString>
 where
     N: FromStr,
     <N as FromStr>::Err: Display,
 {
     match input {
         None => Ok(default),
-        Some(string) => string.parse().map_err(|e| format!("{}", e)),
+        Some(string) => string
+            .parse()
+            .map_err(|e| ErrorString::from(format!("{}", e))),
     }
 }

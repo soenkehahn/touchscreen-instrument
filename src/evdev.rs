@@ -1,10 +1,10 @@
 extern crate evdev_rs;
 
-use AppError;
+use AddMessage;
+use ErrorString;
 use evdev::evdev_rs::enums::{EV_SYN::*, EventCode, EventType::*, EV_ABS};
 use evdev::evdev_rs::*;
 use std::fs::File;
-use to_app_error;
 
 pub struct Events {
     _file: File,
@@ -12,13 +12,12 @@ pub struct Events {
 }
 
 impl Events {
-    pub fn new(path: &str) -> Result<Events, AppError> {
-        let file =
-            File::open(path).map_err(|_| AppError::new(format!("file not found: {}", path)))?;
-        let mut device = to_app_error(Device::new(), "evdev: can't initialize device")?;
+    pub fn new(path: &str) -> Result<Events, ErrorString> {
+        let file = File::open(path).add_message(format!("file not found: {}", path))?;
+        let mut device = Device::new().ok_or("evdev: can't initialize device")?;
         device
             .set_fd(&file)
-            .map_err(|e| AppError::new(format!("set_fd failed on {} ({:?})", path, e)))?;
+            .add_message(format!("set_fd failed on {}", path))?;
         device.grab(GrabMode::Grab)?;
         Ok(Events {
             _file: file,
@@ -146,7 +145,7 @@ impl Positions {
         }
     }
 
-    pub fn new(file: &str) -> Result<Positions, AppError> {
+    pub fn new(file: &str) -> Result<Positions, ErrorString> {
         Ok(Positions::new_from_iterator(Events::new(file)?))
     }
 }
