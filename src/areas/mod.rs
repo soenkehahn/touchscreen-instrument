@@ -102,7 +102,7 @@ mod test {
     use super::*;
 
     mod midi_to_frequency {
-        use super::super::*;
+        use super::*;
 
         #[test]
         fn converts_the_concert_pitch_correctly() {
@@ -125,9 +125,10 @@ mod test {
     }
 
     mod areas {
+        use super::*;
+
         mod frequency {
-            use super::super::super::*;
-            use super::super::pos;
+            use super::*;
 
             #[test]
             fn maps_x_values_to_frequencies() {
@@ -157,7 +158,7 @@ mod test {
         }
 
         mod make_color {
-            use super::super::super::*;
+            use super::*;
 
             #[test]
             fn returns_blue_as_the_first_color() {
@@ -186,7 +187,7 @@ mod test {
         }
 
         mod ui_elements {
-            use super::super::super::*;
+            use super::*;
 
             #[test]
             fn returns_a_rectangle_for_the_lowest_pitch() {
@@ -256,8 +257,7 @@ mod test {
     }
 
     mod frequencies {
-        use super::super::*;
-        use super::pos;
+        use super::*;
 
         #[test]
         fn yields_frequencies() {
