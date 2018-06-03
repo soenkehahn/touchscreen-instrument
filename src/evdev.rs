@@ -231,210 +231,216 @@ mod test {
         }
     }
 
-    #[test]
-    fn syn_chunks_groups_events_until_ev_syn() {
-        let vec = vec![
-            Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_SLOT), 1),
-            Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_SLOT), 2),
-            Mock::ev(EV_SYN, EventCode::EV_SYN(SYN_REPORT), 0),
-        ];
-        assert_eq!(
-            SynChunks::new(vec.into_iter()).next(),
-            Some(vec![
+    mod syn_chunks {
+        use super::*;
+
+        #[test]
+        fn groups_events_until_ev_syn() {
+            let vec = vec![
                 Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_SLOT), 1),
                 Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_SLOT), 2),
-            ])
-        );
+                Mock::ev(EV_SYN, EventCode::EV_SYN(SYN_REPORT), 0),
+            ];
+            assert_eq!(
+                SynChunks::new(vec.into_iter()).next(),
+                Some(vec![
+                    Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_SLOT), 1),
+                    Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_SLOT), 2),
+                ])
+            );
+        }
+
+        #[test]
+        fn bundles_subsequent_chunks_correctly() {
+            let vec = vec![
+                Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_SLOT), 1),
+                Mock::ev(EV_SYN, EventCode::EV_SYN(SYN_REPORT), 0),
+                //
+                Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_SLOT), 2),
+                Mock::ev(EV_SYN, EventCode::EV_SYN(SYN_REPORT), 0),
+            ];
+            let mut syn_chunks = SynChunks::new(vec.into_iter());
+            syn_chunks.next();
+            assert_eq!(
+                syn_chunks.next(),
+                Some(vec![Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_SLOT), 2)])
+            );
+        }
+
+        #[test]
+        fn handles_terminating_streams_gracefully() {
+            let vec = vec![Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_SLOT), 1)];
+            let mut syn_chunks = SynChunks::new(vec.into_iter());
+            assert_eq!(
+                syn_chunks.next(),
+                Some(vec![Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_SLOT), 1)])
+            );
+            assert_eq!(syn_chunks.next(), None);
+            assert_eq!(syn_chunks.next(), None);
+        }
     }
 
-    #[test]
-    fn syn_chunks_bundles_subsequent_chunks_correctly() {
-        let vec = vec![
-            Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_SLOT), 1),
-            Mock::ev(EV_SYN, EventCode::EV_SYN(SYN_REPORT), 0),
-            //
-            Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_SLOT), 2),
-            Mock::ev(EV_SYN, EventCode::EV_SYN(SYN_REPORT), 0),
-        ];
-        let mut syn_chunks = SynChunks::new(vec.into_iter());
-        syn_chunks.next();
-        assert_eq!(
-            syn_chunks.next(),
-            Some(vec![Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_SLOT), 2)])
-        );
-    }
+    mod positions {
+        use super::*;
 
-    #[test]
-    fn syn_chunks_handles_terminating_streams_gracefully() {
-        let vec = vec![Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_SLOT), 1)];
-        let mut syn_chunks = SynChunks::new(vec.into_iter());
-        assert_eq!(
-            syn_chunks.next(),
-            Some(vec![Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_SLOT), 1)])
-        );
-        assert_eq!(syn_chunks.next(), None);
-        assert_eq!(syn_chunks.next(), None);
-    }
+        #[test]
+        fn relays_a_position() {
+            let mut positions = Mock::positions(vec![
+                Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_SLOT), 0),
+                Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_TRACKING_ID), 1),
+                Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_POSITION_X), 23),
+                Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_POSITION_Y), 42),
+                Mock::ev(EV_SYN, EventCode::EV_SYN(SYN_REPORT), 0),
+            ]);
+            assert_eq!(positions.next(), Some(Touch(Position { x: 23, y: 42 })));
+        }
 
-    // * Positions tests
+        #[test]
+        fn relays_following_positions() {
+            let mut positions = Mock::positions(vec![
+                Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_SLOT), 0),
+                Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_TRACKING_ID), 1),
+                Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_POSITION_X), 23),
+                Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_POSITION_Y), 42),
+                Mock::ev(EV_SYN, EventCode::EV_SYN(SYN_REPORT), 0),
+                //
+                Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_POSITION_X), 51),
+                Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_POSITION_Y), 84),
+                Mock::ev(EV_SYN, EventCode::EV_SYN(SYN_REPORT), 0),
+            ]);
+            positions.next();
+            assert_eq!(positions.next(), Some(Touch(Position { x: 51, y: 84 })));
+        }
 
-    #[test]
-    fn positions_relays_a_position() {
-        let mut positions = Mock::positions(vec![
-            Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_SLOT), 0),
-            Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_TRACKING_ID), 1),
-            Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_POSITION_X), 23),
-            Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_POSITION_Y), 42),
-            Mock::ev(EV_SYN, EventCode::EV_SYN(SYN_REPORT), 0),
-        ]);
-        assert_eq!(positions.next(), Some(Touch(Position { x: 23, y: 42 })));
-    }
+        #[test]
+        fn handles_syn_chunks_without_y() {
+            let mut positions = Mock::positions(vec![
+                Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_SLOT), 0),
+                Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_TRACKING_ID), 1),
+                Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_POSITION_X), 23),
+                Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_POSITION_Y), 42),
+                Mock::ev(EV_SYN, EventCode::EV_SYN(SYN_REPORT), 0),
+                //
+                Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_POSITION_X), 51),
+                Mock::ev(EV_SYN, EventCode::EV_SYN(SYN_REPORT), 0),
+            ]);
+            positions.next();
+            assert_eq!(positions.next(), Some(Touch(Position { x: 51, y: 42 })));
+        }
 
-    #[test]
-    fn positions_relays_following_positions() {
-        let mut positions = Mock::positions(vec![
-            Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_SLOT), 0),
-            Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_TRACKING_ID), 1),
-            Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_POSITION_X), 23),
-            Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_POSITION_Y), 42),
-            Mock::ev(EV_SYN, EventCode::EV_SYN(SYN_REPORT), 0),
-            //
-            Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_POSITION_X), 51),
-            Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_POSITION_Y), 84),
-            Mock::ev(EV_SYN, EventCode::EV_SYN(SYN_REPORT), 0),
-        ]);
-        positions.next();
-        assert_eq!(positions.next(), Some(Touch(Position { x: 51, y: 84 })));
-    }
+        #[test]
+        fn handles_syn_chunks_without_x() {
+            let mut positions = Mock::positions(vec![
+                Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_SLOT), 0),
+                Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_TRACKING_ID), 1),
+                Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_POSITION_X), 23),
+                Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_POSITION_Y), 42),
+                Mock::ev(EV_SYN, EventCode::EV_SYN(SYN_REPORT), 0),
+                //
+                Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_POSITION_Y), 84),
+                Mock::ev(EV_SYN, EventCode::EV_SYN(SYN_REPORT), 0),
+            ]);
+            positions.next();
+            assert_eq!(positions.next(), Some(Touch(Position { x: 23, y: 84 })));
+        }
 
-    #[test]
-    fn positions_handles_syn_chunks_without_y() {
-        let mut positions = Mock::positions(vec![
-            Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_SLOT), 0),
-            Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_TRACKING_ID), 1),
-            Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_POSITION_X), 23),
-            Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_POSITION_Y), 42),
-            Mock::ev(EV_SYN, EventCode::EV_SYN(SYN_REPORT), 0),
-            //
-            Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_POSITION_X), 51),
-            Mock::ev(EV_SYN, EventCode::EV_SYN(SYN_REPORT), 0),
-        ]);
-        positions.next();
-        assert_eq!(positions.next(), Some(Touch(Position { x: 51, y: 42 })));
-    }
+        #[test]
+        fn recognizes_touch_releases() {
+            let mut positions = Mock::positions(vec![
+                Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_SLOT), 0),
+                Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_TRACKING_ID), 1),
+                Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_POSITION_X), 23),
+                Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_POSITION_Y), 42),
+                Mock::ev(EV_SYN, EventCode::EV_SYN(SYN_REPORT), 0),
+                //
+                Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_TRACKING_ID), -1),
+                Mock::ev(EV_SYN, EventCode::EV_SYN(SYN_REPORT), 0),
+            ]);
+            positions.next();
+            assert_eq!(positions.next(), Some(NoTouch));
+        }
 
-    #[test]
-    fn positions_handles_syn_chunks_without_x() {
-        let mut positions = Mock::positions(vec![
-            Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_SLOT), 0),
-            Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_TRACKING_ID), 1),
-            Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_POSITION_X), 23),
-            Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_POSITION_Y), 42),
-            Mock::ev(EV_SYN, EventCode::EV_SYN(SYN_REPORT), 0),
-            //
-            Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_POSITION_Y), 84),
-            Mock::ev(EV_SYN, EventCode::EV_SYN(SYN_REPORT), 0),
-        ]);
-        positions.next();
-        assert_eq!(positions.next(), Some(Touch(Position { x: 23, y: 84 })));
-    }
+        #[test]
+        fn ignores_movements_from_other_slots() {
+            let mut positions = Mock::positions(vec![
+                Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_SLOT), 0),
+                Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_TRACKING_ID), 1),
+                Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_POSITION_X), 23),
+                Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_POSITION_Y), 42),
+                Mock::ev(EV_SYN, EventCode::EV_SYN(SYN_REPORT), 0),
+                //
+                Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_SLOT), 1),
+                Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_POSITION_X), 1000),
+                Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_POSITION_Y), 1000),
+                Mock::ev(EV_SYN, EventCode::EV_SYN(SYN_REPORT), 0),
+                //
+                Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_SLOT), 0),
+                Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_POSITION_X), 51),
+                Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_POSITION_Y), 84),
+                Mock::ev(EV_SYN, EventCode::EV_SYN(SYN_REPORT), 0),
+            ]);
+            positions.next();
+            assert_eq!(positions.next(), Some(Touch(Position { x: 23, y: 42 })));
+            assert_eq!(positions.next(), Some(Touch(Position { x: 51, y: 84 })));
+        }
 
-    #[test]
-    fn positions_recognizes_touch_releases() {
-        let mut positions = Mock::positions(vec![
-            Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_SLOT), 0),
-            Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_TRACKING_ID), 1),
-            Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_POSITION_X), 23),
-            Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_POSITION_Y), 42),
-            Mock::ev(EV_SYN, EventCode::EV_SYN(SYN_REPORT), 0),
-            //
-            Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_TRACKING_ID), -1),
-            Mock::ev(EV_SYN, EventCode::EV_SYN(SYN_REPORT), 0),
-        ]);
-        positions.next();
-        assert_eq!(positions.next(), Some(NoTouch));
-    }
+        #[test]
+        fn ignores_touch_releases_from_other_slots() {
+            let mut positions = Mock::positions(vec![
+                Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_SLOT), 0),
+                Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_TRACKING_ID), 1),
+                Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_POSITION_X), 23),
+                Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_POSITION_Y), 42),
+                Mock::ev(EV_SYN, EventCode::EV_SYN(SYN_REPORT), 0),
+                //
+                Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_SLOT), 1),
+                Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_TRACKING_ID), 2),
+                Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_POSITION_X), 1000),
+                Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_POSITION_Y), 1000),
+                Mock::ev(EV_SYN, EventCode::EV_SYN(SYN_REPORT), 0),
+                //
+                Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_TRACKING_ID), -1),
+                Mock::ev(EV_SYN, EventCode::EV_SYN(SYN_REPORT), 0),
+                //
+                Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_SLOT), 0),
+                Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_POSITION_X), 51),
+                Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_POSITION_Y), 84),
+                Mock::ev(EV_SYN, EventCode::EV_SYN(SYN_REPORT), 0),
+            ]);
+            positions.next();
+            assert_eq!(positions.next(), Some(Touch(Position { x: 23, y: 42 })));
+            assert_eq!(positions.next(), Some(Touch(Position { x: 23, y: 42 })));
+            assert_eq!(positions.next(), Some(Touch(Position { x: 51, y: 84 })));
+        }
 
-    #[test]
-    fn positions_ignores_movements_from_other_slots() {
-        let mut positions = Mock::positions(vec![
-            Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_SLOT), 0),
-            Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_TRACKING_ID), 1),
-            Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_POSITION_X), 23),
-            Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_POSITION_Y), 42),
-            Mock::ev(EV_SYN, EventCode::EV_SYN(SYN_REPORT), 0),
-            //
-            Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_SLOT), 1),
-            Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_POSITION_X), 1000),
-            Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_POSITION_Y), 1000),
-            Mock::ev(EV_SYN, EventCode::EV_SYN(SYN_REPORT), 0),
-            //
-            Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_SLOT), 0),
-            Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_POSITION_X), 51),
-            Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_POSITION_Y), 84),
-            Mock::ev(EV_SYN, EventCode::EV_SYN(SYN_REPORT), 0),
-        ]);
-        positions.next();
-        assert_eq!(positions.next(), Some(Touch(Position { x: 23, y: 42 })));
-        assert_eq!(positions.next(), Some(Touch(Position { x: 51, y: 84 })));
-    }
+        #[test]
+        fn assumes_slot_zero_at_start() {
+            let mut positions = Mock::positions(vec![
+                Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_TRACKING_ID), 1),
+                Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_POSITION_X), 23),
+                Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_POSITION_Y), 42),
+                Mock::ev(EV_SYN, EventCode::EV_SYN(SYN_REPORT), 0),
+            ]);
+            assert_eq!(positions.next(), Some(Touch(Position { x: 23, y: 42 })));
+        }
 
-    #[test]
-    fn positions_ignores_touch_releases_from_other_slots() {
-        let mut positions = Mock::positions(vec![
-            Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_SLOT), 0),
-            Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_TRACKING_ID), 1),
-            Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_POSITION_X), 23),
-            Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_POSITION_Y), 42),
-            Mock::ev(EV_SYN, EventCode::EV_SYN(SYN_REPORT), 0),
-            //
-            Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_SLOT), 1),
-            Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_TRACKING_ID), 2),
-            Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_POSITION_X), 1000),
-            Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_POSITION_Y), 1000),
-            Mock::ev(EV_SYN, EventCode::EV_SYN(SYN_REPORT), 0),
-            //
-            Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_TRACKING_ID), -1),
-            Mock::ev(EV_SYN, EventCode::EV_SYN(SYN_REPORT), 0),
-            //
-            Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_SLOT), 0),
-            Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_POSITION_X), 51),
-            Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_POSITION_Y), 84),
-            Mock::ev(EV_SYN, EventCode::EV_SYN(SYN_REPORT), 0),
-        ]);
-        positions.next();
-        assert_eq!(positions.next(), Some(Touch(Position { x: 23, y: 42 })));
-        assert_eq!(positions.next(), Some(Touch(Position { x: 23, y: 42 })));
-        assert_eq!(positions.next(), Some(Touch(Position { x: 51, y: 84 })));
-    }
-
-    #[test]
-    fn positions_assumes_slot_zero_at_start() {
-        let mut positions = Mock::positions(vec![
-            Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_TRACKING_ID), 1),
-            Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_POSITION_X), 23),
-            Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_POSITION_Y), 42),
-            Mock::ev(EV_SYN, EventCode::EV_SYN(SYN_REPORT), 0),
-        ]);
-        assert_eq!(positions.next(), Some(Touch(Position { x: 23, y: 42 })));
-    }
-
-    #[test]
-    fn positions_tracks_slot_changes_and_touch_releases_in_the_same_syn_chunk_correctly() {
-        let mut positions = Mock::positions(vec![
-            Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_TRACKING_ID), 1),
-            Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_POSITION_X), 23),
-            Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_POSITION_Y), 42),
-            Mock::ev(EV_SYN, EventCode::EV_SYN(SYN_REPORT), 0),
-            //
-            Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_TRACKING_ID), -1),
-            Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_SLOT), 1),
-            Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_TRACKING_ID), 2),
-            Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_POSITION_X), 1000),
-            Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_POSITION_Y), 1000),
-            Mock::ev(EV_SYN, EventCode::EV_SYN(SYN_REPORT), 0),
-        ]);
-        assert_eq!(positions.next(), Some(Touch(Position { x: 23, y: 42 })));
-        assert_eq!(positions.next(), Some(NoTouch));
+        #[test]
+        fn tracks_slot_changes_and_touch_releases_in_the_same_syn_chunk_correctly() {
+            let mut positions = Mock::positions(vec![
+                Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_TRACKING_ID), 1),
+                Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_POSITION_X), 23),
+                Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_POSITION_Y), 42),
+                Mock::ev(EV_SYN, EventCode::EV_SYN(SYN_REPORT), 0),
+                //
+                Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_TRACKING_ID), -1),
+                Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_SLOT), 1),
+                Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_TRACKING_ID), 2),
+                Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_POSITION_X), 1000),
+                Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_POSITION_Y), 1000),
+                Mock::ev(EV_SYN, EventCode::EV_SYN(SYN_REPORT), 0),
+            ]);
+            assert_eq!(positions.next(), Some(Touch(Position { x: 23, y: 42 })));
+            assert_eq!(positions.next(), Some(NoTouch));
+        }
     }
 }
