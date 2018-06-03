@@ -153,13 +153,6 @@ mod test {
         assert_eq!(buffer[2], 0.0);
     }
 
-    fn assert_eq_eps(a: f32, b: f32) {
-        let epsilon = 0.00000001;
-        if (a - b).abs() > epsilon {
-            panic!("a and b are too different");
-        }
-    }
-
     #[test]
     fn it_allows_to_specify_the_wave_form() {
         let mut generator = Generator::new(1.0, |phase| phase * 5.0);
@@ -167,6 +160,6 @@ mod test {
         let buffer: &mut [f32] = &mut [42.0; 10];
         generator.generate(SAMPLE_RATE, buffer);
         assert_eq!(buffer[0], 0.0);
-        assert_eq_eps(buffer[1], 5.0 * TAU / SAMPLE_RATE as f32);
+        assert_close(buffer[1], 5.0 * TAU / SAMPLE_RATE as f32);
     }
 }
