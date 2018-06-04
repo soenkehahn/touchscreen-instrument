@@ -125,10 +125,12 @@ struct SlotState {
     btn_touch: bool,
 }
 
+type TouchArray<T> = [T; 10];
+
 #[derive(Debug)]
 pub struct Positions {
     syn_chunks: SynChunks,
-    slots: [SlotState; 10],
+    slots: TouchArray<SlotState>,
     slot_active: usize,
 }
 
@@ -180,7 +182,7 @@ impl<T> TouchState<T> {
 }
 
 impl Iterator for Positions {
-    type Item = [TouchState<Position>; 10];
+    type Item = TouchArray<TouchState<Position>>;
 
     fn next(&mut self) -> Option<Self::Item> {
         match self.syn_chunks.next() {
