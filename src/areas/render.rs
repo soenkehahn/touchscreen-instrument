@@ -57,7 +57,7 @@ impl Ui {
     fn move_to_touch_screen(&self) {
         // sdl doesn't support controlling which screen to put a window on.
         match ::std::process::Command::new("xdotool")
-            .args(&["getactivewindow", "windowmove", "0", "0"])
+            .args(&["getactivewindow", "windowmove", "1366", "0"])
             .output()
         {
             Err(e) => {
