@@ -1,35 +1,58 @@
 const TAU: f32 = ::std::f32::consts::PI * 2.0;
 
+pub enum OscillatorState {
+    Playing { frequency: f32, phase: f32 },
+    Muted,
+}
+
 pub struct Generator {
-    pub frequency: Option<f32>,
-    phase: f32,
+    oscillator_state: OscillatorState,
     wave_form: Box<Fn(f32) -> f32 + 'static + Send>,
 }
 
 impl Generator {
     pub fn new<F: Fn(f32) -> f32 + 'static + Send>(f: F) -> Generator {
         Generator {
-            frequency: None,
-            phase: 0.0,
+            oscillator_state: OscillatorState::Muted,
             wave_form: Box::new(f),
         }
     }
 
+    pub fn set_frequency(&mut self, frequency: f32) {
+        self.oscillator_state = OscillatorState::Playing {
+            frequency,
+            phase: match self.oscillator_state {
+                OscillatorState::Playing { phase, .. } => phase,
+                OscillatorState::Muted => 0.0,
+            },
+        };
+    }
+
+    pub fn mute(&mut self) {
+        self.oscillator_state = OscillatorState::Muted;
+    }
+
     fn crank_phase(&mut self, sample_rate: i32) {
-        if let Some(frequency) = self.frequency {
-            self.phase += frequency * TAU / sample_rate as f32;
-            self.phase %= TAU;
+        match self.oscillator_state {
+            OscillatorState::Playing {
+                frequency,
+                ref mut phase,
+            } => {
+                *phase += frequency * TAU / sample_rate as f32;
+                *phase %= TAU;
+            }
+            OscillatorState::Muted => {}
         }
     }
 
     pub fn generate(&mut self, sample_rate: i32, buffer: &mut [f32]) {
         for sample in buffer.iter_mut() {
-            match self.frequency {
-                None => {
+            match self.oscillator_state {
+                OscillatorState::Muted => {
                     *sample = 0.0;
                 }
-                Some(_) => {
-                    *sample = (self.wave_form)(self.phase);
+                OscillatorState::Playing { phase, .. } => {
+                    *sample = (self.wave_form)(phase);
                 }
             }
             self.crank_phase(sample_rate);
@@ -52,8 +75,17 @@ mod test {
 
     fn generator() -> Generator {
         let mut generator = Generator::new(|x| x.sin());
-        generator.frequency = Some(1.0);
+        generator.set_frequency(1.0);
         generator
+    }
+
+    impl OscillatorState {
+        fn get_phase(&self) -> f32 {
+            match self {
+                OscillatorState::Playing { phase, .. } => *phase,
+                OscillatorState::Muted => panic!("get_phase: Muted"),
+            }
+        }
     }
 
     mod crank_phase {
@@ -67,7 +99,7 @@ mod test {
                 generator.crank_phase(sample_rate);
             }
             assert_close(
-                generator.phase,
+                generator.oscillator_state.get_phase(),
                 TAU * (sample_rate - 1) as f32 / sample_rate as f32,
             );
         }
@@ -75,9 +107,12 @@ mod test {
         #[test]
         fn increases_the_phase_for_one_sample() {
             let mut generator = generator();
-            assert_eq!(generator.phase, 0.0);
+            assert_eq!(generator.oscillator_state.get_phase(), 0.0);
             generator.crank_phase(SAMPLE_RATE);
-            assert_eq!(generator.phase, TAU / SAMPLE_RATE as f32);
+            assert_eq!(
+                generator.oscillator_state.get_phase(),
+                TAU / SAMPLE_RATE as f32
+            );
         }
 
         #[test]
@@ -86,7 +121,7 @@ mod test {
             for _ in 0..SAMPLE_RATE {
                 generator.crank_phase(SAMPLE_RATE);
             }
-            assert_close(generator.phase, 0.0);
+            assert_close(generator.oscillator_state.get_phase(), 0.0);
         }
     }
 
@@ -111,10 +146,34 @@ mod test {
         }
 
         #[test]
+        fn starts_with_phase_zero_after_pauses() {
+            let buffer: &mut [f32] = &mut [42.0; 10];
+            let mut generator = Generator::new(|x| x.sin());
+            generator.set_frequency(1.0);
+            generator.generate(SAMPLE_RATE, buffer);
+            generator.mute();
+            generator.generate(SAMPLE_RATE, buffer);
+            generator.set_frequency(1.0);
+            generator.generate(SAMPLE_RATE, buffer);
+            assert_eq!(buffer[0], 0.0);
+        }
+
+        #[test]
+        fn doesnt_reset_the_phase_when_changing_the_frequency_without_pause() {
+            let buffer: &mut [f32] = &mut [42.0; 10];
+            let mut generator = Generator::new(|x| x.sin());
+            generator.set_frequency(1.0);
+            generator.generate(SAMPLE_RATE, buffer);
+            generator.set_frequency(1.1);
+            generator.generate(SAMPLE_RATE, buffer);
+            assert!(buffer[0] != 0.0, "{} should not equal {}", buffer[0], 0.0);
+        }
+
+        #[test]
         fn works_for_different_frequencies() {
             let mut generator = generator();
             let buffer: &mut [f32] = &mut [42.0; 10];
-            generator.frequency = Some(300.0);
+            generator.set_frequency(300.0);
             generator.generate(SAMPLE_RATE, buffer);
             assert_eq!(buffer[1], (300.0 * TAU / SAMPLE_RATE as f32).sin());
             assert_eq!(buffer[2], (2.0 * 300.0 * TAU / SAMPLE_RATE as f32).sin());
@@ -125,9 +184,9 @@ mod test {
         fn allows_to_change_the_frequency_later() {
             let mut generator = generator();
             let buffer: &mut [f32] = &mut [42.0; 10];
-            generator.frequency = Some(300.0);
+            generator.set_frequency(300.0);
             generator.generate(SAMPLE_RATE, buffer);
-            generator.frequency = Some(500.0);
+            generator.set_frequency(500.0);
             generator.generate(SAMPLE_RATE, buffer);
             assert_eq!(buffer[0], ((10.0 * 300.0) * TAU / SAMPLE_RATE as f32).sin());
             assert_eq!(
@@ -153,9 +212,9 @@ mod test {
         fn can_be_muted() {
             let mut generator = generator();
             let buffer: &mut [f32] = &mut [42.0; 10];
-            generator.frequency = Some(1.0);
+            generator.set_frequency(1.0);
             generator.generate(SAMPLE_RATE, buffer);
-            generator.frequency = None;
+            generator.mute();
             generator.generate(SAMPLE_RATE, buffer);
             assert_eq!(buffer[1], 0.0);
             assert_eq!(buffer[2], 0.0);
@@ -164,7 +223,7 @@ mod test {
         #[test]
         fn allows_to_specify_the_wave_form() {
             let mut generator = Generator::new(|phase| phase * 5.0);
-            generator.frequency = Some(1.0);
+            generator.set_frequency(1.0);
             let buffer: &mut [f32] = &mut [42.0; 10];
             generator.generate(SAMPLE_RATE, buffer);
             assert_eq!(buffer[0], 0.0);
