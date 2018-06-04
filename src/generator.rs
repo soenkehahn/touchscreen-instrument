@@ -1,33 +1,36 @@
 const TAU: f32 = ::std::f32::consts::PI * 2.0;
 
 pub struct Generator {
-    pub muted: bool,
-    pub frequency: f32,
+    pub frequency: Option<f32>,
     phase: f32,
     wave_form: Box<Fn(f32) -> f32 + 'static + Send>,
 }
 
 impl Generator {
-    pub fn new<F: Fn(f32) -> f32 + 'static + Send>(frequency: f32, f: F) -> Generator {
+    pub fn new<F: Fn(f32) -> f32 + 'static + Send>(f: F) -> Generator {
         Generator {
-            muted: true,
-            frequency: frequency,
+            frequency: None,
             phase: 0.0,
             wave_form: Box::new(f),
         }
     }
 
     fn crank_phase(&mut self, sample_rate: i32) {
-        self.phase += self.frequency * TAU / sample_rate as f32;
-        self.phase %= TAU;
+        if let Some(frequency) = self.frequency {
+            self.phase += frequency * TAU / sample_rate as f32;
+            self.phase %= TAU;
+        }
     }
 
     pub fn generate(&mut self, sample_rate: i32, buffer: &mut [f32]) {
         for sample in buffer.iter_mut() {
-            if self.muted {
-                *sample = 0.0;
-            } else {
-                *sample = (self.wave_form)(self.phase);
+            match self.frequency {
+                None => {
+                    *sample = 0.0;
+                }
+                Some(_) => {
+                    *sample = (self.wave_form)(self.phase);
+                }
             }
             self.crank_phase(sample_rate);
         }
@@ -48,8 +51,8 @@ mod test {
     }
 
     fn generator() -> Generator {
-        let mut generator = Generator::new(1.0, |x| x.sin());
-        generator.muted = false;
+        let mut generator = Generator::new(|x| x.sin());
+        generator.frequency = Some(1.0);
         generator
     }
 
@@ -111,7 +114,7 @@ mod test {
         fn works_for_different_frequencies() {
             let mut generator = generator();
             let buffer: &mut [f32] = &mut [42.0; 10];
-            generator.frequency = 300.0;
+            generator.frequency = Some(300.0);
             generator.generate(SAMPLE_RATE, buffer);
             assert_eq!(buffer[1], (300.0 * TAU / SAMPLE_RATE as f32).sin());
             assert_eq!(buffer[2], (2.0 * 300.0 * TAU / SAMPLE_RATE as f32).sin());
@@ -122,9 +125,9 @@ mod test {
         fn allows_to_change_the_frequency_later() {
             let mut generator = generator();
             let buffer: &mut [f32] = &mut [42.0; 10];
-            generator.frequency = 300.0;
+            generator.frequency = Some(300.0);
             generator.generate(SAMPLE_RATE, buffer);
-            generator.frequency = 500.0;
+            generator.frequency = Some(500.0);
             generator.generate(SAMPLE_RATE, buffer);
             assert_eq!(buffer[0], ((10.0 * 300.0) * TAU / SAMPLE_RATE as f32).sin());
             assert_eq!(
@@ -139,7 +142,7 @@ mod test {
 
         #[test]
         fn is_initially_muted() {
-            let mut generator = Generator::new(1.0, |x| x.sin());
+            let mut generator = Generator::new(|x| x.sin());
             let buffer: &mut [f32] = &mut [42.0; 10];
             generator.generate(SAMPLE_RATE, buffer);
             assert_eq!(buffer[1], 0.0);
@@ -150,9 +153,9 @@ mod test {
         fn can_be_muted() {
             let mut generator = generator();
             let buffer: &mut [f32] = &mut [42.0; 10];
-            generator.muted = false;
+            generator.frequency = Some(1.0);
             generator.generate(SAMPLE_RATE, buffer);
-            generator.muted = true;
+            generator.frequency = None;
             generator.generate(SAMPLE_RATE, buffer);
             assert_eq!(buffer[1], 0.0);
             assert_eq!(buffer[2], 0.0);
@@ -160,8 +163,8 @@ mod test {
 
         #[test]
         fn allows_to_specify_the_wave_form() {
-            let mut generator = Generator::new(1.0, |phase| phase * 5.0);
-            generator.muted = false;
+            let mut generator = Generator::new(|phase| phase * 5.0);
+            generator.frequency = Some(1.0);
             let buffer: &mut [f32] = &mut [42.0; 10];
             generator.generate(SAMPLE_RATE, buffer);
             assert_eq!(buffer[0], 0.0);

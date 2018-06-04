@@ -85,7 +85,7 @@ fn get_binary_name() -> Result<String, ErrorString> {
 
 fn main() -> Result<(), ErrorString> {
     let cli_args = cli::parse(clap::App::new(get_binary_name()?))?;
-    let mutex = Arc::new(Mutex::new(Generator::new(300.0, move |phase| {
+    let mutex = Arc::new(Mutex::new(Generator::new(move |phase| {
         cli_args.volume * if phase < PI { -1.0 } else { 1.0 }
     })));
     let _active_client = run_jack_generator(get_binary_name()?, mutex.clone())?;
@@ -109,11 +109,10 @@ fn main() -> Result<(), ErrorString> {
             }
             Ok(mut generator) => match frequency_update {
                 TouchState::NoTouch => {
-                    generator.muted = true;
+                    generator.frequency = None;
                 }
                 TouchState::Touch(frequency) => {
-                    generator.muted = false;
-                    generator.frequency = frequency;
+                    generator.frequency = Some(frequency);
                 }
             },
         }
