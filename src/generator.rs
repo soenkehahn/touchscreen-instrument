@@ -19,9 +19,7 @@ impl Generator {
 
     fn crank_phase(&mut self, sample_rate: i32) {
         self.phase += self.frequency * TAU / sample_rate as f32;
-        while self.phase >= TAU {
-            self.phase -= TAU
-        }
+        self.phase %= TAU;
     }
 
     pub fn generate(&mut self, sample_rate: i32, buffer: &mut [f32]) {
