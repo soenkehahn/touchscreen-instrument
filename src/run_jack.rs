@@ -48,7 +48,7 @@ impl ProcessHandler for ProcessHandler_ {
                     .copy_from_slice(left_buffer);
             }
             Err(e) => {
-                println!("process: error: {:?}", e);
+                eprintln!("process: error: {:?}", e);
             }
         }
         Control::Continue

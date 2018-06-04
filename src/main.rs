@@ -105,7 +105,7 @@ fn main() -> Result<(), ErrorString> {
     for frequency_update in frequencies {
         match mutex.lock() {
             Err(e) => {
-                println!("main_: error: {:?}", e);
+                eprintln!("main_: error: {:?}", e);
             }
             Ok(mut generator) => match frequency_update {
                 TouchState::NoTouch => {
