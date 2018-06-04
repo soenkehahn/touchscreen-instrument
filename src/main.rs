@@ -85,8 +85,12 @@ fn get_binary_name() -> Result<String, ErrorString> {
 
 fn main() -> Result<(), ErrorString> {
     let cli_args = cli::parse(clap::App::new(get_binary_name()?))?;
-    let mutex = Arc::new(Mutex::new(Generator::new(move |phase| {
-        cli_args.volume * if phase < PI { -1.0 } else { 1.0 }
+    let mutex = Arc::new(Mutex::new(Generator::new(cli_args.volume, move |phase| {
+        if phase < PI {
+            -1.0
+        } else {
+            1.0
+        }
     })));
     let _active_client = run_jack_generator(get_binary_name()?, mutex.clone())?;
     let file = "/dev/input/event15";

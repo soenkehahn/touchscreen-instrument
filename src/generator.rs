@@ -6,15 +6,17 @@ pub enum OscillatorState {
 }
 
 pub struct Generator {
-    oscillator_state: OscillatorState,
+    amplitude: f32,
     wave_form: Box<Fn(f32) -> f32 + 'static + Send>,
+    oscillator_state: OscillatorState,
 }
 
 impl Generator {
-    pub fn new<F: Fn(f32) -> f32 + 'static + Send>(f: F) -> Generator {
+    pub fn new<F: Fn(f32) -> f32 + 'static + Send>(amplitude: f32, f: F) -> Generator {
         Generator {
-            oscillator_state: OscillatorState::Muted,
+            amplitude,
             wave_form: Box::new(f),
+            oscillator_state: OscillatorState::Muted,
         }
     }
 
@@ -52,7 +54,7 @@ impl Generator {
                     *sample = 0.0;
                 }
                 OscillatorState::Playing { phase, .. } => {
-                    *sample = (self.wave_form)(phase);
+                    *sample = (self.wave_form)(phase) * self.amplitude;
                 }
             }
             self.crank_phase(sample_rate);
@@ -74,7 +76,7 @@ mod test {
     }
 
     fn generator() -> Generator {
-        let mut generator = Generator::new(|x| x.sin());
+        let mut generator = Generator::new(1.0, |x| x.sin());
         generator.set_frequency(1.0);
         generator
     }
@@ -148,7 +150,7 @@ mod test {
         #[test]
         fn starts_with_phase_zero_after_pauses() {
             let buffer: &mut [f32] = &mut [42.0; 10];
-            let mut generator = Generator::new(|x| x.sin());
+            let mut generator = Generator::new(1.0, |x| x.sin());
             generator.set_frequency(1.0);
             generator.generate(SAMPLE_RATE, buffer);
             generator.mute();
@@ -161,7 +163,7 @@ mod test {
         #[test]
         fn doesnt_reset_the_phase_when_changing_the_frequency_without_pause() {
             let buffer: &mut [f32] = &mut [42.0; 10];
-            let mut generator = Generator::new(|x| x.sin());
+            let mut generator = Generator::new(1.0, |x| x.sin());
             generator.set_frequency(1.0);
             generator.generate(SAMPLE_RATE, buffer);
             generator.set_frequency(1.1);
@@ -201,7 +203,7 @@ mod test {
 
         #[test]
         fn is_initially_muted() {
-            let mut generator = Generator::new(|x| x.sin());
+            let mut generator = Generator::new(1.0, |x| x.sin());
             let buffer: &mut [f32] = &mut [42.0; 10];
             generator.generate(SAMPLE_RATE, buffer);
             assert_eq!(buffer[1], 0.0);
@@ -222,12 +224,23 @@ mod test {
 
         #[test]
         fn allows_to_specify_the_wave_form() {
-            let mut generator = Generator::new(|phase| phase * 5.0);
+            let mut generator = Generator::new(1.0, |phase| phase * 5.0);
             generator.set_frequency(1.0);
             let buffer: &mut [f32] = &mut [42.0; 10];
             generator.generate(SAMPLE_RATE, buffer);
             assert_eq!(buffer[0], 0.0);
             assert_close(buffer[1], 5.0 * TAU / SAMPLE_RATE as f32);
         }
+
+        #[test]
+        fn allows_to_scale_the_amplitude() {
+            let buffer: &mut [f32] = &mut [42.0; 10];
+            let mut generator = Generator::new(0.25, |_phase| 0.4);
+            generator.set_frequency(1.0);
+            generator.generate(SAMPLE_RATE, buffer);
+            assert_eq!(buffer[0], 0.1);
+        }
     }
 }
+
+// fixme: pull out buffer?
