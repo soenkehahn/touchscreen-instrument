@@ -165,6 +165,18 @@ impl<T> TouchState<T> {
             TouchState::Touch(t) => TouchState::Touch(f(t)),
         }
     }
+
+    pub fn get_first<'a, I>(iterator: I) -> &'a TouchState<T>
+    where
+        I: Iterator<Item = &'a TouchState<T>>,
+    {
+        for element in iterator {
+            if let TouchState::Touch(_) = element {
+                return element;
+            }
+        }
+        &TouchState::NoTouch
+    }
 }
 
 impl Iterator for Positions {
@@ -280,6 +292,38 @@ mod test {
             );
             assert_eq!(syn_chunks.next(), None);
             assert_eq!(syn_chunks.next(), None);
+        }
+    }
+
+    mod touch_state {
+        use super::*;
+
+        mod get_first {
+            use super::*;
+
+            #[test]
+            fn returns_the_first_element_if_not_none() {
+                let array = [Touch(1), Touch(2)];
+                assert_eq!(TouchState::get_first(array.iter()), &Touch(1));
+            }
+
+            #[test]
+            fn returns_the_first_element_that_is_not_none() {
+                let array = [NoTouch, Touch(2)];
+                assert_eq!(TouchState::get_first(array.iter()), &Touch(2));
+            }
+
+            #[test]
+            fn returns_no_touch_if_every_element_is_none() {
+                let array: [TouchState<i32>; 2] = [NoTouch, NoTouch];
+                assert_eq!(TouchState::get_first(array.iter()), &NoTouch);
+            }
+
+            #[test]
+            fn returns_no_touch_for_an_empty_iterator() {
+                let array: [TouchState<i32>; 0] = [];
+                assert_eq!(TouchState::get_first(array.iter()), &NoTouch);
+            }
         }
     }
 
