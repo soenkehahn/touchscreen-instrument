@@ -65,7 +65,7 @@ fn main() -> Result<(), AppError> {
         SCREEN_HEIGHT as f32 / 9570.0,
     );
     areas.spawn_ui();
-    let frequencies = Frequencies::new(areas, touches);
+    let frequencies = Frequencies::new(areas, touches.map(|touchstates| touchstates[0].clone()));
     for frequency_update in frequencies {
         match mutex.lock() {
             Err(e) => {
