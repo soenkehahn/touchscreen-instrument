@@ -132,16 +132,16 @@ mod test {
 
         #[test]
         fn starts_at_zero() {
-            let mut generator = generator();
             let buffer: &mut [f32] = &mut [42.0; 10];
+            let mut generator = generator();
             generator.generate(SAMPLE_RATE, buffer);
             assert_eq!(buffer[0], 0.0);
         }
 
         #[test]
         fn generates_sine_waves() {
-            let mut generator = generator();
             let buffer: &mut [f32] = &mut [42.0; 10];
+            let mut generator = generator();
             generator.generate(SAMPLE_RATE, buffer);
             assert_eq!(buffer[1], (TAU / SAMPLE_RATE as f32).sin());
             assert_eq!(buffer[2], (2.0 * TAU / SAMPLE_RATE as f32).sin());
@@ -173,8 +173,8 @@ mod test {
 
         #[test]
         fn works_for_different_frequencies() {
-            let mut generator = generator();
             let buffer: &mut [f32] = &mut [42.0; 10];
+            let mut generator = generator();
             generator.set_frequency(300.0);
             generator.generate(SAMPLE_RATE, buffer);
             assert_eq!(buffer[1], (300.0 * TAU / SAMPLE_RATE as f32).sin());
@@ -184,8 +184,8 @@ mod test {
 
         #[test]
         fn allows_to_change_the_frequency_later() {
-            let mut generator = generator();
             let buffer: &mut [f32] = &mut [42.0; 10];
+            let mut generator = generator();
             generator.set_frequency(300.0);
             generator.generate(SAMPLE_RATE, buffer);
             generator.set_frequency(500.0);
@@ -203,8 +203,8 @@ mod test {
 
         #[test]
         fn is_initially_muted() {
-            let mut generator = Generator::new(1.0, |x| x.sin());
             let buffer: &mut [f32] = &mut [42.0; 10];
+            let mut generator = Generator::new(1.0, |x| x.sin());
             generator.generate(SAMPLE_RATE, buffer);
             assert_eq!(buffer[1], 0.0);
             assert_eq!(buffer[2], 0.0);
@@ -212,8 +212,8 @@ mod test {
 
         #[test]
         fn can_be_muted() {
-            let mut generator = generator();
             let buffer: &mut [f32] = &mut [42.0; 10];
+            let mut generator = generator();
             generator.set_frequency(1.0);
             generator.generate(SAMPLE_RATE, buffer);
             generator.mute();
@@ -224,9 +224,9 @@ mod test {
 
         #[test]
         fn allows_to_specify_the_wave_form() {
+            let buffer: &mut [f32] = &mut [42.0; 10];
             let mut generator = Generator::new(1.0, |phase| phase * 5.0);
             generator.set_frequency(1.0);
-            let buffer: &mut [f32] = &mut [42.0; 10];
             generator.generate(SAMPLE_RATE, buffer);
             assert_eq!(buffer[0], 0.0);
             assert_close(buffer[1], 5.0 * TAU / SAMPLE_RATE as f32);
@@ -242,5 +242,3 @@ mod test {
         }
     }
 }
-
-// fixme: pull out buffer?
