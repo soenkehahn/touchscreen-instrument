@@ -12,7 +12,7 @@ use areas::render::{SCREEN_HEIGHT, SCREEN_WIDTH};
 use areas::{Areas, Frequencies};
 use evdev::*;
 use generator::Generator;
-use run_jack::run_jack_generator;
+use run_jack::{make_client, run_generator};
 use std::clone::Clone;
 use std::f32::consts::PI;
 use std::fmt::Debug;
@@ -85,14 +85,14 @@ fn get_binary_name() -> Result<String, ErrorString> {
 
 fn main() -> Result<(), ErrorString> {
     let cli_args = cli::parse(clap::App::new(get_binary_name()?))?;
-    let mutex = Arc::new(Mutex::new(Generator::new(cli_args.volume, move |phase| {
-        if phase < PI {
-            -1.0
-        } else {
-            1.0
-        }
+    let client = make_client(get_binary_name()?)?;
+    let mutex = Arc::new(Mutex::new(Generator::new(generator::Args {
+        sample_rate: client.sample_rate() as i32,
+        amplitude: cli_args.volume,
+        decay: 0.005,
+        wave_form: move |phase| if phase < PI { -1.0 } else { 1.0 },
     })));
-    let _active_client = run_jack_generator(get_binary_name()?, mutex.clone())?;
+    let _active_client = run_generator(client, mutex.clone())?;
     let file = "/dev/input/event15";
     let touches = Positions::new(file)?;
     let areas = Areas::new(

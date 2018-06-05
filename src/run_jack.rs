@@ -5,13 +5,16 @@ use jack::*;
 use std::sync::{Arc, Mutex};
 use std::*;
 
-pub fn run_jack_generator(
-    name: String,
-    generator: Arc<Mutex<Generator>>,
-) -> Result<AsyncClient<(), ProcessHandler_>, Error> {
+pub fn make_client(name: String) -> Result<Client, Error> {
     let (client, _status) =
         jack::Client::new(&name.to_string(), jack::ClientOptions::NO_START_SERVER)?;
+    Ok(client)
+}
 
+pub fn run_generator(
+    client: Client,
+    generator: Arc<Mutex<Generator>>,
+) -> Result<AsyncClient<(), ProcessHandler_>, Error> {
     let left_port = client.register_port("left-output", AudioOut)?;
     let right_port = client.register_port("right-output", AudioOut)?;
 
