@@ -39,12 +39,15 @@ impl Areas {
         }
     }
 
-    pub fn frequency(&self, position: Position) -> Option<f32> {
+    pub fn frequency(&self, position: Position) -> NoteEvent {
         let touched: Option<&Rectangle> = self.rects
             .iter()
             .filter(|rect| rect.contains(position))
             .next();
-        touched.map(|x| midi_to_frequency(x.midi_note()))
+        match touched.map(|x| midi_to_frequency(x.midi_note())) {
+            None => NoteEvent::NoteOff,
+            Some(x) => NoteEvent::NoteOn(x),
+        }
     }
 
     fn make_color(i_in_cycle_of_fifths: usize) -> Color {
@@ -92,18 +95,26 @@ impl Frequencies {
     }
 }
 
+#[derive(Debug, PartialEq)]
+pub enum NoteEvent {
+    NoteOff,
+    NoteOn(f32),
+}
+
 impl Iterator for Frequencies {
-    type Item = TouchState<Option<f32>>;
+    type Item = NoteEvent;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.iterator
-            .next()
-            .map(|touchstate| touchstate.map(|position| self.areas.frequency(position)))
+        self.iterator.next().map(|touchstate| match touchstate {
+            TouchState::NoTouch => NoteEvent::NoteOff,
+            TouchState::Touch(position) => self.areas.frequency(position),
+        })
     }
 }
 
 #[cfg(test)]
 mod test {
+    use super::NoteEvent::*;
     use super::*;
 
     mod midi_to_frequency {
@@ -138,27 +149,27 @@ mod test {
             #[test]
             fn maps_x_values_to_frequencies() {
                 let areas = Areas::new(10, 48, 800, 600);
-                assert_eq!(areas.frequency(pos(5)), Some(midi_to_frequency(48)));
+                assert_eq!(areas.frequency(pos(5)), NoteOn(midi_to_frequency(48)));
             }
 
             #[test]
             fn maps_higher_x_values_to_higher_frequencies() {
                 let areas = Areas::new(10, 48, 800, 600);
-                assert_eq!(areas.frequency(pos(15)), Some(midi_to_frequency(49)));
+                assert_eq!(areas.frequency(pos(15)), NoteOn(midi_to_frequency(49)));
             }
 
             #[test]
             fn has_non_continuous_steps() {
                 let areas = Areas::new(10, 48, 800, 600);
-                assert_eq!(areas.frequency(pos(9)), Some(midi_to_frequency(48)));
-                assert_eq!(areas.frequency(pos(10)), Some(midi_to_frequency(49)));
+                assert_eq!(areas.frequency(pos(9)), NoteOn(midi_to_frequency(48)));
+                assert_eq!(areas.frequency(pos(10)), NoteOn(midi_to_frequency(49)));
             }
 
             #[test]
             fn allows_to_change_area_size() {
                 let areas = Areas::new(12, 48, 800, 600);
-                assert_eq!(areas.frequency(pos(11)), Some(midi_to_frequency(48)));
-                assert_eq!(areas.frequency(pos(12)), Some(midi_to_frequency(49)));
+                assert_eq!(areas.frequency(pos(11)), NoteOn(midi_to_frequency(48)));
+                assert_eq!(areas.frequency(pos(12)), NoteOn(midi_to_frequency(49)));
             }
         }
 
@@ -240,17 +251,14 @@ mod test {
             let areas = Areas::new(10, 48, 800, 600);
             let mut frequencies =
                 Frequencies::new(areas, vec![TouchState::Touch(pos(5))].into_iter());
-            assert_eq!(
-                frequencies.next(),
-                Some(TouchState::Touch(Some(midi_to_frequency(48))))
-            );
+            assert_eq!(frequencies.next(), Some(NoteOn(midi_to_frequency(48))));
         }
 
         #[test]
         fn yields_notouch_for_pauses() {
             let areas = Areas::new(10, 48, 800, 600);
             let mut frequencies = Frequencies::new(areas, vec![TouchState::NoTouch].into_iter());
-            assert_eq!(frequencies.next(), Some(TouchState::NoTouch));
+            assert_eq!(frequencies.next(), Some(NoteOff));
         }
 
         #[test]
@@ -258,10 +266,7 @@ mod test {
             let areas = Areas::new(10, 49, 800, 600);
             let mut frequencies =
                 Frequencies::new(areas, vec![TouchState::Touch(pos(5))].into_iter());
-            assert_eq!(
-                frequencies.next(),
-                Some(TouchState::Touch(Some(midi_to_frequency(49))))
-            );
+            assert_eq!(frequencies.next(), Some(NoteOn(midi_to_frequency(49))));
         }
     }
 }
