@@ -80,20 +80,18 @@ impl Generator {
     }
 
     fn step_decay(&mut self) {
-        if let OscillatorState::Decaying {
-            ref mut decay_amplitude,
-            ..
-        } = self.oscillator_state
-        {
-            *decay_amplitude -= self.decay_per_sample;
-        }
-        if let OscillatorState::Decaying {
-            decay_amplitude, ..
-        } = self.oscillator_state
-        {
-            if decay_amplitude <= 0.0 {
-                self.oscillator_state = OscillatorState::Muted;
+        let mute = match self.oscillator_state {
+            OscillatorState::Decaying {
+                ref mut decay_amplitude,
+                ..
+            } => {
+                *decay_amplitude -= self.decay_per_sample;
+                (*decay_amplitude <= 0.0)
             }
+            _ => false,
+        };
+        if mute {
+            self.oscillator_state = OscillatorState::Muted;
         }
     }
 
