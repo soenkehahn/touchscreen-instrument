@@ -56,24 +56,19 @@ impl Generator {
     }
 
     fn crank_phase(&mut self, sample_rate: i32) {
-        fn crank(sample_rate: i32, frequency: f32, phase: &mut f32) {
-            *phase += frequency * TAU / sample_rate as f32;
-            *phase %= TAU;
-        }
-
         match self.oscillator_state {
-            OscillatorState::Playing {
-                frequency,
-                ref mut phase,
-            } => {
-                crank(sample_rate, frequency, phase);
-            }
             OscillatorState::Decaying {
                 frequency,
                 ref mut phase,
                 ..
+            }
+            | OscillatorState::Playing {
+                frequency,
+                ref mut phase,
+                ..
             } => {
-                crank(sample_rate, frequency, phase);
+                *phase += frequency * TAU / sample_rate as f32;
+                *phase %= TAU;
             }
             OscillatorState::Muted => {}
         };
