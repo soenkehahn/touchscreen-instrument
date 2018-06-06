@@ -8,12 +8,14 @@ mod evdev;
 mod generator;
 mod run_jack;
 
-use areas::render::{SCREEN_HEIGHT, SCREEN_WIDTH};
 use areas::{Areas, Frequencies};
 use evdev::*;
 use run_jack::run_generator;
 use std::f32::consts::PI;
 use std::fmt::Debug;
+
+const TOUCH_WIDTH: u32 = 16383;
+const TOUCH_HEIGHT: u32 = 9570;
 
 pub struct ErrorString(String);
 
@@ -89,12 +91,7 @@ fn main() -> Result<(), ErrorString> {
     };
     let active_client = run_generator(generator_args)?;
     let touches = Positions::new("/dev/input/event15")?;
-    let areas = Areas::new(
-        800,
-        cli_args.start_note,
-        SCREEN_WIDTH as f32 / 16383.0,
-        SCREEN_HEIGHT as f32 / 9570.0,
-    );
+    let areas = Areas::new(800, cli_args.start_note, TOUCH_WIDTH, TOUCH_HEIGHT);
     areas.spawn_ui();
     let frequencies = Frequencies::new(
         areas,

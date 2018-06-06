@@ -15,17 +15,17 @@ fn midi_to_frequency(midi: i32) -> f32 {
 pub struct Areas {
     area_size: i32,
     start_midi_note: i32,
-    x_factor: f32,
-    y_factor: f32,
+    touch_width: u32,
+    touch_height: u32,
 }
 
 impl Areas {
-    pub fn new(area_size: i32, start_midi_note: i32, x_factor: f32, y_factor: f32) -> Areas {
+    pub fn new(area_size: i32, start_midi_note: i32, touch_width: u32, touch_height: u32) -> Areas {
         Areas {
             area_size,
             start_midi_note,
-            x_factor,
-            y_factor,
+            touch_width,
+            touch_height,
         }
     }
 
@@ -49,15 +49,17 @@ impl Areas {
         Color::RGB(color.red, color.green, color.blue)
     }
 
-    fn ui_elements(&self) -> Vec<(Rect, Color)> {
+    fn ui_elements(&self, screen_width: u32, screen_height: u32) -> Vec<(Rect, Color)> {
+        let x_factor: f32 = screen_width as f32 / self.touch_width as f32;
+        let y_factor: f32 = screen_height as f32 / self.touch_height as f32;
         let mut result = vec![];
         for i in 0..30 {
             result.push((
                 Rect::new(
-                    (i as f32 * self.area_size as f32 * self.x_factor) as i32,
-                    (1.0 * self.y_factor) as i32,
-                    (self.area_size as f32 * self.x_factor) as u32,
-                    (10000.0 * self.y_factor) as u32,
+                    (i as f32 * self.area_size as f32 * x_factor) as i32,
+                    (1.0 * y_factor) as i32,
+                    (self.area_size as f32 * x_factor) as u32,
+                    (10000.0 * y_factor) as u32,
                 ),
                 self.make_color(i),
             ));
@@ -128,26 +130,26 @@ mod test {
 
             #[test]
             fn maps_x_values_to_frequencies() {
-                let areas = Areas::new(10, 48, 1.0, 1.0);
+                let areas = Areas::new(10, 48, 800, 600);
                 assert_eq!(areas.frequency(pos(5)), midi_to_frequency(48));
             }
 
             #[test]
             fn maps_higher_x_values_to_higher_frequencies() {
-                let areas = Areas::new(10, 48, 1.0, 1.0);
+                let areas = Areas::new(10, 48, 800, 600);
                 assert_eq!(areas.frequency(pos(15)), midi_to_frequency(49));
             }
 
             #[test]
             fn has_non_continuous_steps() {
-                let areas = Areas::new(10, 48, 1.0, 1.0);
+                let areas = Areas::new(10, 48, 800, 600);
                 assert_eq!(areas.frequency(pos(9)), midi_to_frequency(48));
                 assert_eq!(areas.frequency(pos(10)), midi_to_frequency(49));
             }
 
             #[test]
             fn allows_to_change_area_size() {
-                let areas = Areas::new(12, 48, 1.0, 1.0);
+                let areas = Areas::new(12, 48, 800, 600);
                 assert_eq!(areas.frequency(pos(11)), midi_to_frequency(48));
                 assert_eq!(areas.frequency(pos(12)), midi_to_frequency(49));
             }
@@ -158,13 +160,13 @@ mod test {
 
             #[test]
             fn returns_blue_as_the_first_color() {
-                let areas = Areas::new(10, 48, 1.0, 1.0);
+                let areas = Areas::new(10, 48, 800, 600);
                 assert_eq!(areas.make_color(0), Color::RGB(0, 0, 254));
             }
 
             #[test]
             fn returns_blue_one_octave_higher() {
-                let areas = Areas::new(10, 48, 1.0, 1.0);
+                let areas = Areas::new(10, 48, 800, 600);
                 assert_eq!(areas.make_color(12), Color::RGB(0, 0, 254));
             }
 
@@ -173,7 +175,7 @@ mod test {
                 use self::palette::Hsv;
                 use self::palette::Srgb;
 
-                let areas = Areas::new(10, 48, 1.0, 1.0);
+                let areas = Areas::new(10, 48, 800, 600);
                 let mut color = Hsv::from(Srgb::new(0.0, 0.0, 1.0));
                 color.hue = color.hue + 360.0 / 12.0;
                 assert_eq!(
@@ -193,26 +195,26 @@ mod test {
 
             #[test]
             fn returns_a_rectangle_for_the_lowest_pitch() {
-                let elements = Areas::new(10, 48, 1.0, 1.0).ui_elements();
+                let elements = Areas::new(10, 48, 800, 600).ui_elements(800, 600);
                 assert_eq!(elements.get(0).unwrap().0, Rect::new(0, 1, 10, 10000));
             }
 
             #[test]
             fn returns_rectangles_for_higher_pitches() {
-                let elements = Areas::new(10, 48, 1.0, 1.0).ui_elements();
+                let elements = Areas::new(10, 48, 800, 600).ui_elements(800, 600);
                 assert_eq!(elements.get(1).unwrap().0, Rect::new(10, 1, 10, 10000));
                 assert_eq!(elements.get(2).unwrap().0, Rect::new(20, 1, 10, 10000));
             }
 
             #[test]
             fn translates_touch_coordinates_to_screen_coordinates() {
-                let elements = Areas::new(10, 48, 0.7, 0.5).ui_elements();
+                let elements = Areas::new(10, 48, 1000, 1000).ui_elements(700, 500);
                 assert_eq!(elements.get(2).unwrap().0, Rect::new(14, 0, 7, 5000));
             }
 
             #[test]
             fn factors_in_the_area_size() {
-                let elements = Areas::new(12, 48, 0.7, 0.5).ui_elements();
+                let elements = Areas::new(12, 48, 1000, 1000).ui_elements(700, 500);
                 assert_eq!(
                     elements.get(2).unwrap().0,
                     Rect::new(
@@ -231,7 +233,7 @@ mod test {
 
         #[test]
         fn yields_frequencies() {
-            let areas = Areas::new(10, 48, 1.0, 1.0);
+            let areas = Areas::new(10, 48, 800, 600);
             let mut frequencies =
                 Frequencies::new(areas, vec![TouchState::Touch(pos(5))].into_iter());
             assert_eq!(
@@ -242,14 +244,14 @@ mod test {
 
         #[test]
         fn yields_notouch_for_pauses() {
-            let areas = Areas::new(10, 48, 1.0, 1.0);
+            let areas = Areas::new(10, 48, 800, 600);
             let mut frequencies = Frequencies::new(areas, vec![TouchState::NoTouch].into_iter());
             assert_eq!(frequencies.next(), Some(TouchState::NoTouch));
         }
 
         #[test]
         fn allows_to_specify_the_starting_note() {
-            let areas = Areas::new(10, 49, 1.0, 1.0);
+            let areas = Areas::new(10, 49, 800, 600);
             let mut frequencies =
                 Frequencies::new(areas, vec![TouchState::Touch(pos(5))].into_iter());
             assert_eq!(

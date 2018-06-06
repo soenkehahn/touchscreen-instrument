@@ -12,9 +12,6 @@ use ErrorString;
 use areas::Areas;
 use get_binary_name;
 
-pub const SCREEN_WIDTH: u32 = 1920;
-pub const SCREEN_HEIGHT: u32 = 1080;
-
 impl Areas {
     pub fn spawn_ui(self) {
         ::std::thread::spawn(move || {
@@ -76,7 +73,7 @@ impl Ui {
         let mut ui = Ui {
             canvas,
             event_pump,
-            ui_elements: areas.ui_elements(),
+            ui_elements: areas.ui_elements(screen_rect.width(), screen_rect.height()),
         };
         ui.draw()?;
         Ok(ui)
