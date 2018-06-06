@@ -113,10 +113,10 @@ fn main() -> Result<(), ErrorString> {
             }
             Ok(mut generator) => match frequency_update {
                 TouchState::NoTouch => {
-                    generator.mute();
+                    generator.note_off();
                 }
                 TouchState::Touch(frequency) => {
-                    generator.set_frequency(frequency);
+                    generator.note_on(frequency);
                 }
             },
         }

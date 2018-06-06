@@ -30,7 +30,7 @@ impl Generator {
         }
     }
 
-    pub fn set_frequency(&mut self, frequency: f32) {
+    pub fn note_on(&mut self, frequency: f32) {
         self.oscillator_state = OscillatorState::Playing {
             frequency,
             phase: match self.oscillator_state {
@@ -41,7 +41,7 @@ impl Generator {
         };
     }
 
-    pub fn mute(&mut self) {
+    pub fn note_off(&mut self) {
         match self.oscillator_state {
             OscillatorState::Playing { frequency, phase } => {
                 self.oscillator_state = OscillatorState::Decaying {
@@ -151,7 +151,7 @@ mod test {
             decay: 0.0,
             wave_form: |x| x.sin(),
         });
-        generator.set_frequency(1.0);
+        generator.note_on(1.0);
         generator
     }
 
@@ -226,11 +226,11 @@ mod test {
         fn starts_with_phase_zero_after_pauses() {
             let buffer: &mut [f32] = &mut [42.0; 10];
             let mut generator = generator();
-            generator.set_frequency(1.0);
+            generator.note_on(1.0);
             generator.generate(SAMPLE_RATE, buffer);
-            generator.mute();
+            generator.note_off();
             generator.generate(SAMPLE_RATE, buffer);
-            generator.set_frequency(1.0);
+            generator.note_on(1.0);
             generator.generate(SAMPLE_RATE, buffer);
             assert_eq!(buffer[0], 0.0);
         }
@@ -239,9 +239,9 @@ mod test {
         fn doesnt_reset_the_phase_when_changing_the_frequency_without_pause() {
             let buffer: &mut [f32] = &mut [42.0; 10];
             let mut generator = generator();
-            generator.set_frequency(1.0);
+            generator.note_on(1.0);
             generator.generate(SAMPLE_RATE, buffer);
-            generator.set_frequency(1.1);
+            generator.note_on(1.1);
             generator.generate(SAMPLE_RATE, buffer);
             assert!(buffer[0] != 0.0, "{} should not equal {}", buffer[0], 0.0);
         }
@@ -250,7 +250,7 @@ mod test {
         fn works_for_different_frequencies() {
             let buffer: &mut [f32] = &mut [42.0; 10];
             let mut generator = generator();
-            generator.set_frequency(300.0);
+            generator.note_on(300.0);
             generator.generate(SAMPLE_RATE, buffer);
             assert_eq!(buffer[1], (300.0 * TAU / SAMPLE_RATE as f32).sin());
             assert_eq!(buffer[2], (2.0 * 300.0 * TAU / SAMPLE_RATE as f32).sin());
@@ -261,9 +261,9 @@ mod test {
         fn allows_to_change_the_frequency_later() {
             let buffer: &mut [f32] = &mut [42.0; 10];
             let mut generator = generator();
-            generator.set_frequency(300.0);
+            generator.note_on(300.0);
             generator.generate(SAMPLE_RATE, buffer);
-            generator.set_frequency(500.0);
+            generator.note_on(500.0);
             generator.generate(SAMPLE_RATE, buffer);
             assert_eq!(buffer[0], ((10.0 * 300.0) * TAU / SAMPLE_RATE as f32).sin());
             assert_eq!(
@@ -294,9 +294,9 @@ mod test {
         fn can_be_muted() {
             let buffer: &mut [f32] = &mut [42.0; 10];
             let mut generator = generator();
-            generator.set_frequency(1.0);
+            generator.note_on(1.0);
             generator.generate(SAMPLE_RATE, buffer);
-            generator.mute();
+            generator.note_off();
             generator.generate(SAMPLE_RATE, buffer);
             assert_eq!(buffer[1], 0.0);
             assert_eq!(buffer[2], 0.0);
@@ -311,7 +311,7 @@ mod test {
                 decay: 0.0,
                 wave_form: |phase| phase * 5.0,
             });
-            generator.set_frequency(1.0);
+            generator.note_on(1.0);
             generator.generate(SAMPLE_RATE, buffer);
             assert_eq!(buffer[0], 0.0);
             assert_close(buffer[1], 5.0 * TAU / SAMPLE_RATE as f32);
@@ -326,7 +326,7 @@ mod test {
                 decay: 0.0,
                 wave_form: |_phase| 0.4,
             });
-            generator.set_frequency(1.0);
+            generator.note_on(1.0);
             generator.generate(SAMPLE_RATE, buffer);
             assert_eq!(buffer[0], 0.1);
         }
@@ -340,9 +340,9 @@ mod test {
                 decay: 0.5,
                 wave_form: |_phase| 0.5,
             });
-            generator.set_frequency(1.0);
+            generator.note_on(1.0);
             generator.generate(10, buffer);
-            generator.mute();
+            generator.note_off();
             generator.generate(10, buffer);
             let expected = [0.5, 0.4, 0.3, 0.2, 0.1, 0.0, 0.0, 0.0, 0.0, 0.0];
             let epsilon = 0.0000001;
