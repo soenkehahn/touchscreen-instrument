@@ -21,7 +21,13 @@ pub struct Areas {
 }
 
 impl Areas {
-    pub fn new(touch_width: u32, touch_height: u32, rect_size: i32, start_midi_note: i32) -> Areas {
+    #[allow(dead_code)]
+    pub fn stripes(
+        touch_width: u32,
+        touch_height: u32,
+        rect_size: i32,
+        start_midi_note: i32,
+    ) -> Areas {
         let mut rects = vec![];
         for i in 0..30 {
             rects.push(Rectangle {
@@ -31,6 +37,29 @@ impl Areas {
                 height: 10000,
                 midi_note: start_midi_note + i,
             });
+        }
+        Areas {
+            rects,
+            touch_width,
+            touch_height,
+        }
+    }
+
+    pub fn peas(touch_width: u32, touch_height: u32, rect_size: i32) -> Areas {
+        let mut rects = vec![];
+        for row in 0..4 {
+            for i in 0..36 {
+                let row_offset = -((2.5 * rect_size as f32 * row as f32) as i32 + 2 * rect_size);
+                let note_is_even = i % 2 == 0;
+                let pea_offset = if note_is_even { rect_size } else { 0 };
+                rects.push(Rectangle {
+                    x: i * rect_size / 2,
+                    y: touch_height as i32 + pea_offset + row_offset,
+                    width: rect_size,
+                    height: rect_size,
+                    midi_note: 36 + i + row * 12,
+                });
+            }
         }
         Areas {
             rects,
@@ -149,30 +178,63 @@ mod test {
         mod frequency {
             use super::*;
 
-            #[test]
-            fn maps_x_values_to_frequencies() {
-                let areas = Areas::new(800, 600, 10, 48);
-                assert_eq!(areas.frequency(pos(5)), NoteOn(midi_to_frequency(48)));
+            mod stripes {
+                use super::*;
+
+                #[test]
+                fn maps_x_values_to_frequencies() {
+                    let areas = Areas::stripes(800, 600, 10, 48);
+                    assert_eq!(areas.frequency(pos(5)), NoteOn(midi_to_frequency(48)));
+                }
+
+                #[test]
+                fn maps_higher_x_values_to_higher_frequencies() {
+                    let areas = Areas::stripes(800, 600, 10, 48);
+                    assert_eq!(areas.frequency(pos(15)), NoteOn(midi_to_frequency(49)));
+                }
+
+                #[test]
+                fn has_non_continuous_steps() {
+                    let areas = Areas::stripes(800, 600, 10, 48);
+                    assert_eq!(areas.frequency(pos(9)), NoteOn(midi_to_frequency(48)));
+                    assert_eq!(areas.frequency(pos(10)), NoteOn(midi_to_frequency(49)));
+                }
+
+                #[test]
+                fn allows_to_change_area_size() {
+                    let areas = Areas::stripes(800, 600, 12, 48);
+                    assert_eq!(areas.frequency(pos(11)), NoteOn(midi_to_frequency(48)));
+                    assert_eq!(areas.frequency(pos(12)), NoteOn(midi_to_frequency(49)));
+                }
             }
 
-            #[test]
-            fn maps_higher_x_values_to_higher_frequencies() {
-                let areas = Areas::new(800, 600, 10, 48);
-                assert_eq!(areas.frequency(pos(15)), NoteOn(midi_to_frequency(49)));
-            }
+            mod peas {
+                use super::*;
 
-            #[test]
-            fn has_non_continuous_steps() {
-                let areas = Areas::new(800, 600, 10, 48);
-                assert_eq!(areas.frequency(pos(9)), NoteOn(midi_to_frequency(48)));
-                assert_eq!(areas.frequency(pos(10)), NoteOn(midi_to_frequency(49)));
-            }
+                #[test]
+                fn returns_correct_rectangles_in_the_lowest_row() {
+                    let areas = Areas::peas(800, 600, 10);
+                    let elements = areas.ui_elements(800, 600);
+                    assert_eq!(elements[0].0, Rect::new(0, 590, 10, 10));
+                    assert_eq!(elements[1].0, Rect::new(5, 580, 10, 10));
+                    assert_eq!(elements[2].0, Rect::new(10, 590, 10, 10));
+                }
 
-            #[test]
-            fn allows_to_change_area_size() {
-                let areas = Areas::new(800, 600, 12, 48);
-                assert_eq!(areas.frequency(pos(11)), NoteOn(midi_to_frequency(48)));
-                assert_eq!(areas.frequency(pos(12)), NoteOn(midi_to_frequency(49)));
+                #[test]
+                fn returns_multiple_rows() {
+                    let areas = Areas::peas(800, 600, 10);
+                    let elements = areas.ui_elements(800, 600);
+                    assert_eq!(elements[36].0, Rect::new(0, 565, 10, 10));
+                    assert_eq!(elements[37].0, Rect::new(5, 555, 10, 10));
+                    assert_eq!(elements[38].0, Rect::new(10, 565, 10, 10));
+                }
+
+                #[test]
+                fn subsequent_rows_are_one_octaves_higher() {
+                    let areas = Areas::peas(800, 600, 10);
+                    assert_eq!(areas.rects[0].midi_note(), 36);
+                    assert_eq!(areas.rects[36].midi_note(), 36 + 12);
+                }
             }
         }
 
@@ -213,26 +275,26 @@ mod test {
 
             #[test]
             fn returns_a_rectangle_for_the_lowest_pitch() {
-                let elements = Areas::new(800, 600, 10, 48).ui_elements(800, 600);
+                let elements = Areas::stripes(800, 600, 10, 48).ui_elements(800, 600);
                 assert_eq!(elements.get(0).unwrap().0, Rect::new(0, 1, 10, 10000));
             }
 
             #[test]
             fn returns_rectangles_for_higher_pitches() {
-                let elements = Areas::new(800, 600, 10, 48).ui_elements(800, 600);
+                let elements = Areas::stripes(800, 600, 10, 48).ui_elements(800, 600);
                 assert_eq!(elements.get(1).unwrap().0, Rect::new(10, 1, 10, 10000));
                 assert_eq!(elements.get(2).unwrap().0, Rect::new(20, 1, 10, 10000));
             }
 
             #[test]
             fn translates_touch_coordinates_to_screen_coordinates() {
-                let elements = Areas::new(1000, 1000, 10, 48).ui_elements(700, 500);
+                let elements = Areas::stripes(1000, 1000, 10, 48).ui_elements(700, 500);
                 assert_eq!(elements.get(2).unwrap().0, Rect::new(14, 0, 7, 5000));
             }
 
             #[test]
             fn factors_in_the_area_size() {
-                let elements = Areas::new(1000, 1000, 12, 48).ui_elements(700, 500);
+                let elements = Areas::stripes(1000, 1000, 12, 48).ui_elements(700, 500);
                 assert_eq!(
                     elements.get(2).unwrap().0,
                     Rect::new(
@@ -246,13 +308,13 @@ mod test {
 
             #[test]
             fn returns_blue_for_c() {
-                let elements = Areas::new(1000, 1000, 10, 60).ui_elements(700, 500);
+                let elements = Areas::stripes(1000, 1000, 10, 60).ui_elements(700, 500);
                 assert_eq!(elements.get(0).unwrap().1, Color::RGB(0, 0, 254));
             }
 
             #[test]
             fn returns_blue_for_c_when_starting_at_different_notes() {
-                let elements = Areas::new(1000, 1000, 10, 59).ui_elements(700, 500);
+                let elements = Areas::stripes(1000, 1000, 10, 59).ui_elements(700, 500);
                 assert_eq!(elements.get(1).unwrap().1, Color::RGB(0, 0, 254));
             }
         }
@@ -263,7 +325,7 @@ mod test {
 
         #[test]
         fn yields_frequencies() {
-            let areas = Areas::new(800, 600, 10, 48);
+            let areas = Areas::stripes(800, 600, 10, 48);
             let mut frequencies =
                 Frequencies::new(areas, vec![TouchState::Touch(pos(5))].into_iter());
             assert_eq!(frequencies.next(), Some(NoteOn(midi_to_frequency(48))));
@@ -271,14 +333,14 @@ mod test {
 
         #[test]
         fn yields_notouch_for_pauses() {
-            let areas = Areas::new(800, 600, 10, 48);
+            let areas = Areas::stripes(800, 600, 10, 48);
             let mut frequencies = Frequencies::new(areas, vec![TouchState::NoTouch].into_iter());
             assert_eq!(frequencies.next(), Some(NoteOff));
         }
 
         #[test]
         fn allows_to_specify_the_starting_note() {
-            let areas = Areas::new(800, 600, 10, 49);
+            let areas = Areas::stripes(800, 600, 10, 49);
             let mut frequencies =
                 Frequencies::new(areas, vec![TouchState::Touch(pos(5))].into_iter());
             assert_eq!(frequencies.next(), Some(NoteOn(midi_to_frequency(49))));
