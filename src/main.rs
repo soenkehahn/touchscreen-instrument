@@ -11,6 +11,7 @@ mod run_jack;
 use areas::{Areas, Frequencies};
 use evdev::*;
 use run_jack::run_generator;
+use std::clone::Clone;
 use std::f32::consts::PI;
 use std::fmt::Debug;
 
@@ -92,7 +93,7 @@ fn main() -> Result<(), ErrorString> {
     let active_client = run_generator(generator_args)?;
     let touches = Positions::new("/dev/input/event15")?;
     let areas = Areas::new(800, cli_args.start_note, TOUCH_WIDTH, TOUCH_HEIGHT);
-    areas.spawn_ui();
+    areas.clone().spawn_ui();
     let frequencies = Frequencies::new(
         areas,
         touches.map(|touchstates| *TouchState::get_first(touchstates.iter())),
@@ -103,10 +104,10 @@ fn main() -> Result<(), ErrorString> {
                 eprintln!("main_: error: {:?}", e);
             }
             Ok(mut generator) => match frequency_update {
-                TouchState::NoTouch => {
+                TouchState::NoTouch | TouchState::Touch(None) => {
                     generator.note_off();
                 }
-                TouchState::Touch(frequency) => {
+                TouchState::Touch(Some(frequency)) => {
                     generator.note_on(frequency);
                 }
             },
