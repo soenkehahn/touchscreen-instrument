@@ -1,6 +1,7 @@
 extern crate sdl2;
 
 use self::sdl2::EventPump;
+use self::sdl2::VideoSubsystem;
 use self::sdl2::event::Event;
 use self::sdl2::keyboard::Keycode;
 use self::sdl2::pixels::Color;
@@ -50,11 +51,24 @@ impl Ui {
         Ok(())
     }
 
+    fn get_screen_rect(video_subsystem: &VideoSubsystem) -> Result<Rect, ErrorString> {
+        video_subsystem
+            .display_bounds(1)
+            .or_else(|_| video_subsystem.display_bounds(0))
+            .map_err(From::from)
+    }
+
     fn new(areas: Areas) -> Result<Ui, ErrorString> {
         let sdl_context = sdl2::init()?;
         let video_subsystem = sdl_context.video()?;
+        let screen_rect = Ui::get_screen_rect(&video_subsystem)?;
         let window = video_subsystem
-            .window(&get_binary_name()?, SCREEN_WIDTH, SCREEN_HEIGHT)
+            .window(
+                &get_binary_name()?,
+                screen_rect.width(),
+                screen_rect.height(),
+            )
+            .position(screen_rect.x(), screen_rect.y())
             .borderless()
             .build()?;
         let canvas = window.into_canvas().build()?;
@@ -64,26 +78,8 @@ impl Ui {
             event_pump,
             ui_elements: areas.ui_elements(),
         };
-        ui.move_to_touch_screen();
         ui.draw()?;
         Ok(ui)
-    }
-
-    fn move_to_touch_screen(&self) {
-        // sdl doesn't support controlling which screen to put a window on.
-        match ::std::process::Command::new("xdotool")
-            .args(&["getactivewindow", "windowmove", "1366", "0"])
-            .output()
-        {
-            Err(e) => {
-                eprintln!("error executing xdotool: {:?}", e);
-            }
-            Ok(output) => {
-                if !output.status.success() {
-                    eprintln!("xdotool error: {:?}", output);
-                }
-            }
-        }
     }
 
     fn run_main_loop(&mut self) -> Result<(), ErrorString> {
