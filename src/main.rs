@@ -11,12 +11,9 @@ mod run_jack;
 use areas::render::{SCREEN_HEIGHT, SCREEN_WIDTH};
 use areas::{Areas, Frequencies};
 use evdev::*;
-use generator::Generator;
-use run_jack::{make_client, run_generator};
-use std::clone::Clone;
+use run_jack::run_generator;
 use std::f32::consts::PI;
 use std::fmt::Debug;
-use std::sync::{Arc, Mutex};
 
 pub struct ErrorString(String);
 
@@ -85,16 +82,13 @@ fn get_binary_name() -> Result<String, ErrorString> {
 
 fn main() -> Result<(), ErrorString> {
     let cli_args = cli::parse(clap::App::new(get_binary_name()?))?;
-    let client = make_client(get_binary_name()?)?;
-    let mutex = Arc::new(Mutex::new(Generator::new(generator::Args {
-        sample_rate: client.sample_rate() as i32,
+    let generator_args = generator::Args {
         amplitude: cli_args.volume,
         decay: 0.005,
         wave_form: move |phase| if phase < PI { -1.0 } else { 1.0 },
-    })));
-    let _active_client = run_generator(client, mutex.clone())?;
-    let file = "/dev/input/event15";
-    let touches = Positions::new(file)?;
+    };
+    let active_client = run_generator(generator_args)?;
+    let touches = Positions::new("/dev/input/event15")?;
     let areas = Areas::new(
         800,
         cli_args.start_note,
@@ -107,7 +101,7 @@ fn main() -> Result<(), ErrorString> {
         touches.map(|touchstates| *TouchState::get_first(touchstates.iter())),
     );
     for frequency_update in frequencies {
-        match mutex.lock() {
+        match active_client.generator_mutex.lock() {
             Err(e) => {
                 eprintln!("main_: error: {:?}", e);
             }

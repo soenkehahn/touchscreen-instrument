@@ -1,7 +1,6 @@
 const TAU: f32 = ::std::f32::consts::PI * 2.0;
 
 pub struct Args<F: Fn(f32) -> f32 + 'static + Send> {
-    pub sample_rate: i32,
     pub amplitude: f32,
     pub decay: f32,
     pub wave_form: F,
@@ -15,9 +14,8 @@ pub struct Generator {
 }
 
 impl Generator {
-    pub fn new<F: Fn(f32) -> f32 + 'static + Send>(args: Args<F>) -> Generator {
+    pub fn new<F: Fn(f32) -> f32 + 'static + Send>(args: Args<F>, sample_rate: i32) -> Generator {
         let Args {
-            sample_rate,
             amplitude,
             decay,
             wave_form,
@@ -145,12 +143,14 @@ mod test {
     }
 
     fn generator() -> Generator {
-        let mut generator = Generator::new(Args {
-            sample_rate: SAMPLE_RATE,
-            amplitude: 1.0,
-            decay: 0.0,
-            wave_form: |x| x.sin(),
-        });
+        let mut generator = Generator::new(
+            Args {
+                amplitude: 1.0,
+                decay: 0.0,
+                wave_form: |x| x.sin(),
+            },
+            SAMPLE_RATE,
+        );
         generator.note_on(1.0);
         generator
     }
@@ -279,12 +279,14 @@ mod test {
         #[test]
         fn is_initially_muted() {
             let buffer: &mut [f32] = &mut [42.0; 10];
-            let mut generator = Generator::new(Args {
-                sample_rate: SAMPLE_RATE,
-                amplitude: 1.0,
-                decay: 0.0,
-                wave_form: |x| x.sin(),
-            });
+            let mut generator = Generator::new(
+                Args {
+                    amplitude: 1.0,
+                    decay: 0.0,
+                    wave_form: |x| x.sin(),
+                },
+                SAMPLE_RATE,
+            );
             generator.generate(SAMPLE_RATE, buffer);
             assert_eq!(buffer[1], 0.0);
             assert_eq!(buffer[2], 0.0);
@@ -305,12 +307,14 @@ mod test {
         #[test]
         fn allows_to_specify_the_wave_form() {
             let buffer: &mut [f32] = &mut [42.0; 10];
-            let mut generator = Generator::new(Args {
-                sample_rate: SAMPLE_RATE,
-                amplitude: 1.0,
-                decay: 0.0,
-                wave_form: |phase| phase * 5.0,
-            });
+            let mut generator = Generator::new(
+                Args {
+                    amplitude: 1.0,
+                    decay: 0.0,
+                    wave_form: |phase| phase * 5.0,
+                },
+                SAMPLE_RATE,
+            );
             generator.note_on(1.0);
             generator.generate(SAMPLE_RATE, buffer);
             assert_eq!(buffer[0], 0.0);
@@ -320,12 +324,14 @@ mod test {
         #[test]
         fn allows_to_scale_the_amplitude() {
             let buffer: &mut [f32] = &mut [42.0; 10];
-            let mut generator = Generator::new(Args {
-                sample_rate: SAMPLE_RATE,
-                amplitude: 0.25,
-                decay: 0.0,
-                wave_form: |_phase| 0.4,
-            });
+            let mut generator = Generator::new(
+                Args {
+                    amplitude: 0.25,
+                    decay: 0.0,
+                    wave_form: |_phase| 0.4,
+                },
+                SAMPLE_RATE,
+            );
             generator.note_on(1.0);
             generator.generate(SAMPLE_RATE, buffer);
             assert_eq!(buffer[0], 0.1);
@@ -334,12 +340,14 @@ mod test {
         #[test]
         fn allows_to_specify_a_decay_time() {
             let buffer: &mut [f32] = &mut [42.0; 10];
-            let mut generator = Generator::new(Args {
-                sample_rate: 10,
-                amplitude: 1.0,
-                decay: 0.5,
-                wave_form: |_phase| 0.5,
-            });
+            let mut generator = Generator::new(
+                Args {
+                    amplitude: 1.0,
+                    decay: 0.5,
+                    wave_form: |_phase| 0.5,
+                },
+                10,
+            );
             generator.note_on(1.0);
             generator.generate(10, buffer);
             generator.note_off();

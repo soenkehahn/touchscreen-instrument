@@ -1,20 +1,27 @@
 extern crate jack;
 
+use super::generator;
 use super::generator::Generator;
+use ErrorString;
+use get_binary_name;
 use jack::*;
 use std::sync::{Arc, Mutex};
 use std::*;
 
-pub fn make_client(name: String) -> Result<Client, Error> {
-    let (client, _status) =
-        jack::Client::new(&name.to_string(), jack::ClientOptions::NO_START_SERVER)?;
-    Ok(client)
+pub struct ActiveClient {
+    _client: AsyncClient<(), ProcessHandler_>,
+    pub generator_mutex: Arc<Mutex<Generator>>,
 }
 
-pub fn run_generator(
-    client: Client,
-    generator: Arc<Mutex<Generator>>,
-) -> Result<AsyncClient<(), ProcessHandler_>, Error> {
+pub fn run_generator<F>(generator_args: generator::Args<F>) -> Result<ActiveClient, ErrorString>
+where
+    F: Fn(f32) -> f32 + 'static + Send,
+{
+    let name = get_binary_name()?;
+    let (client, _status) = jack::Client::new(&name, jack::ClientOptions::NO_START_SERVER)?;
+    let generator = Generator::new(generator_args, client.sample_rate() as i32);
+    let mutex = Arc::new(Mutex::new(generator));
+
     let left_port = client.register_port("left-output", AudioOut)?;
     let right_port = client.register_port("right-output", AudioOut)?;
 
@@ -24,9 +31,13 @@ pub fn run_generator(
             left: left_port,
             right: right_port,
         },
-        generator,
+        generator: mutex.clone(),
     };
-    client.activate_async(notification_handler, process_handler)
+    let async_client = client.activate_async(notification_handler, process_handler)?;
+    Ok(ActiveClient {
+        _client: async_client,
+        generator_mutex: mutex,
+    })
 }
 
 struct Stereo<Port> {
