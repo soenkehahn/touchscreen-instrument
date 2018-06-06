@@ -157,16 +157,6 @@ pub enum TouchState<T> {
 }
 
 impl<T> TouchState<T> {
-    pub fn map<F, U>(self, f: F) -> TouchState<U>
-    where
-        F: FnOnce(T) -> U,
-    {
-        match self {
-            TouchState::NoTouch => TouchState::NoTouch,
-            TouchState::Touch(t) => TouchState::Touch(f(t)),
-        }
-    }
-
     pub fn get_first<'a, I>(iterator: I) -> &'a TouchState<T>
     where
         I: Iterator<Item = &'a TouchState<T>>,

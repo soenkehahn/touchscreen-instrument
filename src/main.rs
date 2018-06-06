@@ -8,7 +8,7 @@ mod evdev;
 mod generator;
 mod run_jack;
 
-use areas::{Areas, Frequencies};
+use areas::{Areas, Frequencies, NoteEvent};
 use evdev::*;
 use run_jack::run_generator;
 use std::clone::Clone;
@@ -104,10 +104,10 @@ fn main() -> Result<(), ErrorString> {
                 eprintln!("main_: error: {:?}", e);
             }
             Ok(mut generator) => match frequency_update {
-                TouchState::NoTouch | TouchState::Touch(None) => {
+                NoteEvent::NoteOff => {
                     generator.note_off();
                 }
-                TouchState::Touch(Some(frequency)) => {
+                NoteEvent::NoteOn(frequency) => {
                     generator.note_on(frequency);
                 }
             },
