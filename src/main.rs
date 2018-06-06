@@ -92,7 +92,7 @@ fn main() -> Result<(), ErrorString> {
     };
     let active_client = run_generator(generator_args)?;
     let touches = Positions::new("/dev/input/event15")?;
-    let areas = Areas::new(800, cli_args.start_note, TOUCH_WIDTH, TOUCH_HEIGHT);
+    let areas = Areas::new(TOUCH_WIDTH, TOUCH_HEIGHT, 800, cli_args.start_note);
     areas.clone().spawn_ui();
     let frequencies = Frequencies::new(
         areas,
