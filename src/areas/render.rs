@@ -9,7 +9,6 @@ use self::sdl2::render::Canvas;
 use self::sdl2::video::Window;
 use ErrorString;
 use areas::Areas;
-use areas::Rectangle;
 use get_binary_name;
 
 pub const SCREEN_WIDTH: u32 = 1920;
@@ -28,7 +27,7 @@ impl Areas {
 struct Ui {
     canvas: Canvas<Window>,
     event_pump: EventPump,
-    ui_elements: Vec<(Rectangle, ::areas::Color)>,
+    ui_elements: Vec<(Rect, Color)>,
 }
 
 impl From<self::sdl2::video::WindowBuildError> for ErrorString {
@@ -108,20 +107,13 @@ impl Ui {
         ::std::process::exit(0);
     }
 
-    fn convert_color(color: &::areas::Color) -> Color {
-        Color::RGB(color.red, color.green, color.blue)
-    }
-
     fn draw(&mut self) -> Result<(), ErrorString> {
         self.canvas.set_draw_color(Color::RGB(0, 0, 0));
         self.canvas.clear();
         for element in &self.ui_elements {
-            match element.0 {
-                Rectangle { x, y, w, h } => {
-                    self.canvas.set_draw_color(Ui::convert_color(&element.1));
-                    self.canvas.fill_rect(Rect::new(x, y, w as u32, h as u32))?;
-                }
-            }
+            let rect = element.0;
+            self.canvas.set_draw_color(element.1);
+            self.canvas.fill_rect(rect)?;
         }
         self.canvas.present();
         Ok(())
