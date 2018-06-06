@@ -50,15 +50,15 @@ impl Areas {
         }
     }
 
-    fn make_color(i_in_cycle_of_fifths: usize) -> Color {
+    fn make_color(midi_note: i32) -> Color {
         use self::palette::rgb::Rgb;
         use self::palette::rgb::Srgb;
         use self::palette::Hsv;
 
-        let chromatic = (i_in_cycle_of_fifths * 7) % 12;
+        let hue_number = (midi_note * 7) % 12;
 
         let c: Rgb<_, u8> =
-            Srgb::from(Hsv::new(chromatic as f32 * 30.0 + 240.0, 1.0, 1.0)).into_format();
+            Srgb::from(Hsv::new(hue_number as f32 * 30.0 + 240.0, 1.0, 1.0)).into_format();
         Areas::convert_color(c)
     }
 
@@ -71,9 +71,12 @@ impl Areas {
         let y_factor: f32 = screen_height as f32 / self.touch_height as f32;
         self.rects
             .iter()
-            .map(|x| x.to_sdl_rect(x_factor, y_factor))
-            .enumerate()
-            .map(|(i, x)| (x, Areas::make_color(i)))
+            .map(|x| {
+                (
+                    x.to_sdl_rect(x_factor, y_factor),
+                    Areas::make_color(x.midi_note()),
+                )
+            })
             .collect()
     }
 }
@@ -177,13 +180,13 @@ mod test {
             use super::*;
 
             #[test]
-            fn returns_blue_as_the_first_color() {
-                assert_eq!(Areas::make_color(0), Color::RGB(0, 0, 254));
+            fn returns_blue_for_the_middle_c() {
+                assert_eq!(Areas::make_color(60), Color::RGB(0, 0, 254));
             }
 
             #[test]
             fn returns_blue_one_octave_higher() {
-                assert_eq!(Areas::make_color(12), Color::RGB(0, 0, 254));
+                assert_eq!(Areas::make_color(72), Color::RGB(0, 0, 254));
             }
 
             #[test]
@@ -199,7 +202,7 @@ mod test {
                 );
                 color.hue = color.hue + 360.0 / 12.0;
                 assert_eq!(
-                    Areas::make_color(2),
+                    Areas::make_color(62),
                     Areas::convert_color(Srgb::from(color).into_format())
                 );
             }
@@ -239,6 +242,18 @@ mod test {
                         (10000.0 * 0.5) as u32
                     )
                 );
+            }
+
+            #[test]
+            fn returns_blue_for_c() {
+                let elements = Areas::new(10, 60, 1000, 1000).ui_elements(700, 500);
+                assert_eq!(elements.get(0).unwrap().1, Color::RGB(0, 0, 254));
+            }
+
+            #[test]
+            fn returns_blue_for_c_when_starting_at_different_notes() {
+                let elements = Areas::new(10, 59, 1000, 1000).ui_elements(700, 500);
+                assert_eq!(elements.get(1).unwrap().1, Color::RGB(0, 0, 254));
             }
         }
     }
