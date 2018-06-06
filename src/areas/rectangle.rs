@@ -24,7 +24,7 @@ impl Rectangle {
     pub fn to_sdl_rect(&self, x_factor: f32, y_factor: f32) -> Rect {
         Rect::new(
             (self.x as f32 * x_factor) as i32,
-            (1.0 * y_factor) as i32,
+            (self.y as f32 * y_factor) as i32,
             (self.width as f32 * x_factor) as u32,
             (self.height as f32 * y_factor) as u32,
         )
