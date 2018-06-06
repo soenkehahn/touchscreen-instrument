@@ -1,57 +1,73 @@
-extern crate sdl;
+extern crate sdl2;
 
-use self::sdl::event::{Event, Key};
-use self::sdl::video::{Surface, SurfaceFlag, VideoFlag};
+use self::sdl2::EventPump;
+use self::sdl2::event::Event;
+use self::sdl2::keyboard::Keycode;
+use self::sdl2::pixels::Color;
+use self::sdl2::rect::Rect;
+use self::sdl2::render::Canvas;
+use self::sdl2::video::Window;
+use ErrorString;
 use areas::Areas;
-use areas::Color;
 use areas::Rectangle;
+use get_binary_name;
 
-pub const SCREEN_WIDTH: u16 = 1920;
-pub const SCREEN_HEIGHT: u16 = 1080;
+pub const SCREEN_WIDTH: u32 = 1920;
+pub const SCREEN_HEIGHT: u32 = 1080;
 
 impl Areas {
     pub fn spawn_ui(self) {
         ::std::thread::spawn(move || {
-            Ui::run_ui(self);
+            if let Err(e) = Ui::run_ui(self) {
+                eprintln!("error in ui thread: {:?}", e);
+            }
         });
     }
 }
 
 struct Ui {
-    surface: Surface,
-    ui_elements: Vec<(Rectangle, Color)>,
+    canvas: Canvas<Window>,
+    event_pump: EventPump,
+    ui_elements: Vec<(Rectangle, ::areas::Color)>,
+}
+
+impl From<self::sdl2::video::WindowBuildError> for ErrorString {
+    fn from(e: self::sdl2::video::WindowBuildError) -> ErrorString {
+        ErrorString(format!("{}", e))
+    }
+}
+
+impl From<self::sdl2::IntegerOrSdlError> for ErrorString {
+    fn from(e: self::sdl2::IntegerOrSdlError) -> ErrorString {
+        ErrorString(format!("{}", e))
+    }
 }
 
 impl Ui {
-    fn run_ui(areas: Areas) {
-        let ui = Ui::new(areas);
-        ui.run_main_loop();
+    fn run_ui(areas: Areas) -> Result<(), ErrorString> {
+        let mut ui = Ui::new(areas)?;
+        ui.run_main_loop()?;
         ui.quit();
+        Ok(())
     }
 
-    fn new(areas: Areas) -> Ui {
-        sdl::init(&[sdl::InitFlag::Video]);
-        let surface = match sdl::video::set_video_mode(
-            SCREEN_WIDTH as isize,
-            SCREEN_HEIGHT as isize,
-            32,
-            &[SurfaceFlag::HWSurface],
-            &[
-                VideoFlag::DoubleBuf,
-                VideoFlag::Resizable,
-                VideoFlag::NoFrame,
-            ],
-        ) {
-            Ok(surface) => surface,
-            Err(err) => panic!("failed to set video mode: {}", err),
-        };
-        let ui = Ui {
-            surface,
+    fn new(areas: Areas) -> Result<Ui, ErrorString> {
+        let sdl_context = sdl2::init()?;
+        let video_subsystem = sdl_context.video()?;
+        let window = video_subsystem
+            .window(&get_binary_name()?, SCREEN_WIDTH, SCREEN_HEIGHT)
+            .borderless()
+            .build()?;
+        let canvas = window.into_canvas().build()?;
+        let event_pump = sdl_context.event_pump()?;
+        let mut ui = Ui {
+            canvas,
+            event_pump,
             ui_elements: areas.ui_elements(),
         };
         ui.move_to_touch_screen();
-        ui.draw();
-        ui
+        ui.draw()?;
+        Ok(ui)
     }
 
     fn move_to_touch_screen(&self) {
@@ -71,48 +87,43 @@ impl Ui {
         }
     }
 
-    fn run_main_loop(&self) {
+    fn run_main_loop(&mut self) -> Result<(), ErrorString> {
         'main: loop {
-            'event: loop {
-                let event = sdl::event::wait_event();
-                match event {
-                    Event::Quit => break 'main,
-                    Event::None => break 'event,
-                    Event::Key(Key::Escape, _, _, _) => break 'main,
-                    Event::Resize(_, _) => {
-                        self.draw();
-                    }
-                    _ => {}
+            match self.event_pump.wait_event() {
+                Event::Quit { .. }
+                | Event::KeyDown {
+                    keycode: Some(Keycode::Escape),
+                    ..
+                } => break 'main,
+                Event::Window { .. } => {
+                    self.draw()?;
                 }
+                _ => {}
             }
         }
+        Ok(())
     }
 
     fn quit(&self) {
-        sdl::quit();
         ::std::process::exit(0);
     }
 
-    fn convert_color(&self, color: &Color) -> sdl::video::Color {
-        sdl::video::Color::RGB(color.red, color.green, color.blue)
+    fn convert_color(color: &::areas::Color) -> Color {
+        Color::RGB(color.red, color.green, color.blue)
     }
 
-    fn draw(&self) {
+    fn draw(&mut self) -> Result<(), ErrorString> {
+        self.canvas.set_draw_color(Color::RGB(0, 0, 0));
+        self.canvas.clear();
         for element in &self.ui_elements {
             match element.0 {
                 Rectangle { x, y, w, h } => {
-                    self.surface.fill_rect(
-                        Some(sdl::Rect {
-                            x: x as i16,
-                            y: y as i16,
-                            w: w as u16,
-                            h: h as u16,
-                        }),
-                        self.convert_color(&element.1),
-                    );
+                    self.canvas.set_draw_color(Ui::convert_color(&element.1));
+                    self.canvas.fill_rect(Rect::new(x, y, w as u32, h as u32))?;
                 }
             }
         }
-        self.surface.flip();
+        self.canvas.present();
+        Ok(())
     }
 }

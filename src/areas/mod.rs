@@ -1,5 +1,5 @@
 extern crate palette;
-extern crate sdl;
+extern crate sdl2;
 
 pub mod render;
 

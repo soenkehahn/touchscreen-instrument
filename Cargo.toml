@@ -6,7 +6,7 @@ authors = ["Sönke Hahn <soenkehahn@gmail.com>"]
 [dependencies]
 jack = "*"
 evdev-rs = { git = "https://github.com/ndesh26/evdev-rs", rev = "c271060" }
-sdl = "*"
+sdl2 = "*"
 palette = "*"
 clap = "*"
 nix = "*"
