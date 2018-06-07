@@ -2,11 +2,11 @@ extern crate jack;
 
 use super::generator;
 use super::generator::Generator;
-use ErrorString;
 use get_binary_name;
 use jack::*;
 use std::sync::{Arc, Mutex};
 use std::*;
+use ErrorString;
 
 pub struct ActiveClient {
     _client: AsyncClient<(), ProcessHandler_>,

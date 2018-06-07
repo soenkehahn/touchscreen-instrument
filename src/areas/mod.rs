@@ -34,9 +34,9 @@ impl Areas {
     }
 
     fn make_color(&self, i_in_cycle_of_fifths: usize) -> Color {
-        use self::palette::Hsv;
         use self::palette::rgb::Rgb;
         use self::palette::rgb::Srgb;
+        use self::palette::Hsv;
 
         let chromatic = (i_in_cycle_of_fifths * 7) % 12;
 

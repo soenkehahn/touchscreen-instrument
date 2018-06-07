@@ -1,16 +1,16 @@
 extern crate sdl2;
 
-use self::sdl2::EventPump;
-use self::sdl2::VideoSubsystem;
 use self::sdl2::event::Event;
 use self::sdl2::keyboard::Keycode;
 use self::sdl2::pixels::Color;
 use self::sdl2::rect::Rect;
 use self::sdl2::render::Canvas;
 use self::sdl2::video::Window;
-use ErrorString;
+use self::sdl2::EventPump;
+use self::sdl2::VideoSubsystem;
 use areas::Areas;
 use get_binary_name;
+use ErrorString;
 
 impl Areas {
     pub fn spawn_ui(self) {

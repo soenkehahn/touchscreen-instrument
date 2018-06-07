@@ -1,10 +1,10 @@
 extern crate evdev_rs;
 
-use AddMessage;
-use ErrorString;
-use evdev::evdev_rs::enums::{EV_SYN::*, EventCode, EventType::*, EV_ABS};
+use evdev::evdev_rs::enums::{EventCode, EventType::*, EV_ABS, EV_SYN::*};
 use evdev::evdev_rs::*;
 use std::fs::File;
+use AddMessage;
+use ErrorString;
 
 pub struct Events {
     _file: File,
@@ -225,7 +225,7 @@ impl Iterator for Positions {
 mod test {
     use super::TouchState::*;
     use super::*;
-    use evdev::evdev_rs::enums::{EV_ABS::*, EventCode, EventType};
+    use evdev::evdev_rs::enums::{EventCode, EventType, EV_ABS::*};
 
     struct Mock;
 

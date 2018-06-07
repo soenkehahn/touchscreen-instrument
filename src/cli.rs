@@ -1,9 +1,9 @@
 extern crate clap;
 
 use self::clap::{App, Arg};
-use ErrorString;
 use std::fmt::Display;
 use std::str::FromStr;
+use ErrorString;
 
 #[derive(Debug, Clone, Copy)]
 pub struct CliArgs {
