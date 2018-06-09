@@ -6,12 +6,12 @@ use std::str::FromStr;
 use ErrorString;
 
 #[derive(Debug, Clone, Copy)]
-pub struct CliArgs {
+pub struct Args {
     pub volume: f32,
     pub start_note: i32,
 }
 
-pub fn parse<'a, 'b>(app: App<'a, 'b>) -> Result<CliArgs, ErrorString> {
+pub fn parse<'a, 'b>(app: App<'a, 'b>) -> Result<Args, ErrorString> {
     let matches = app.version("0.1.0")
         .author("Sönke Hahn <soenkehahn@gmail.com>")
         .about("musical instrument for touch screens")
@@ -32,7 +32,7 @@ pub fn parse<'a, 'b>(app: App<'a, 'b>) -> Result<CliArgs, ErrorString> {
         .get_matches();
     let volume: f32 = parse_with_default(matches.value_of("volume"), 1.0)?;
     let start_note: i32 = parse_with_default(matches.value_of("pitch"), 36)?;
-    Ok(CliArgs { volume, start_note })
+    Ok(Args { volume, start_note })
 }
 
 fn parse_with_default<N>(input: Option<&str>, default: N) -> Result<N, ErrorString>
