@@ -3,7 +3,6 @@ extern crate sdl2;
 use self::sdl2::event::Event;
 use self::sdl2::keyboard::Keycode;
 use self::sdl2::pixels::Color;
-use self::sdl2::rect::Rect;
 use self::sdl2::render::Canvas;
 use self::sdl2::video::Window;
 use self::sdl2::EventPump;
@@ -25,7 +24,7 @@ impl Areas {
 struct Ui {
     canvas: Canvas<Window>,
     event_pump: EventPump,
-    ui_elements: Vec<(Rect, Color)>,
+    ui_elements: Vec<(sdl2::rect::Rect, Color)>,
 }
 
 impl From<self::sdl2::video::WindowBuildError> for ErrorString {
@@ -48,7 +47,7 @@ impl Ui {
         Ok(())
     }
 
-    fn get_screen_rect(video_subsystem: &VideoSubsystem) -> Result<Rect, ErrorString> {
+    fn get_screen_rect(video_subsystem: &VideoSubsystem) -> Result<sdl2::rect::Rect, ErrorString> {
         video_subsystem
             .display_bounds(1)
             .or_else(|_| video_subsystem.display_bounds(0))

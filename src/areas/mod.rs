@@ -6,7 +6,6 @@ pub mod render;
 
 use self::rectangle::Rectangle;
 use self::sdl2::pixels::Color;
-use self::sdl2::rect::Rect;
 use evdev::{Position, TouchState};
 
 fn midi_to_frequency(midi: i32) -> f32 {
@@ -95,7 +94,7 @@ impl Areas {
         Color::RGB(color.red, color.green, color.blue)
     }
 
-    fn ui_elements(self, screen_width: u32, screen_height: u32) -> Vec<(Rect, Color)> {
+    fn ui_elements(self, screen_width: u32, screen_height: u32) -> Vec<(sdl2::rect::Rect, Color)> {
         let x_factor: f32 = screen_width as f32 / self.touch_width as f32;
         let y_factor: f32 = screen_height as f32 / self.touch_height as f32;
         self.rects
@@ -215,18 +214,18 @@ mod test {
                 fn returns_correct_rectangles_in_the_lowest_row() {
                     let areas = Areas::peas(800, 600, 10);
                     let elements = areas.ui_elements(800, 600);
-                    assert_eq!(elements[0].0, Rect::new(0, 590, 10, 10));
-                    assert_eq!(elements[1].0, Rect::new(5, 580, 10, 10));
-                    assert_eq!(elements[2].0, Rect::new(10, 590, 10, 10));
+                    assert_eq!(elements[0].0, sdl2::rect::Rect::new(0, 590, 10, 10));
+                    assert_eq!(elements[1].0, sdl2::rect::Rect::new(5, 580, 10, 10));
+                    assert_eq!(elements[2].0, sdl2::rect::Rect::new(10, 590, 10, 10));
                 }
 
                 #[test]
                 fn returns_multiple_rows() {
                     let areas = Areas::peas(800, 600, 10);
                     let elements = areas.ui_elements(800, 600);
-                    assert_eq!(elements[36].0, Rect::new(0, 565, 10, 10));
-                    assert_eq!(elements[37].0, Rect::new(5, 555, 10, 10));
-                    assert_eq!(elements[38].0, Rect::new(10, 565, 10, 10));
+                    assert_eq!(elements[36].0, sdl2::rect::Rect::new(0, 565, 10, 10));
+                    assert_eq!(elements[37].0, sdl2::rect::Rect::new(5, 555, 10, 10));
+                    assert_eq!(elements[38].0, sdl2::rect::Rect::new(10, 565, 10, 10));
                 }
 
                 #[test]
@@ -276,20 +275,32 @@ mod test {
             #[test]
             fn returns_a_rectangle_for_the_lowest_pitch() {
                 let elements = Areas::stripes(800, 600, 10, 48).ui_elements(800, 600);
-                assert_eq!(elements.get(0).unwrap().0, Rect::new(0, 1, 10, 10000));
+                assert_eq!(
+                    elements.get(0).unwrap().0,
+                    sdl2::rect::Rect::new(0, 1, 10, 10000)
+                );
             }
 
             #[test]
             fn returns_rectangles_for_higher_pitches() {
                 let elements = Areas::stripes(800, 600, 10, 48).ui_elements(800, 600);
-                assert_eq!(elements.get(1).unwrap().0, Rect::new(10, 1, 10, 10000));
-                assert_eq!(elements.get(2).unwrap().0, Rect::new(20, 1, 10, 10000));
+                assert_eq!(
+                    elements.get(1).unwrap().0,
+                    sdl2::rect::Rect::new(10, 1, 10, 10000)
+                );
+                assert_eq!(
+                    elements.get(2).unwrap().0,
+                    sdl2::rect::Rect::new(20, 1, 10, 10000)
+                );
             }
 
             #[test]
             fn translates_touch_coordinates_to_screen_coordinates() {
                 let elements = Areas::stripes(1000, 1000, 10, 48).ui_elements(700, 500);
-                assert_eq!(elements.get(2).unwrap().0, Rect::new(14, 0, 7, 5000));
+                assert_eq!(
+                    elements.get(2).unwrap().0,
+                    sdl2::rect::Rect::new(14, 0, 7, 5000)
+                );
             }
 
             #[test]
@@ -297,7 +308,7 @@ mod test {
                 let elements = Areas::stripes(1000, 1000, 12, 48).ui_elements(700, 500);
                 assert_eq!(
                     elements.get(2).unwrap().0,
-                    Rect::new(
+                    sdl2::rect::Rect::new(
                         (24.0 * 0.7) as i32,
                         (1.0 * 0.5) as i32,
                         (12.0 * 0.7) as u32,

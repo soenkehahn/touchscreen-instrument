@@ -1,4 +1,5 @@
-use areas::sdl2::rect::Rect;
+extern crate sdl2;
+
 use evdev::Position;
 
 #[derive(Debug, Clone)]
@@ -21,8 +22,8 @@ impl Rectangle {
         self.midi_note
     }
 
-    pub fn to_sdl_rect(&self, x_factor: f32, y_factor: f32) -> Rect {
-        Rect::new(
+    pub fn to_sdl_rect(&self, x_factor: f32, y_factor: f32) -> sdl2::rect::Rect {
+        sdl2::rect::Rect::new(
             (self.x as f32 * x_factor) as i32,
             (self.y as f32 * y_factor) as i32,
             (self.width as f32 * x_factor) as u32,
