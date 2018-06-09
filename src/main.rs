@@ -11,6 +11,8 @@ use areas::{Areas, NoteEvents};
 use evdev::*;
 use sound::audio_player::AudioPlayer;
 use sound::generator;
+use sound::midi_player::MidiPlayer;
+use sound::Player;
 use std::clone::Clone;
 use std::f32::consts::PI;
 use std::fmt::Debug;
@@ -93,13 +95,18 @@ fn get_note_events() -> Result<NoteEvents, ErrorString> {
     ))
 }
 
-fn get_player(cli_args: cli::Args) -> Result<AudioPlayer, ErrorString> {
-    let generator_args = generator::Args {
-        amplitude: cli_args.volume,
-        decay: 0.005,
-        wave_form: move |phase| if phase < PI { -1.0 } else { 1.0 },
-    };
-    AudioPlayer::new(generator_args)
+fn get_player(cli_args: cli::Args) -> Result<Box<Player>, ErrorString> {
+    match cli_args.midi {
+        false => {
+            let generator_args = generator::Args {
+                amplitude: cli_args.volume,
+                decay: 0.005,
+                wave_form: move |phase| if phase < PI { -1.0 } else { 1.0 },
+            };
+            Ok(Box::new(AudioPlayer::new(generator_args)?))
+        }
+        true => Ok(Box::new(MidiPlayer::new())),
+    }
 }
 
 fn main() -> Result<(), ErrorString> {

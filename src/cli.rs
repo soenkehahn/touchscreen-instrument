@@ -9,6 +9,7 @@ use ErrorString;
 pub struct Args {
     pub volume: f32,
     pub start_note: i32,
+    pub midi: bool,
 }
 
 pub fn parse<'a, 'b>(app: App<'a, 'b>) -> Result<Args, ErrorString> {
@@ -29,10 +30,21 @@ pub fn parse<'a, 'b>(app: App<'a, 'b>) -> Result<Args, ErrorString> {
                 .help("Sets a custom midi pitch to start from (default: 36)")
                 .takes_value(true),
         )
+        .arg(
+            Arg::with_name("midi")
+                .long("midi")
+                .help("switches to the midi backend (default: false)")
+                .takes_value(false),
+        )
         .get_matches();
     let volume: f32 = parse_with_default(matches.value_of("volume"), 1.0)?;
     let start_note: i32 = parse_with_default(matches.value_of("pitch"), 36)?;
-    Ok(Args { volume, start_note })
+    let midi = matches.is_present("midi");
+    Ok(Args {
+        volume,
+        start_note,
+        midi,
+    })
 }
 
 fn parse_with_default<N>(input: Option<&str>, default: N) -> Result<N, ErrorString>

@@ -2,7 +2,8 @@ extern crate jack;
 
 use super::generator;
 use super::generator::Generator;
-use areas::NoteEvent;
+use super::Player;
+use areas::{NoteEvent, NoteEvents};
 use get_binary_name;
 use jack::*;
 use std::sync::{Arc, Mutex};
@@ -41,8 +42,10 @@ impl AudioPlayer {
             generator_mutex: mutex,
         })
     }
+}
 
-    pub fn consume(self, note_events: impl Iterator<Item = NoteEvent>) {
+impl Player for AudioPlayer {
+    fn consume(&self, note_events: NoteEvents) {
         for note_event in note_events {
             match self.generator_mutex.lock() {
                 Err(e) => {
