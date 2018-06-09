@@ -5,12 +5,12 @@ extern crate nix;
 mod areas;
 mod cli;
 mod evdev;
-mod generator;
-mod run_jack;
+mod sound;
 
-use areas::{Areas, Frequencies, NoteEvent};
+use areas::{Areas, NoteEvents};
 use evdev::*;
-use run_jack::run_generator;
+use sound::audio_player::AudioPlayer;
+use sound::generator;
 use std::clone::Clone;
 use std::f32::consts::PI;
 use std::fmt::Debug;
@@ -83,35 +83,29 @@ fn get_binary_name() -> Result<String, ErrorString> {
     Ok(binary_name.to_string())
 }
 
-fn main() -> Result<(), ErrorString> {
-    let cli_args = cli::parse(clap::App::new(get_binary_name()?))?;
+fn get_note_events() -> Result<NoteEvents, ErrorString> {
+    let touches = Positions::new("/dev/input/event15")?;
+    let areas = Areas::peas(TOUCH_WIDTH, TOUCH_HEIGHT, 1000);
+    areas.clone().spawn_ui();
+    Ok(NoteEvents::new(
+        areas,
+        touches.map(|touchstates| *TouchState::get_first(touchstates.iter())),
+    ))
+}
+
+fn get_player(cli_args: cli::Args) -> Result<AudioPlayer, ErrorString> {
     let generator_args = generator::Args {
         amplitude: cli_args.volume,
         decay: 0.005,
         wave_form: move |phase| if phase < PI { -1.0 } else { 1.0 },
     };
-    let active_client = run_generator(generator_args)?;
-    let touches = Positions::new("/dev/input/event15")?;
-    let areas = Areas::peas(TOUCH_WIDTH, TOUCH_HEIGHT, 1000);
-    areas.clone().spawn_ui();
-    let frequencies = Frequencies::new(
-        areas,
-        touches.map(|touchstates| *TouchState::get_first(touchstates.iter())),
-    );
-    for frequency_update in frequencies {
-        match active_client.generator_mutex.lock() {
-            Err(e) => {
-                eprintln!("main_: error: {:?}", e);
-            }
-            Ok(mut generator) => match frequency_update {
-                NoteEvent::NoteOff => {
-                    generator.note_off();
-                }
-                NoteEvent::NoteOn(frequency) => {
-                    generator.note_on(frequency);
-                }
-            },
-        }
-    }
+    AudioPlayer::new(generator_args)
+}
+
+fn main() -> Result<(), ErrorString> {
+    let cli_args = cli::parse(clap::App::new(get_binary_name()?))?;
+    let note_events = get_note_events()?;
+    let player = get_player(cli_args)?;
+    player.consume(note_events);
     Ok(())
 }

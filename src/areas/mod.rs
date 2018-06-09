@@ -109,17 +109,17 @@ impl Areas {
     }
 }
 
-pub struct Frequencies {
+pub struct NoteEvents {
     areas: Areas,
     iterator: Box<Iterator<Item = TouchState<Position>>>,
 }
 
-impl Frequencies {
+impl NoteEvents {
     pub fn new(
         areas: Areas,
         iterator: impl Iterator<Item = TouchState<Position>> + 'static,
-    ) -> Frequencies {
-        Frequencies {
+    ) -> NoteEvents {
+        NoteEvents {
             areas,
             iterator: Box::new(iterator),
         }
@@ -132,7 +132,7 @@ pub enum NoteEvent {
     NoteOn(f32),
 }
 
-impl Iterator for Frequencies {
+impl Iterator for NoteEvents {
     type Item = NoteEvent;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -331,21 +331,21 @@ mod test {
         }
     }
 
-    mod frequencies {
+    mod note_events {
         use super::*;
 
         #[test]
         fn yields_frequencies() {
             let areas = Areas::stripes(800, 600, 10, 48);
             let mut frequencies =
-                Frequencies::new(areas, vec![TouchState::Touch(pos(5))].into_iter());
+                NoteEvents::new(areas, vec![TouchState::Touch(pos(5))].into_iter());
             assert_eq!(frequencies.next(), Some(NoteOn(midi_to_frequency(48))));
         }
 
         #[test]
         fn yields_notouch_for_pauses() {
             let areas = Areas::stripes(800, 600, 10, 48);
-            let mut frequencies = Frequencies::new(areas, vec![TouchState::NoTouch].into_iter());
+            let mut frequencies = NoteEvents::new(areas, vec![TouchState::NoTouch].into_iter());
             assert_eq!(frequencies.next(), Some(NoteOff));
         }
 
@@ -353,7 +353,7 @@ mod test {
         fn allows_to_specify_the_starting_note() {
             let areas = Areas::stripes(800, 600, 10, 49);
             let mut frequencies =
-                Frequencies::new(areas, vec![TouchState::Touch(pos(5))].into_iter());
+                NoteEvents::new(areas, vec![TouchState::Touch(pos(5))].into_iter());
             assert_eq!(frequencies.next(), Some(NoteOn(midi_to_frequency(49))));
         }
     }
