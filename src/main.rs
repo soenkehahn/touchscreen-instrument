@@ -105,7 +105,7 @@ fn get_player(cli_args: cli::Args) -> Result<Box<Player>, ErrorString> {
             };
             Ok(Box::new(AudioPlayer::new(generator_args)?))
         }
-        true => Ok(Box::new(MidiPlayer::new())),
+        true => Ok(Box::new(MidiPlayer::new()?)),
     }
 }
 

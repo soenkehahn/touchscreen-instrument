@@ -1,5 +1,6 @@
 pub mod audio_player;
 pub mod generator;
+pub mod midi;
 pub mod midi_player;
 
 use areas::NoteEvents;
