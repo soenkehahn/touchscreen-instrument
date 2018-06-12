@@ -1,9 +1,10 @@
 extern crate jack;
 
 use super::Player;
-use areas::{NoteEvent, NoteEvents};
+use areas::NoteEvents;
 use jack::*;
 use sound::midi::frequency_to_midi;
+use sound::NoteEvent;
 use std::sync::mpsc::{channel, Receiver, Sender};
 use {get_binary_name, ErrorString};
 

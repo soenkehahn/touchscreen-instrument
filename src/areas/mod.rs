@@ -8,6 +8,7 @@ use self::rectangle::Rectangle;
 use self::sdl2::pixels::Color;
 use evdev::{slot_map, Position, Slots, TouchState};
 use sound::midi::midi_to_frequency;
+use sound::NoteEvent;
 
 #[derive(Clone)]
 pub struct Areas {
@@ -106,32 +107,6 @@ impl Areas {
     }
 }
 
-#[derive(Debug, PartialEq, Clone, Copy)]
-pub enum NoteEvent {
-    NoteOff,
-    NoteOn(f32),
-}
-
-impl NoteEvent {
-    pub fn get_first_note_on(slots: Slots<NoteEvent>) -> NoteEvent {
-        for event in slots.into_iter() {
-            match event {
-                NoteEvent::NoteOn(_) => {
-                    return *event;
-                }
-                _ => {}
-            }
-        }
-        NoteEvent::NoteOff
-    }
-}
-
-impl Default for NoteEvent {
-    fn default() -> NoteEvent {
-        NoteEvent::NoteOff
-    }
-}
-
 pub struct NoteEvents {
     areas: Areas,
     iterator: Box<Iterator<Item = Slots<TouchState<Position>>>>,
@@ -164,8 +139,8 @@ impl Iterator for NoteEvents {
 
 #[cfg(test)]
 mod test {
-    use super::NoteEvent::*;
     use super::*;
+    use sound::NoteEvent::*;
 
     fn pos(x: i32) -> Position {
         Position { x, y: 5 }
@@ -327,34 +302,6 @@ mod test {
             fn returns_blue_for_c_when_starting_at_different_notes() {
                 let elements = Areas::stripes(1000, 1000, 10, 59).ui_elements(700, 500);
                 assert_eq!(elements.get(1).unwrap().1, Color::RGB(0, 0, 254));
-            }
-        }
-    }
-
-    mod note_event {
-        use super::*;
-
-        mod get_first_note_on {
-            use super::*;
-
-            #[test]
-            fn returns_the_first_slot_if_its_a_note_on() {
-                let mut slots = [NoteOff; 10];
-                slots[0] = NoteOn(200.0);
-                assert_eq!(NoteEvent::get_first_note_on(slots), NoteOn(200.0));
-            }
-
-            #[test]
-            fn skips_note_offs() {
-                let mut slots = [NoteOff; 10];
-                slots[1] = NoteOn(200.0);
-                assert_eq!(NoteEvent::get_first_note_on(slots), NoteOn(200.0));
-            }
-
-            #[test]
-            fn returns_note_off_if_all_slots_are_note_offs() {
-                let slots = [NoteOff; 10];
-                assert_eq!(NoteEvent::get_first_note_on(slots), NoteOff);
             }
         }
     }
