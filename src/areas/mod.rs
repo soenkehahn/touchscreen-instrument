@@ -6,7 +6,7 @@ pub mod render;
 
 use self::rectangle::Rectangle;
 use self::sdl2::pixels::Color;
-use evdev::{Position, TouchState};
+use evdev::{slot_map, Position, Slots, TouchState};
 use sound::midi::midi_to_frequency;
 
 #[derive(Clone)]
@@ -106,15 +106,41 @@ impl Areas {
     }
 }
 
+#[derive(Debug, PartialEq, Clone, Copy)]
+pub enum NoteEvent {
+    NoteOff,
+    NoteOn(f32),
+}
+
+impl NoteEvent {
+    pub fn get_first_note_on(slots: Slots<NoteEvent>) -> NoteEvent {
+        for event in slots.into_iter() {
+            match event {
+                NoteEvent::NoteOn(_) => {
+                    return *event;
+                }
+                _ => {}
+            }
+        }
+        NoteEvent::NoteOff
+    }
+}
+
+impl Default for NoteEvent {
+    fn default() -> NoteEvent {
+        NoteEvent::NoteOff
+    }
+}
+
 pub struct NoteEvents {
     areas: Areas,
-    iterator: Box<Iterator<Item = TouchState<Position>>>,
+    iterator: Box<Iterator<Item = Slots<TouchState<Position>>>>,
 }
 
 impl NoteEvents {
     pub fn new(
         areas: Areas,
-        iterator: impl Iterator<Item = TouchState<Position>> + 'static,
+        iterator: impl Iterator<Item = Slots<TouchState<Position>>> + 'static,
     ) -> NoteEvents {
         NoteEvents {
             areas,
@@ -123,19 +149,15 @@ impl NoteEvents {
     }
 }
 
-#[derive(Debug, PartialEq)]
-pub enum NoteEvent {
-    NoteOff,
-    NoteOn(f32),
-}
-
 impl Iterator for NoteEvents {
-    type Item = NoteEvent;
+    type Item = Slots<NoteEvent>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.iterator.next().map(|touchstate| match touchstate {
-            TouchState::NoTouch => NoteEvent::NoteOff,
-            TouchState::Touch(position) => self.areas.frequency(position),
+        self.iterator.next().map(|slots| {
+            slot_map(slots, |touchstate| match touchstate {
+                TouchState::NoTouch => NoteEvent::NoteOff,
+                TouchState::Touch(position) => self.areas.frequency(*position),
+            })
         })
     }
 }
@@ -309,30 +331,80 @@ mod test {
         }
     }
 
+    mod note_event {
+        use super::*;
+
+        mod get_first_note_on {
+            use super::*;
+
+            #[test]
+            fn returns_the_first_slot_if_its_a_note_on() {
+                let mut slots = [NoteOff; 10];
+                slots[0] = NoteOn(200.0);
+                assert_eq!(NoteEvent::get_first_note_on(slots), NoteOn(200.0));
+            }
+
+            #[test]
+            fn skips_note_offs() {
+                let mut slots = [NoteOff; 10];
+                slots[1] = NoteOn(200.0);
+                assert_eq!(NoteEvent::get_first_note_on(slots), NoteOn(200.0));
+            }
+
+            #[test]
+            fn returns_note_off_if_all_slots_are_note_offs() {
+                let slots = [NoteOff; 10];
+                assert_eq!(NoteEvent::get_first_note_on(slots), NoteOff);
+            }
+        }
+    }
+
     mod note_events {
         use super::*;
+
+        impl<T> Default for TouchState<T> {
+            fn default() -> TouchState<T> {
+                TouchState::NoTouch
+            }
+        }
+
+        fn from_single<T: Copy + Default>(element: T) -> Slots<T> {
+            let mut slots = [T::default(); 10];
+            slots[0] = element;
+            slots
+        }
+
+        fn mock_touches<T: Copy + Default>(touches: Vec<T>) -> impl Iterator<Item = Slots<T>> {
+            touches.into_iter().map(from_single)
+        }
 
         #[test]
         fn yields_frequencies() {
             let areas = Areas::stripes(800, 600, 10, 48);
             let mut frequencies =
-                NoteEvents::new(areas, vec![TouchState::Touch(pos(5))].into_iter());
-            assert_eq!(frequencies.next(), Some(NoteOn(midi_to_frequency(48))));
+                NoteEvents::new(areas, mock_touches(vec![TouchState::Touch(pos(5))]));
+            assert_eq!(
+                frequencies.next(),
+                Some(from_single(NoteOn(midi_to_frequency(48))))
+            );
         }
 
         #[test]
         fn yields_notouch_for_pauses() {
             let areas = Areas::stripes(800, 600, 10, 48);
-            let mut frequencies = NoteEvents::new(areas, vec![TouchState::NoTouch].into_iter());
-            assert_eq!(frequencies.next(), Some(NoteOff));
+            let mut frequencies = NoteEvents::new(areas, mock_touches(vec![TouchState::NoTouch]));
+            assert_eq!(frequencies.next(), Some(from_single(NoteOff)));
         }
 
         #[test]
         fn allows_to_specify_the_starting_note() {
             let areas = Areas::stripes(800, 600, 10, 49);
             let mut frequencies =
-                NoteEvents::new(areas, vec![TouchState::Touch(pos(5))].into_iter());
-            assert_eq!(frequencies.next(), Some(NoteOn(midi_to_frequency(49))));
+                NoteEvents::new(areas, mock_touches(vec![TouchState::Touch(pos(5))]));
+            assert_eq!(
+                frequencies.next(),
+                Some(from_single(NoteOn(midi_to_frequency(49))))
+            );
         }
     }
 }

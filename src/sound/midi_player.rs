@@ -35,8 +35,8 @@ impl MidiPlayer {
 
 impl Player for MidiPlayer {
     fn consume(&self, note_events: NoteEvents) {
-        for event in note_events {
-            match self.sender.send(event) {
+        for slots in note_events {
+            match self.sender.send(NoteEvent::get_first_note_on(slots)) {
                 Ok(()) => {}
                 Err(e) => eprintln!("MidiPlayer.consume: error: {:?}", e),
             }

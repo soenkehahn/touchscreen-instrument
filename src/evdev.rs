@@ -124,12 +124,23 @@ struct SlotState {
     btn_touch: bool,
 }
 
-type TouchArray<T> = [T; 10];
+pub type Slots<T> = [T; 10];
+
+pub fn slot_map<F, T, U: Copy + Default>(input: Slots<T>, f: F) -> Slots<U>
+where
+    F: Fn(&T) -> U,
+{
+    let mut result = [U::default(); 10];
+    for (i, t) in input.into_iter().enumerate() {
+        result[i] = f(t);
+    }
+    result
+}
 
 #[derive(Debug)]
 pub struct Positions {
     syn_chunks: SynChunks,
-    slots: TouchArray<SlotState>,
+    slots: Slots<SlotState>,
     slot_active: usize,
 }
 
@@ -171,7 +182,7 @@ impl<T> TouchState<T> {
 }
 
 impl Iterator for Positions {
-    type Item = TouchArray<TouchState<Position>>;
+    type Item = Slots<TouchState<Position>>;
 
     fn next(&mut self) -> Option<Self::Item> {
         match self.syn_chunks.next() {

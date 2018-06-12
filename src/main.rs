@@ -91,10 +91,7 @@ fn get_note_events() -> Result<NoteEvents, ErrorString> {
     let touches = Positions::new("/dev/input/event15")?;
     let areas = Areas::peas(TOUCH_WIDTH, TOUCH_HEIGHT, 1000);
     areas.clone().spawn_ui();
-    Ok(NoteEvents::new(
-        areas,
-        touches.map(|touchstates| *TouchState::get_first(touchstates.iter())),
-    ))
+    Ok(NoteEvents::new(areas, touches))
 }
 
 fn get_player(cli_args: cli::Args) -> Result<Box<Player>, ErrorString> {

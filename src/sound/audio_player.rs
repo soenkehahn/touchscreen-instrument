@@ -46,12 +46,12 @@ impl AudioPlayer {
 
 impl Player for AudioPlayer {
     fn consume(&self, note_events: NoteEvents) {
-        for note_event in note_events {
+        for slots in note_events {
             match self.generator_mutex.lock() {
                 Err(e) => {
                     eprintln!("main_: error: {:?}", e);
                 }
-                Ok(mut generator) => match note_event {
+                Ok(mut generator) => match NoteEvent::get_first_note_on(slots) {
                     NoteEvent::NoteOff => {
                         generator.note_off();
                     }
