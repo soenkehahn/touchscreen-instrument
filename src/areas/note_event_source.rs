@@ -33,33 +33,33 @@ impl Iterator for NoteEventSource {
 }
 
 #[cfg(test)]
-mod test {
+pub mod test {
     use super::NoteEvent::*;
     use super::*;
     use sound::midi::midi_to_frequency;
 
+    impl<T> Default for TouchState<T> {
+        fn default() -> TouchState<T> {
+            TouchState::NoTouch
+        }
+    }
+
+    pub fn from_single<T: Copy + Default>(element: T) -> Slots<T> {
+        let mut slots = [T::default(); 10];
+        slots[0] = element;
+        slots
+    }
+
+    fn mock_touches<T: Copy + Default>(touches: Vec<T>) -> impl Iterator<Item = Slots<T>> {
+        touches.into_iter().map(from_single)
+    }
+
+    fn pos(x: i32) -> Position {
+        Position { x, y: 5 }
+    }
+
     mod note_event_source {
         use super::*;
-
-        impl<T> Default for TouchState<T> {
-            fn default() -> TouchState<T> {
-                TouchState::NoTouch
-            }
-        }
-
-        fn from_single<T: Copy + Default>(element: T) -> Slots<T> {
-            let mut slots = [T::default(); 10];
-            slots[0] = element;
-            slots
-        }
-
-        fn mock_touches<T: Copy + Default>(touches: Vec<T>) -> impl Iterator<Item = Slots<T>> {
-            touches.into_iter().map(from_single)
-        }
-
-        fn pos(x: i32) -> Position {
-            Position { x, y: 5 }
-        }
 
         #[test]
         fn yields_frequencies() {
