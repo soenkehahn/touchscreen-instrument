@@ -9,7 +9,7 @@ mod cli;
 mod evdev;
 mod sound;
 
-use areas::{Areas, NoteEventSource};
+use areas::{note_event_source::NoteEventSource, Areas};
 use evdev::*;
 use sound::audio_player::AudioPlayer;
 use sound::generator;

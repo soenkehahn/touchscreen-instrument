@@ -1,7 +1,7 @@
 extern crate jack;
 
 use super::Player;
-use areas::NoteEventSource;
+use areas::note_event_source::NoteEventSource;
 use jack::*;
 use sound::midi::frequency_to_midi;
 use sound::NoteEvent;

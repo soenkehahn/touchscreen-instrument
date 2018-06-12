@@ -3,7 +3,7 @@ extern crate jack;
 use super::generator;
 use super::generator::Generator;
 use super::Player;
-use areas::NoteEventSource;
+use areas::note_event_source::NoteEventSource;
 use get_binary_name;
 use jack::*;
 use sound::NoteEvent;

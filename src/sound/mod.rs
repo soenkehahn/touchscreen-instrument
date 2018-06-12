@@ -3,7 +3,7 @@ pub mod generator;
 pub mod midi;
 pub mod midi_player;
 
-use areas::NoteEventSource;
+use areas::note_event_source::NoteEventSource;
 use evdev::Slots;
 
 pub trait Player {
