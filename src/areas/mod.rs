@@ -107,28 +107,28 @@ impl Areas {
     }
 }
 
-pub struct NoteEvents {
+pub struct NoteEventSource {
     areas: Areas,
-    iterator: Box<Iterator<Item = Slots<TouchState<Position>>>>,
+    position_source: Box<Iterator<Item = Slots<TouchState<Position>>>>,
 }
 
-impl NoteEvents {
+impl NoteEventSource {
     pub fn new(
         areas: Areas,
-        iterator: impl Iterator<Item = Slots<TouchState<Position>>> + 'static,
-    ) -> NoteEvents {
-        NoteEvents {
+        position_source: impl Iterator<Item = Slots<TouchState<Position>>> + 'static,
+    ) -> NoteEventSource {
+        NoteEventSource {
             areas,
-            iterator: Box::new(iterator),
+            position_source: Box::new(position_source),
         }
     }
 }
 
-impl Iterator for NoteEvents {
+impl Iterator for NoteEventSource {
     type Item = Slots<NoteEvent>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.iterator.next().map(|slots| {
+        self.position_source.next().map(|slots| {
             slot_map(slots, |touchstate| match touchstate {
                 TouchState::NoTouch => NoteEvent::NoteOff,
                 TouchState::Touch(position) => self.areas.frequency(*position),
@@ -306,7 +306,7 @@ mod test {
         }
     }
 
-    mod note_events {
+    mod note_event_source {
         use super::*;
 
         impl<T> Default for TouchState<T> {
@@ -329,7 +329,7 @@ mod test {
         fn yields_frequencies() {
             let areas = Areas::stripes(800, 600, 10, 48);
             let mut frequencies =
-                NoteEvents::new(areas, mock_touches(vec![TouchState::Touch(pos(5))]));
+                NoteEventSource::new(areas, mock_touches(vec![TouchState::Touch(pos(5))]));
             assert_eq!(
                 frequencies.next(),
                 Some(from_single(NoteOn(midi_to_frequency(48))))
@@ -339,7 +339,8 @@ mod test {
         #[test]
         fn yields_notouch_for_pauses() {
             let areas = Areas::stripes(800, 600, 10, 48);
-            let mut frequencies = NoteEvents::new(areas, mock_touches(vec![TouchState::NoTouch]));
+            let mut frequencies =
+                NoteEventSource::new(areas, mock_touches(vec![TouchState::NoTouch]));
             assert_eq!(frequencies.next(), Some(from_single(NoteOff)));
         }
 
@@ -347,7 +348,7 @@ mod test {
         fn allows_to_specify_the_starting_note() {
             let areas = Areas::stripes(800, 600, 10, 49);
             let mut frequencies =
-                NoteEvents::new(areas, mock_touches(vec![TouchState::Touch(pos(5))]));
+                NoteEventSource::new(areas, mock_touches(vec![TouchState::Touch(pos(5))]));
             assert_eq!(
                 frequencies.next(),
                 Some(from_single(NoteOn(midi_to_frequency(49))))

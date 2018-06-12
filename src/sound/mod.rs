@@ -3,11 +3,11 @@ pub mod generator;
 pub mod midi;
 pub mod midi_player;
 
-use areas::NoteEvents;
+use areas::NoteEventSource;
 use evdev::Slots;
 
 pub trait Player {
-    fn consume(&self, note_events: NoteEvents);
+    fn consume(&self, note_event_source: NoteEventSource);
 }
 
 #[derive(Debug, PartialEq, Clone, Copy)]

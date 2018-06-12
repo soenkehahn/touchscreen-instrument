@@ -3,7 +3,7 @@ extern crate jack;
 use super::generator;
 use super::generator::Generator;
 use super::Player;
-use areas::NoteEvents;
+use areas::NoteEventSource;
 use get_binary_name;
 use jack::*;
 use sound::NoteEvent;
@@ -46,8 +46,8 @@ impl AudioPlayer {
 }
 
 impl Player for AudioPlayer {
-    fn consume(&self, note_events: NoteEvents) {
-        for slots in note_events {
+    fn consume(&self, note_event_source: NoteEventSource) {
+        for slots in note_event_source {
             match self.generator_mutex.lock() {
                 Err(e) => {
                     eprintln!("main_: error: {:?}", e);
