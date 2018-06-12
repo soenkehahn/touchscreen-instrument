@@ -7,10 +7,7 @@ pub mod render;
 use self::rectangle::Rectangle;
 use self::sdl2::pixels::Color;
 use evdev::{Position, TouchState};
-
-fn midi_to_frequency(midi: i32) -> f32 {
-    440.0 * 2.0_f32.powf(((midi - 69) as f32) / 12.0)
-}
+use sound::midi::midi_to_frequency;
 
 #[derive(Clone)]
 pub struct Areas {
@@ -147,25 +144,6 @@ impl Iterator for NoteEvents {
 mod test {
     use super::NoteEvent::*;
     use super::*;
-
-    mod midi_to_frequency {
-        use super::*;
-
-        #[test]
-        fn converts_the_concert_pitch_correctly() {
-            assert_eq!(midi_to_frequency(69), 440.0);
-        }
-
-        #[test]
-        fn converts_octaves_correctly() {
-            assert_eq!(midi_to_frequency(57), 220.0);
-        }
-
-        #[test]
-        fn converts_semitones_correctly() {
-            assert_eq!(midi_to_frequency(70), 440.0 * 2.0_f32.powf(1.0 / 12.0));
-        }
-    }
 
     fn pos(x: i32) -> Position {
         Position { x, y: 5 }
