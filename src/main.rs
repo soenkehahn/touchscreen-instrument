@@ -9,7 +9,7 @@ mod cli;
 mod evdev;
 mod sound;
 
-use areas::{Areas, NoteEvents};
+use areas::{note_event_source::NoteEventSource, Areas};
 use evdev::*;
 use sound::audio_player::AudioPlayer;
 use sound::generator;
@@ -87,14 +87,11 @@ fn get_binary_name() -> Result<String, ErrorString> {
     Ok(binary_name.to_string())
 }
 
-fn get_note_events() -> Result<NoteEvents, ErrorString> {
-    let touches = Positions::new("/dev/input/event15")?;
+fn get_note_event_source() -> Result<NoteEventSource, ErrorString> {
+    let touches = PositionSource::new("/dev/input/event15")?;
     let areas = Areas::peas(TOUCH_WIDTH, TOUCH_HEIGHT, 1000);
     areas.clone().spawn_ui();
-    Ok(NoteEvents::new(
-        areas,
-        touches.map(|touchstates| *TouchState::get_first(touchstates.iter())),
-    ))
+    Ok(NoteEventSource::new(areas, touches))
 }
 
 fn get_player(cli_args: cli::Args) -> Result<Box<Player>, ErrorString> {
@@ -113,8 +110,8 @@ fn get_player(cli_args: cli::Args) -> Result<Box<Player>, ErrorString> {
 
 fn main() -> Result<(), ErrorString> {
     let cli_args = cli::parse(clap::App::new(get_binary_name()?))?;
-    let note_events = get_note_events()?;
+    let note_event_source = get_note_event_source()?;
     let player = get_player(cli_args)?;
-    player.consume(note_events);
+    player.consume(note_event_source);
     Ok(())
 }

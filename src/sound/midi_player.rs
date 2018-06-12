@@ -1,9 +1,10 @@
 extern crate jack;
 
 use super::Player;
-use areas::{NoteEvent, NoteEvents};
+use areas::note_event_source::NoteEventSource;
 use jack::*;
 use sound::midi::frequency_to_midi;
+use sound::NoteEvent;
 use std::sync::mpsc::{channel, Receiver, Sender};
 use {get_binary_name, ErrorString};
 
@@ -34,9 +35,9 @@ impl MidiPlayer {
 }
 
 impl Player for MidiPlayer {
-    fn consume(&self, note_events: NoteEvents) {
-        for event in note_events {
-            match self.sender.send(event) {
+    fn consume(&self, note_event_source: NoteEventSource) {
+        for slots in note_event_source {
+            match self.sender.send(NoteEvent::get_first_note_on(slots)) {
                 Ok(()) => {}
                 Err(e) => eprintln!("MidiPlayer.consume: error: {:?}", e),
             }

@@ -3,9 +3,10 @@ extern crate jack;
 use super::generator;
 use super::generator::Generator;
 use super::Player;
-use areas::{NoteEvent, NoteEvents};
+use areas::note_event_source::NoteEventSource;
 use get_binary_name;
 use jack::*;
+use sound::NoteEvent;
 use std::sync::{Arc, Mutex};
 use std::*;
 use ErrorString;
@@ -45,13 +46,13 @@ impl AudioPlayer {
 }
 
 impl Player for AudioPlayer {
-    fn consume(&self, note_events: NoteEvents) {
-        for note_event in note_events {
+    fn consume(&self, note_event_source: NoteEventSource) {
+        for slots in note_event_source {
             match self.generator_mutex.lock() {
                 Err(e) => {
                     eprintln!("main_: error: {:?}", e);
                 }
-                Ok(mut generator) => match note_event {
+                Ok(mut generator) => match NoteEvent::get_first_note_on(slots) {
                     NoteEvent::NoteOff => {
                         generator.note_off();
                     }

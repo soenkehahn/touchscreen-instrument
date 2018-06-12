@@ -6,27 +6,27 @@ use std::fs::File;
 use AddMessage;
 use ErrorString;
 
-pub struct Events {
+pub struct InputEventSource {
     _file: File,
     device: Device,
 }
 
-impl Events {
-    pub fn new(path: &str) -> Result<Events, ErrorString> {
+impl InputEventSource {
+    pub fn new(path: &str) -> Result<InputEventSource, ErrorString> {
         let file = File::open(path).add_message(format!("file not found: {}", path))?;
         let mut device = Device::new().ok_or("evdev: can't initialize device")?;
         device
             .set_fd(&file)
             .add_message(format!("set_fd failed on {}", path))?;
         device.grab(GrabMode::Grab)?;
-        Ok(Events {
+        Ok(InputEventSource {
             _file: file,
             device,
         })
     }
 }
 
-impl Iterator for Events {
+impl Iterator for InputEventSource {
     type Item = InputEvent;
 
     fn next(&mut self) -> Option<InputEvent> {
@@ -45,21 +45,21 @@ impl Iterator for Events {
     }
 }
 
-pub struct SynChunks {
-    iterator: Box<Iterator<Item = InputEvent>>,
+pub struct SynChunkSource {
+    input_event_source: Box<Iterator<Item = InputEvent>>,
 }
 
-impl SynChunks {
-    pub fn new(iterator: impl Iterator<Item = InputEvent> + 'static) -> SynChunks {
-        SynChunks {
-            iterator: Box::new(iterator),
+impl SynChunkSource {
+    pub fn new(input_event_source: impl Iterator<Item = InputEvent> + 'static) -> SynChunkSource {
+        SynChunkSource {
+            input_event_source: Box::new(input_event_source),
         }
     }
 }
 
-impl ::std::fmt::Debug for SynChunks {
+impl ::std::fmt::Debug for SynChunkSource {
     fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-        write!(f, "<SynChunks>")
+        write!(f, "<SynChunkSource>")
     }
 }
 
@@ -83,13 +83,13 @@ fn is_syn_report_event(event: &InputEvent) -> bool {
     }
 }
 
-impl Iterator for SynChunks {
+impl Iterator for SynChunkSource {
     type Item = Vec<InputEvent>;
 
     fn next(&mut self) -> Option<Vec<InputEvent>> {
         let mut result = vec![];
         loop {
-            match self.iterator.next() {
+            match self.input_event_source.next() {
                 None => {
                     if result.is_empty() {
                         return None;
@@ -99,7 +99,7 @@ impl Iterator for SynChunks {
                 }
                 Some(event) => {
                     if is_syn_dropped_event(&event) {
-                        eprintln!("SynChunks: dropped events");
+                        eprintln!("SynChunkSource: dropped events");
                     } else if is_syn_report_event(&event) {
                         break;
                     } else {
@@ -124,19 +124,32 @@ struct SlotState {
     btn_touch: bool,
 }
 
-type TouchArray<T> = [T; 10];
+pub type Slots<T> = [T; 10];
+
+pub fn slot_map<F, T, U: Copy + Default>(input: Slots<T>, f: F) -> Slots<U>
+where
+    F: Fn(&T) -> U,
+{
+    let mut result = [U::default(); 10];
+    for (i, t) in input.into_iter().enumerate() {
+        result[i] = f(t);
+    }
+    result
+}
 
 #[derive(Debug)]
-pub struct Positions {
-    syn_chunks: SynChunks,
-    slots: TouchArray<SlotState>,
+pub struct PositionSource {
+    syn_chunk_source: SynChunkSource,
+    slots: Slots<SlotState>,
     slot_active: usize,
 }
 
-impl Positions {
-    fn new_from_iterator(iterator: impl Iterator<Item = InputEvent> + 'static) -> Positions {
-        Positions {
-            syn_chunks: SynChunks::new(iterator),
+impl PositionSource {
+    fn new_from_iterator(
+        input_event_source: impl Iterator<Item = InputEvent> + 'static,
+    ) -> PositionSource {
+        PositionSource {
+            syn_chunk_source: SynChunkSource::new(input_event_source),
             slots: [SlotState {
                 position: Position { x: 0, y: 0 },
                 btn_touch: false,
@@ -145,8 +158,10 @@ impl Positions {
         }
     }
 
-    pub fn new(file: &str) -> Result<Positions, ErrorString> {
-        Ok(Positions::new_from_iterator(Events::new(file)?))
+    pub fn new(file: &str) -> Result<PositionSource, ErrorString> {
+        Ok(PositionSource::new_from_iterator(InputEventSource::new(
+            file,
+        )?))
     }
 }
 
@@ -156,25 +171,11 @@ pub enum TouchState<T> {
     Touch(T),
 }
 
-impl<T> TouchState<T> {
-    pub fn get_first<'a, I>(iterator: I) -> &'a TouchState<T>
-    where
-        I: Iterator<Item = &'a TouchState<T>>,
-    {
-        for element in iterator {
-            if let TouchState::Touch(_) = element {
-                return element;
-            }
-        }
-        &TouchState::NoTouch
-    }
-}
-
-impl Iterator for Positions {
-    type Item = TouchArray<TouchState<Position>>;
+impl Iterator for PositionSource {
+    type Item = Slots<TouchState<Position>>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        match self.syn_chunks.next() {
+        match self.syn_chunk_source.next() {
             None => None,
             Some(chunk) => {
                 for event in chunk {
@@ -232,8 +233,8 @@ mod test {
             }
         }
 
-        fn positions(vec: Vec<InputEvent>) -> Positions {
-            Positions::new_from_iterator(vec.into_iter())
+        fn positions(vec: Vec<InputEvent>) -> PositionSource {
+            PositionSource::new_from_iterator(vec.into_iter())
         }
     }
 
@@ -248,7 +249,7 @@ mod test {
                 Mock::ev(EV_SYN, EventCode::EV_SYN(SYN_REPORT), 0),
             ];
             assert_eq!(
-                SynChunks::new(vec.into_iter()).next(),
+                SynChunkSource::new(vec.into_iter()).next(),
                 Some(vec![
                     Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_SLOT), 1),
                     Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_SLOT), 2),
@@ -265,7 +266,7 @@ mod test {
                 Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_SLOT), 2),
                 Mock::ev(EV_SYN, EventCode::EV_SYN(SYN_REPORT), 0),
             ];
-            let mut syn_chunks = SynChunks::new(vec.into_iter());
+            let mut syn_chunks = SynChunkSource::new(vec.into_iter());
             syn_chunks.next();
             assert_eq!(
                 syn_chunks.next(),
@@ -276,7 +277,7 @@ mod test {
         #[test]
         fn handles_terminating_streams_gracefully() {
             let vec = vec![Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_SLOT), 1)];
-            let mut syn_chunks = SynChunks::new(vec.into_iter());
+            let mut syn_chunks = SynChunkSource::new(vec.into_iter());
             assert_eq!(
                 syn_chunks.next(),
                 Some(vec![Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_SLOT), 1)])
@@ -286,45 +287,13 @@ mod test {
         }
     }
 
-    mod touch_state {
-        use super::*;
-
-        mod get_first {
-            use super::*;
-
-            #[test]
-            fn returns_the_first_element_if_not_none() {
-                let array = [Touch(1), Touch(2)];
-                assert_eq!(TouchState::get_first(array.iter()), &Touch(1));
-            }
-
-            #[test]
-            fn returns_the_first_element_that_is_not_none() {
-                let array = [NoTouch, Touch(2)];
-                assert_eq!(TouchState::get_first(array.iter()), &Touch(2));
-            }
-
-            #[test]
-            fn returns_no_touch_if_every_element_is_none() {
-                let array: [TouchState<i32>; 2] = [NoTouch, NoTouch];
-                assert_eq!(TouchState::get_first(array.iter()), &NoTouch);
-            }
-
-            #[test]
-            fn returns_no_touch_for_an_empty_iterator() {
-                let array: [TouchState<i32>; 0] = [];
-                assert_eq!(TouchState::get_first(array.iter()), &NoTouch);
-            }
-        }
-    }
-
     mod positions {
         use super::*;
 
         mod slot_zero {
             use super::*;
 
-            impl Positions {
+            impl PositionSource {
                 pub fn next_slot(&mut self, n: usize) -> Option<TouchState<Position>> {
                     self.next().map(|states| states[n].clone())
                 }
