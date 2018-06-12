@@ -10,3 +10,6 @@ sdl2 = { version = "*", features = ["gfx"] }
 palette = "*"
 clap = "*"
 nix = "*"
+
+[features]
+ci = []

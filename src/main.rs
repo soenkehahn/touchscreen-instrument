@@ -1,3 +1,5 @@
+#![cfg_attr(feature = "ci", deny(warnings))]
+
 extern crate clap;
 extern crate jack;
 extern crate nix;
