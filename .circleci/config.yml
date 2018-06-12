@@ -19,7 +19,7 @@ jobs:
             cargo fmt -- --write-mode=diff
       - run:
           name: tests
-          command: cargo test
+          command: cargo test --features=ci
       - run:
           name: build
-          command: cargo build
+          command: cargo build --features=ci
