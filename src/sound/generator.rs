@@ -205,53 +205,57 @@ mod test {
     mod generator {
         use super::*;
 
+        fn buffer() -> [f32; 10] {
+            [42.0; 10]
+        }
+
         #[test]
         fn starts_at_zero() {
-            let buffer: &mut [f32] = &mut [42.0; 10];
             let mut generator = generator();
+            let buffer = &mut buffer();
             generator.generate(SAMPLE_RATE, buffer);
             assert_eq!(buffer[0], 0.0);
         }
 
         #[test]
         fn generates_sine_waves() {
-            let buffer: &mut [f32] = &mut [42.0; 10];
             let mut generator = generator();
-            generator.generate(SAMPLE_RATE, buffer);
+            let mut buffer = buffer();
+            generator.generate(SAMPLE_RATE, &mut buffer);
             assert_eq!(buffer[1], (TAU / SAMPLE_RATE as f32).sin());
             assert_eq!(buffer[2], (2.0 * TAU / SAMPLE_RATE as f32).sin());
         }
 
         #[test]
         fn starts_with_phase_zero_after_pauses() {
-            let buffer: &mut [f32] = &mut [42.0; 10];
             let mut generator = generator();
             generator.note_on(1.0);
-            generator.generate(SAMPLE_RATE, buffer);
+            generator.generate(SAMPLE_RATE, &mut buffer());
             generator.note_off();
-            generator.generate(SAMPLE_RATE, buffer);
+            generator.generate(SAMPLE_RATE, &mut buffer());
             generator.note_on(1.0);
-            generator.generate(SAMPLE_RATE, buffer);
+            let mut buffer = buffer();
+            generator.generate(SAMPLE_RATE, &mut buffer);
             assert_eq!(buffer[0], 0.0);
         }
 
         #[test]
         fn doesnt_reset_the_phase_when_changing_the_frequency_without_pause() {
-            let buffer: &mut [f32] = &mut [42.0; 10];
             let mut generator = generator();
             generator.note_on(1.0);
-            generator.generate(SAMPLE_RATE, buffer);
+            generator.generate(SAMPLE_RATE, &mut buffer());
             generator.note_on(1.1);
-            generator.generate(SAMPLE_RATE, buffer);
+            let mut buffer = buffer();
+            generator.generate(SAMPLE_RATE, &mut buffer);
             assert!(buffer[0] != 0.0, "{} should not equal {}", buffer[0], 0.0);
         }
 
         #[test]
         fn works_for_different_frequencies() {
-            let buffer: &mut [f32] = &mut [42.0; 10];
             let mut generator = generator();
             generator.note_on(300.0);
-            generator.generate(SAMPLE_RATE, buffer);
+            let mut buffer = buffer();
+            generator.generate(SAMPLE_RATE, &mut buffer);
             assert_eq!(buffer[1], (300.0 * TAU / SAMPLE_RATE as f32).sin());
             assert_eq!(buffer[2], (2.0 * 300.0 * TAU / SAMPLE_RATE as f32).sin());
             assert_eq!(buffer[9], (9.0 * 300.0 * TAU / SAMPLE_RATE as f32).sin());
@@ -259,12 +263,12 @@ mod test {
 
         #[test]
         fn allows_to_change_the_frequency_later() {
-            let buffer: &mut [f32] = &mut [42.0; 10];
             let mut generator = generator();
             generator.note_on(300.0);
-            generator.generate(SAMPLE_RATE, buffer);
+            generator.generate(SAMPLE_RATE, &mut buffer());
             generator.note_on(500.0);
-            generator.generate(SAMPLE_RATE, buffer);
+            let mut buffer = buffer();
+            generator.generate(SAMPLE_RATE, &mut buffer);
             assert_eq!(buffer[0], ((10.0 * 300.0) * TAU / SAMPLE_RATE as f32).sin());
             assert_eq!(
                 buffer[1],
@@ -278,7 +282,6 @@ mod test {
 
         #[test]
         fn is_initially_muted() {
-            let buffer: &mut [f32] = &mut [42.0; 10];
             let mut generator = Generator::new(
                 Args {
                     amplitude: 1.0,
@@ -287,26 +290,26 @@ mod test {
                 },
                 SAMPLE_RATE,
             );
-            generator.generate(SAMPLE_RATE, buffer);
+            let mut buffer = buffer();
+            generator.generate(SAMPLE_RATE, &mut buffer);
             assert_eq!(buffer[1], 0.0);
             assert_eq!(buffer[2], 0.0);
         }
 
         #[test]
         fn can_be_muted() {
-            let buffer: &mut [f32] = &mut [42.0; 10];
             let mut generator = generator();
             generator.note_on(1.0);
-            generator.generate(SAMPLE_RATE, buffer);
+            generator.generate(SAMPLE_RATE, &mut buffer());
             generator.note_off();
-            generator.generate(SAMPLE_RATE, buffer);
+            let mut buffer = buffer();
+            generator.generate(SAMPLE_RATE, &mut buffer);
             assert_eq!(buffer[1], 0.0);
             assert_eq!(buffer[2], 0.0);
         }
 
         #[test]
         fn allows_to_specify_the_wave_form() {
-            let buffer: &mut [f32] = &mut [42.0; 10];
             let mut generator = Generator::new(
                 Args {
                     amplitude: 1.0,
@@ -316,14 +319,14 @@ mod test {
                 SAMPLE_RATE,
             );
             generator.note_on(1.0);
-            generator.generate(SAMPLE_RATE, buffer);
+            let mut buffer = buffer();
+            generator.generate(SAMPLE_RATE, &mut buffer);
             assert_eq!(buffer[0], 0.0);
             assert_close(buffer[1], 5.0 * TAU / SAMPLE_RATE as f32);
         }
 
         #[test]
         fn allows_to_scale_the_amplitude() {
-            let buffer: &mut [f32] = &mut [42.0; 10];
             let mut generator = Generator::new(
                 Args {
                     amplitude: 0.25,
@@ -333,13 +336,13 @@ mod test {
                 SAMPLE_RATE,
             );
             generator.note_on(1.0);
-            generator.generate(SAMPLE_RATE, buffer);
+            let mut buffer = buffer();
+            generator.generate(SAMPLE_RATE, &mut buffer);
             assert_eq!(buffer[0], 0.1);
         }
 
         #[test]
         fn allows_to_specify_a_decay_time() {
-            let buffer: &mut [f32] = &mut [42.0; 10];
             let mut generator = Generator::new(
                 Args {
                     amplitude: 1.0,
@@ -349,9 +352,10 @@ mod test {
                 10,
             );
             generator.note_on(1.0);
-            generator.generate(10, buffer);
+            generator.generate(10, &mut buffer());
             generator.note_off();
-            generator.generate(10, buffer);
+            let mut buffer = buffer();
+            generator.generate(10, &mut buffer);
             let expected = [0.5, 0.4, 0.3, 0.2, 0.1, 0.0, 0.0, 0.0, 0.0, 0.0];
             let epsilon = 0.0000001;
             let mut close = true;
