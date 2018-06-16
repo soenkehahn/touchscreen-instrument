@@ -5,7 +5,7 @@ use std::fmt::Display;
 use std::str::FromStr;
 use ErrorString;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug)]
 pub struct Args {
     pub volume: f32,
     pub start_note: i32,
