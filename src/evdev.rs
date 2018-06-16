@@ -126,15 +126,22 @@ struct SlotState {
 
 pub type Slots<T> = [T; 10];
 
-pub fn slot_map<F, T, U: Copy + Default>(input: Slots<T>, f: F) -> Slots<U>
+pub fn slot_map<F, T, U>(input: Slots<T>, f: F) -> Slots<U>
 where
     F: Fn(&T) -> U,
 {
-    let mut result = [U::default(); 10];
-    for (i, t) in input.into_iter().enumerate() {
-        result[i] = f(t);
-    }
-    result
+    [
+        f(&input[0]),
+        f(&input[1]),
+        f(&input[2]),
+        f(&input[3]),
+        f(&input[4]),
+        f(&input[5]),
+        f(&input[6]),
+        f(&input[7]),
+        f(&input[8]),
+        f(&input[9]),
+    ]
 }
 
 #[derive(Debug)]
