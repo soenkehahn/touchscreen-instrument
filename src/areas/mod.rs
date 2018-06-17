@@ -2,18 +2,34 @@ extern crate palette;
 extern crate sdl2;
 
 pub mod note_event_source;
-pub mod rectangle;
 pub mod render;
+pub mod shape;
 
-use self::rectangle::Rectangle;
 use self::sdl2::pixels::Color;
+use self::shape::Shape;
 use evdev::Position;
 use sound::midi::midi_to_frequency;
 use sound::NoteEvent;
 
 #[derive(Clone)]
+struct Area {
+    shape: Shape,
+    color: Color,
+    midi_note: i32,
+}
+
+impl Area {
+    fn new(shape: Shape, midi_note: i32) -> Area {
+        Area {
+            shape,
+            color: Areas::make_color(midi_note),
+            midi_note,
+        }
+    }
+}
+#[derive(Clone)]
 pub struct Areas {
-    rects: Vec<Rectangle>,
+    areas: Vec<Area>,
     touch_width: u32,
     touch_height: u32,
 }
@@ -26,54 +42,59 @@ impl Areas {
         rect_size: i32,
         start_midi_note: i32,
     ) -> Areas {
-        let mut rects = vec![];
+        let mut areas = vec![];
         for i in 0..30 {
-            rects.push(Rectangle {
-                x: i * rect_size,
-                y: 1,
-                width: rect_size,
-                height: 10000,
-                midi_note: start_midi_note + i,
-            });
+            areas.push(Area::new(
+                Shape::Rectangle {
+                    x: i * rect_size,
+                    y: 1,
+                    width: rect_size,
+                    height: 10000,
+                },
+                start_midi_note + i,
+            ));
         }
         Areas {
-            rects,
+            areas,
             touch_width,
             touch_height,
         }
     }
 
+    #[allow(dead_code)]
     pub fn peas(touch_width: u32, touch_height: u32, rect_size: i32) -> Areas {
-        let mut rects = vec![];
+        let mut areas = vec![];
         for row in 0..4 {
             for i in 0..36 {
                 let row_offset = -((2.5 * rect_size as f32 * row as f32) as i32 + 2 * rect_size);
                 let note_is_even = i % 2 == 0;
                 let pea_offset = if note_is_even { rect_size } else { 0 };
-                rects.push(Rectangle {
-                    x: i * rect_size / 2,
-                    y: touch_height as i32 + pea_offset + row_offset,
-                    width: rect_size,
-                    height: rect_size,
-                    midi_note: 36 + i + row * 12,
-                });
+                areas.push(Area::new(
+                    Shape::Rectangle {
+                        x: i * rect_size / 2,
+                        y: touch_height as i32 + pea_offset + row_offset,
+                        width: rect_size,
+                        height: rect_size,
+                    },
+                    36 + i + row * 12,
+                ));
             }
         }
         Areas {
-            rects,
+            areas,
             touch_width,
             touch_height,
         }
     }
 
     pub fn frequency(&self, position: Position) -> NoteEvent {
-        let touched: Option<&Rectangle> = self.rects
+        let touched: Option<&Area> = self.areas
             .iter()
-            .filter(|rect| rect.contains(position))
+            .filter(|area| area.shape.contains(position))
             .next();
-        match touched.map(|x| midi_to_frequency(x.midi_note())) {
+        match touched {
             None => NoteEvent::NoteOff,
-            Some(x) => NoteEvent::NoteOn(x),
+            Some(area) => NoteEvent::NoteOn(midi_to_frequency(area.midi_note)),
         }
     }
 
@@ -91,20 +112,6 @@ impl Areas {
 
     fn convert_color(color: palette::rgb::Rgb<self::palette::encoding::srgb::Srgb, u8>) -> Color {
         Color::RGB(color.red, color.green, color.blue)
-    }
-
-    fn ui_elements(self, screen_width: u32, screen_height: u32) -> Vec<(sdl2::rect::Rect, Color)> {
-        let x_factor: f32 = screen_width as f32 / self.touch_width as f32;
-        let y_factor: f32 = screen_height as f32 / self.touch_height as f32;
-        self.rects
-            .iter()
-            .map(|x| {
-                (
-                    x.to_sdl_rect(x_factor, y_factor),
-                    Areas::make_color(x.midi_note()),
-                )
-            })
-            .collect()
     }
 }
 
@@ -159,26 +166,73 @@ mod test {
                 #[test]
                 fn returns_correct_rectangles_in_the_lowest_row() {
                     let areas = Areas::peas(800, 600, 10);
-                    let elements = areas.ui_elements(800, 600);
-                    assert_eq!(elements[0].0, sdl2::rect::Rect::new(0, 590, 10, 10));
-                    assert_eq!(elements[1].0, sdl2::rect::Rect::new(5, 580, 10, 10));
-                    assert_eq!(elements[2].0, sdl2::rect::Rect::new(10, 590, 10, 10));
+                    let areas = areas.areas;
+                    assert_eq!(
+                        areas[0].shape,
+                        Shape::Rectangle {
+                            x: 0,
+                            y: 590,
+                            width: 10,
+                            height: 10,
+                        }
+                    );
+                    assert_eq!(
+                        areas[1].shape,
+                        Shape::Rectangle {
+                            x: 5,
+                            y: 580,
+                            width: 10,
+                            height: 10,
+                        }
+                    );
+                    assert_eq!(
+                        areas[2].shape,
+                        Shape::Rectangle {
+                            x: 10,
+                            y: 590,
+                            width: 10,
+                            height: 10
+                        }
+                    );
                 }
 
                 #[test]
                 fn returns_multiple_rows() {
-                    let areas = Areas::peas(800, 600, 10);
-                    let elements = areas.ui_elements(800, 600);
-                    assert_eq!(elements[36].0, sdl2::rect::Rect::new(0, 565, 10, 10));
-                    assert_eq!(elements[37].0, sdl2::rect::Rect::new(5, 555, 10, 10));
-                    assert_eq!(elements[38].0, sdl2::rect::Rect::new(10, 565, 10, 10));
+                    let areas = Areas::peas(800, 600, 10).areas;
+                    assert_eq!(
+                        areas[36].shape,
+                        Shape::Rectangle {
+                            x: 0,
+                            y: 565,
+                            width: 10,
+                            height: 10
+                        }
+                    );
+                    assert_eq!(
+                        areas[37].shape,
+                        Shape::Rectangle {
+                            x: 5,
+                            y: 555,
+                            width: 10,
+                            height: 10
+                        }
+                    );
+                    assert_eq!(
+                        areas[38].shape,
+                        Shape::Rectangle {
+                            x: 10,
+                            y: 565,
+                            width: 10,
+                            height: 10
+                        }
+                    );
                 }
 
                 #[test]
                 fn subsequent_rows_are_one_octaves_higher() {
-                    let areas = Areas::peas(800, 600, 10);
-                    assert_eq!(areas.rects[0].midi_note(), 36);
-                    assert_eq!(areas.rects[36].midi_note(), 36 + 12);
+                    let areas = Areas::peas(800, 600, 10).areas;
+                    assert_eq!(areas[0].midi_note, 36);
+                    assert_eq!(areas[36].midi_note, 36 + 12);
                 }
             }
         }
@@ -215,64 +269,56 @@ mod test {
             }
         }
 
-        mod ui_elements {
+        mod stripes {
             use super::*;
 
             #[test]
             fn returns_a_rectangle_for_the_lowest_pitch() {
-                let elements = Areas::stripes(800, 600, 10, 48).ui_elements(800, 600);
+                let areas = Areas::stripes(800, 600, 10, 48).areas;
                 assert_eq!(
-                    elements.get(0).unwrap().0,
-                    sdl2::rect::Rect::new(0, 1, 10, 10000)
+                    areas.get(0).unwrap().shape,
+                    Shape::Rectangle {
+                        x: 0,
+                        y: 1,
+                        width: 10,
+                        height: 10000
+                    }
                 );
             }
 
             #[test]
             fn returns_rectangles_for_higher_pitches() {
-                let elements = Areas::stripes(800, 600, 10, 48).ui_elements(800, 600);
+                let areas = Areas::stripes(800, 600, 10, 48).areas;
                 assert_eq!(
-                    elements.get(1).unwrap().0,
-                    sdl2::rect::Rect::new(10, 1, 10, 10000)
+                    areas.get(1).unwrap().shape,
+                    Shape::Rectangle {
+                        x: 10,
+                        y: 1,
+                        width: 10,
+                        height: 10000
+                    }
                 );
                 assert_eq!(
-                    elements.get(2).unwrap().0,
-                    sdl2::rect::Rect::new(20, 1, 10, 10000)
-                );
-            }
-
-            #[test]
-            fn translates_touch_coordinates_to_screen_coordinates() {
-                let elements = Areas::stripes(1000, 1000, 10, 48).ui_elements(700, 500);
-                assert_eq!(
-                    elements.get(2).unwrap().0,
-                    sdl2::rect::Rect::new(14, 0, 7, 5000)
-                );
-            }
-
-            #[test]
-            fn factors_in_the_area_size() {
-                let elements = Areas::stripes(1000, 1000, 12, 48).ui_elements(700, 500);
-                assert_eq!(
-                    elements.get(2).unwrap().0,
-                    sdl2::rect::Rect::new(
-                        (24.0 * 0.7) as i32,
-                        (1.0 * 0.5) as i32,
-                        (12.0 * 0.7) as u32,
-                        (10000.0 * 0.5) as u32
-                    )
+                    areas.get(2).unwrap().shape,
+                    Shape::Rectangle {
+                        x: 20,
+                        y: 1,
+                        width: 10,
+                        height: 10000
+                    }
                 );
             }
 
             #[test]
             fn returns_blue_for_c() {
-                let elements = Areas::stripes(1000, 1000, 10, 60).ui_elements(700, 500);
-                assert_eq!(elements.get(0).unwrap().1, Color::RGB(0, 0, 254));
+                let areas = Areas::stripes(800, 600, 10, 60).areas;
+                assert_eq!(areas.get(0).unwrap().color, Color::RGB(0, 0, 254));
             }
 
             #[test]
             fn returns_blue_for_c_when_starting_at_different_notes() {
-                let elements = Areas::stripes(1000, 1000, 10, 59).ui_elements(700, 500);
-                assert_eq!(elements.get(1).unwrap().1, Color::RGB(0, 0, 254));
+                let areas = Areas::stripes(800, 600, 10, 59).areas;
+                assert_eq!(areas.get(1).unwrap().color, Color::RGB(0, 0, 254));
             }
         }
     }
