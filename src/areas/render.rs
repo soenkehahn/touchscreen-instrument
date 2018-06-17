@@ -14,10 +14,14 @@ use ErrorString;
 impl Areas {
     pub fn spawn_ui(self) {
         ::std::thread::spawn(move || {
-            if let Err(e) = Ui::run_ui(self) {
-                eprintln!("error in ui thread: {:?}", e);
-            }
+            self.run_ui();
         });
+    }
+
+    pub fn run_ui(self) {
+        if let Err(e) = Ui::run_ui(self) {
+            eprintln!("error in ui thread: {:?}", e);
+        }
     }
 }
 

@@ -87,9 +87,13 @@ fn get_binary_name() -> Result<String, ErrorString> {
     Ok(binary_name.to_string())
 }
 
+fn get_areas() -> Areas {
+    Areas::peas(TOUCH_WIDTH, TOUCH_HEIGHT, 1000)
+}
+
 fn get_note_event_source() -> Result<NoteEventSource, ErrorString> {
     let touches = PositionSource::new("/dev/input/event15")?;
-    let areas = Areas::peas(TOUCH_WIDTH, TOUCH_HEIGHT, 1000);
+    let areas = get_areas();
     areas.clone().spawn_ui();
     Ok(NoteEventSource::new(areas, touches))
 }
@@ -110,8 +114,12 @@ fn get_player(cli_args: cli::Args) -> Result<Box<Player>, ErrorString> {
 
 fn main() -> Result<(), ErrorString> {
     let cli_args = cli::parse(clap::App::new(get_binary_name()?))?;
-    let note_event_source = get_note_event_source()?;
-    let player = get_player(cli_args)?;
-    player.consume(note_event_source);
+    if cli_args.dev_mode {
+        get_areas().run_ui();
+    } else {
+        let note_event_source = get_note_event_source()?;
+        let player = get_player(cli_args)?;
+        player.consume(note_event_source);
+    }
     Ok(())
 }
