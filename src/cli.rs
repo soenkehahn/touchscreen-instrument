@@ -10,6 +10,7 @@ pub struct Args {
     pub volume: f32,
     pub start_note: i32,
     pub midi: bool,
+    pub dev_mode: bool,
 }
 
 pub fn parse<'a, 'b>(app: App<'a, 'b>) -> Result<Args, ErrorString> {
@@ -36,14 +37,22 @@ pub fn parse<'a, 'b>(app: App<'a, 'b>) -> Result<Args, ErrorString> {
                 .help("switches to the midi backend (default: false)")
                 .takes_value(false),
         )
+        .arg(
+            Arg::with_name("dev-mode")
+                .long("dev-mode")
+                .help("disables touch input and audio output (default: false)")
+                .takes_value(false),
+        )
         .get_matches();
     let volume: f32 = parse_with_default(matches.value_of("volume"), 1.0)?;
     let start_note: i32 = parse_with_default(matches.value_of("pitch"), 36)?;
     let midi = matches.is_present("midi");
+    let dev_mode = matches.is_present("dev-mode");
     Ok(Args {
         volume,
         start_note,
         midi,
+        dev_mode,
     })
 }
 
