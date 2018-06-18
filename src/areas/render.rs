@@ -1,13 +1,14 @@
 extern crate sdl2;
 
 use self::sdl2::event::Event;
+use self::sdl2::gfx::primitives::DrawRenderer;
 use self::sdl2::keyboard::Keycode;
 use self::sdl2::pixels::Color;
 use self::sdl2::render::Canvas;
 use self::sdl2::video::Window;
 use self::sdl2::EventPump;
 use self::sdl2::VideoSubsystem;
-use areas::Areas;
+use areas::{Area, Areas};
 use get_binary_name;
 use ErrorString;
 
@@ -28,19 +29,9 @@ impl Areas {
 struct Ui {
     canvas: Canvas<Window>,
     event_pump: EventPump,
-    ui_elements: Vec<(sdl2::rect::Rect, Color)>,
-}
-
-impl From<self::sdl2::video::WindowBuildError> for ErrorString {
-    fn from(e: self::sdl2::video::WindowBuildError) -> ErrorString {
-        ErrorString(format!("{}", e))
-    }
-}
-
-impl From<self::sdl2::IntegerOrSdlError> for ErrorString {
-    fn from(e: self::sdl2::IntegerOrSdlError) -> ErrorString {
-        ErrorString(format!("{}", e))
-    }
+    areas: Vec<Area>,
+    x_factor: f32,
+    y_factor: f32,
 }
 
 impl Ui {
@@ -76,7 +67,9 @@ impl Ui {
         let mut ui = Ui {
             canvas,
             event_pump,
-            ui_elements: areas.ui_elements(screen_rect.width(), screen_rect.height()),
+            areas: areas.areas.clone(),
+            x_factor: screen_rect.width() as f32 / areas.touch_width as f32,
+            y_factor: screen_rect.height() as f32 / areas.touch_height as f32,
         };
         ui.draw()?;
         Ok(ui)
@@ -106,12 +99,24 @@ impl Ui {
     fn draw(&mut self) -> Result<(), ErrorString> {
         self.canvas.set_draw_color(Color::RGB(0, 0, 0));
         self.canvas.clear();
-        for element in &self.ui_elements {
-            let rect = element.0;
-            self.canvas.set_draw_color(element.1);
-            self.canvas.fill_rect(rect)?;
+        for area in &self.areas {
+            let (xs, ys) = &area.shape.to_polygon(self.x_factor, self.y_factor);
+            let color = area.color;
+            self.canvas.filled_polygon(&xs, &ys, color)?;
         }
         self.canvas.present();
         Ok(())
+    }
+}
+
+impl From<self::sdl2::video::WindowBuildError> for ErrorString {
+    fn from(e: self::sdl2::video::WindowBuildError) -> ErrorString {
+        ErrorString(format!("{}", e))
+    }
+}
+
+impl From<self::sdl2::IntegerOrSdlError> for ErrorString {
+    fn from(e: self::sdl2::IntegerOrSdlError) -> ErrorString {
+        ErrorString(format!("{}", e))
     }
 }
