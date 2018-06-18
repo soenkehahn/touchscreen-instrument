@@ -88,7 +88,7 @@ fn get_binary_name() -> Result<String, ErrorString> {
 }
 
 fn get_areas() -> Areas {
-    Areas::triangles(TOUCH_WIDTH as i32, TOUCH_HEIGHT as i32, 1200)
+    Areas::triangles(TOUCH_WIDTH as i32, TOUCH_HEIGHT as i32, 1400)
 }
 
 fn get_note_event_source() -> Result<NoteEventSource, ErrorString> {

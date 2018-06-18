@@ -91,42 +91,49 @@ impl Areas {
     pub fn triangles(touch_width: i32, touch_height: i32, size: i32) -> Areas {
         let mut areas = vec![];
         let half = size / 2;
-        for row in 0..4 {
+        for row in 0..8 {
             for i in 0..30 {
-                let even = i % 2 == 0;
-                let row_offset = touch_height - (size + half) * row;
-                let triangle = if even {
+                let i_even = i % 2 == 0;
+                let row_offset = touch_height - size * row;
+                let row_even = row % 2 == 0;
+                let x_offset = if row_even { 0 } else { -half };
+                let triangle = if i_even {
                     Shape::Triangle {
                         a: Position {
-                            x: touch_width - i * half,
+                            x: x_offset + touch_width - i * half,
                             y: row_offset,
                         },
                         b: Position {
-                            x: touch_width - (i * half + half),
+                            x: x_offset + touch_width - (i * half + half),
                             y: row_offset - size,
                         },
                         c: Position {
-                            x: touch_width - (i * half + size),
+                            x: x_offset + touch_width - (i * half + size),
                             y: row_offset,
                         },
                     }
                 } else {
                     Shape::Triangle {
                         a: Position {
-                            x: touch_width - ((i - 1) * half + half),
+                            x: x_offset + touch_width - ((i - 1) * half + half),
                             y: row_offset - size,
                         },
                         b: Position {
-                            x: touch_width - ((i - 1) * half + size),
+                            x: x_offset + touch_width - ((i - 1) * half + size),
                             y: row_offset,
                         },
                         c: Position {
-                            x: touch_width - ((i - 1) * half + size + half),
+                            x: x_offset + touch_width - ((i - 1) * half + size + half),
                             y: row_offset - size,
                         },
                     }
                 };
-                areas.push(Area::new(triangle, 36 + row * 12 + i));
+                let midi_offset = if row % 2 == 0 {
+                    row / 2 * 12
+                } else {
+                    (row - 1) / 2 * 12 + 7
+                };
+                areas.push(Area::new(triangle, 36 + midi_offset + i));
             }
         }
         Areas {
@@ -426,19 +433,40 @@ mod test {
             fn has_multiple_rows() {
                 let areas = Areas::triangles(800, 600, 10).areas;
                 assert_eq!(
+                    areas[60].shape,
+                    Shape::Triangle {
+                        a: Position { x: 800, y: 580 },
+                        b: Position { x: 795, y: 570 },
+                        c: Position { x: 790, y: 580 },
+                    }
+                );
+                assert_eq!(
+                    areas[63].shape,
+                    Shape::Triangle {
+                        a: Position { x: 785, y: 570 },
+                        b: Position { x: 780, y: 580 },
+                        c: Position { x: 775, y: 570 },
+                    }
+                );
+            }
+
+            #[test]
+            fn has_intermediate_rows() {
+                let areas = Areas::triangles(800, 600, 10).areas;
+                assert_eq!(
                     areas[30].shape,
                     Shape::Triangle {
-                        a: Position { x: 800, y: 585 },
-                        b: Position { x: 795, y: 575 },
-                        c: Position { x: 790, y: 585 },
-                    }
+                        a: Position { x: 795, y: 590 },
+                        b: Position { x: 790, y: 580 },
+                        c: Position { x: 785, y: 590 },
+                    },
                 );
                 assert_eq!(
                     areas[33].shape,
                     Shape::Triangle {
-                        a: Position { x: 785, y: 575 },
-                        b: Position { x: 780, y: 585 },
-                        c: Position { x: 775, y: 575 },
+                        a: Position { x: 780, y: 580 },
+                        b: Position { x: 775, y: 590 },
+                        c: Position { x: 770, y: 580 },
                     }
                 );
             }
@@ -449,10 +477,22 @@ mod test {
                 let vec: Vec<i32> = areas
                     .into_iter()
                     .map(|area| area.midi_note)
-                    .skip(30)
-                    .take(5)
+                    .skip(60)
+                    .take(3)
                     .collect();
-                assert_eq!(vec, vec![48, 49, 50, 51, 52]);
+                assert_eq!(vec, vec![48, 49, 50]);
+            }
+
+            #[test]
+            fn intermediat_rows_are_a_fifth_apart() {
+                let areas = Areas::triangles(800, 600, 10).areas;
+                let vec: Vec<i32> = areas
+                    .into_iter()
+                    .map(|area| area.midi_note)
+                    .skip(30)
+                    .take(3)
+                    .collect();
+                assert_eq!(vec, vec![43, 44, 45]);
             }
         }
     }
