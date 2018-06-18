@@ -11,7 +11,7 @@ use evdev::Position;
 use sound::midi::midi_to_frequency;
 use sound::NoteEvent;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 struct Area {
     shape: Shape,
     color: Color,
@@ -87,6 +87,55 @@ impl Areas {
         }
     }
 
+    #[allow(dead_code)]
+    pub fn triangles(touch_width: i32, touch_height: i32, size: i32) -> Areas {
+        let mut areas = vec![];
+        let half = size / 2;
+        for row in 0..4 {
+            for i in 0..30 {
+                let even = i % 2 == 0;
+                let row_offset = touch_height - (size + half) * row;
+                let triangle = if even {
+                    Shape::Triangle {
+                        a: Position {
+                            x: touch_width - i * half,
+                            y: row_offset,
+                        },
+                        b: Position {
+                            x: touch_width - (i * half + half),
+                            y: row_offset - size,
+                        },
+                        c: Position {
+                            x: touch_width - (i * half + size),
+                            y: row_offset,
+                        },
+                    }
+                } else {
+                    Shape::Triangle {
+                        a: Position {
+                            x: touch_width - ((i - 1) * half + half),
+                            y: row_offset - size,
+                        },
+                        b: Position {
+                            x: touch_width - ((i - 1) * half + size),
+                            y: row_offset,
+                        },
+                        c: Position {
+                            x: touch_width - ((i - 1) * half + size + half),
+                            y: row_offset - size,
+                        },
+                    }
+                };
+                areas.push(Area::new(triangle, 36 + row * 12 + i));
+            }
+        }
+        Areas {
+            areas,
+            touch_width: touch_width as u32,
+            touch_height: touch_height as u32,
+        }
+    }
+
     pub fn frequency(&self, position: Position) -> NoteEvent {
         let touched: Option<&Area> = self.areas
             .iter()
@@ -157,82 +206,6 @@ mod test {
                     let areas = Areas::stripes(800, 600, 12, 48);
                     assert_eq!(areas.frequency(pos(11)), NoteOn(midi_to_frequency(48)));
                     assert_eq!(areas.frequency(pos(12)), NoteOn(midi_to_frequency(49)));
-                }
-            }
-
-            mod peas {
-                use super::*;
-
-                #[test]
-                fn returns_correct_rectangles_in_the_lowest_row() {
-                    let areas = Areas::peas(800, 600, 10);
-                    let areas = areas.areas;
-                    assert_eq!(
-                        areas[0].shape,
-                        Shape::Rectangle {
-                            x: 0,
-                            y: 590,
-                            width: 10,
-                            height: 10,
-                        }
-                    );
-                    assert_eq!(
-                        areas[1].shape,
-                        Shape::Rectangle {
-                            x: 5,
-                            y: 580,
-                            width: 10,
-                            height: 10,
-                        }
-                    );
-                    assert_eq!(
-                        areas[2].shape,
-                        Shape::Rectangle {
-                            x: 10,
-                            y: 590,
-                            width: 10,
-                            height: 10
-                        }
-                    );
-                }
-
-                #[test]
-                fn returns_multiple_rows() {
-                    let areas = Areas::peas(800, 600, 10).areas;
-                    assert_eq!(
-                        areas[36].shape,
-                        Shape::Rectangle {
-                            x: 0,
-                            y: 565,
-                            width: 10,
-                            height: 10
-                        }
-                    );
-                    assert_eq!(
-                        areas[37].shape,
-                        Shape::Rectangle {
-                            x: 5,
-                            y: 555,
-                            width: 10,
-                            height: 10
-                        }
-                    );
-                    assert_eq!(
-                        areas[38].shape,
-                        Shape::Rectangle {
-                            x: 10,
-                            y: 565,
-                            width: 10,
-                            height: 10
-                        }
-                    );
-                }
-
-                #[test]
-                fn subsequent_rows_are_one_octaves_higher() {
-                    let areas = Areas::peas(800, 600, 10).areas;
-                    assert_eq!(areas[0].midi_note, 36);
-                    assert_eq!(areas[36].midi_note, 36 + 12);
                 }
             }
         }
@@ -319,6 +292,167 @@ mod test {
             fn returns_blue_for_c_when_starting_at_different_notes() {
                 let areas = Areas::stripes(800, 600, 10, 59).areas;
                 assert_eq!(areas.get(1).unwrap().color, Color::RGB(0, 0, 254));
+            }
+        }
+
+        mod peas {
+            use super::*;
+
+            #[test]
+            fn returns_correct_rectangles_in_the_lowest_row() {
+                let areas = Areas::peas(800, 600, 10);
+                let areas = areas.areas;
+                assert_eq!(
+                    areas[0].shape,
+                    Shape::Rectangle {
+                        x: 0,
+                        y: 590,
+                        width: 10,
+                        height: 10,
+                    }
+                );
+                assert_eq!(
+                    areas[1].shape,
+                    Shape::Rectangle {
+                        x: 5,
+                        y: 580,
+                        width: 10,
+                        height: 10,
+                    }
+                );
+                assert_eq!(
+                    areas[2].shape,
+                    Shape::Rectangle {
+                        x: 10,
+                        y: 590,
+                        width: 10,
+                        height: 10
+                    }
+                );
+            }
+
+            #[test]
+            fn returns_multiple_rows() {
+                let areas = Areas::peas(800, 600, 10).areas;
+                assert_eq!(
+                    areas[36].shape,
+                    Shape::Rectangle {
+                        x: 0,
+                        y: 565,
+                        width: 10,
+                        height: 10
+                    }
+                );
+                assert_eq!(
+                    areas[37].shape,
+                    Shape::Rectangle {
+                        x: 5,
+                        y: 555,
+                        width: 10,
+                        height: 10
+                    }
+                );
+                assert_eq!(
+                    areas[38].shape,
+                    Shape::Rectangle {
+                        x: 10,
+                        y: 565,
+                        width: 10,
+                        height: 10
+                    }
+                );
+            }
+
+            #[test]
+            fn subsequent_rows_are_one_octaves_higher() {
+                let areas = Areas::peas(800, 600, 10).areas;
+                assert_eq!(areas[0].midi_note, 36);
+                assert_eq!(areas[36].midi_note, 36 + 12);
+            }
+        }
+
+        mod triangles {
+            use super::*;
+
+            #[test]
+            fn includes_the_first_row() {
+                let areas = Areas::triangles(800, 600, 10).areas;
+                assert_eq!(
+                    areas[0].shape,
+                    Shape::Triangle {
+                        a: Position { x: 800, y: 600 },
+                        b: Position { x: 795, y: 590 },
+                        c: Position { x: 790, y: 600 },
+                    },
+                );
+                assert_eq!(
+                    areas[1].shape,
+                    Shape::Triangle {
+                        a: Position { x: 795, y: 590 },
+                        b: Position { x: 790, y: 600 },
+                        c: Position { x: 785, y: 590 },
+                    }
+                );
+                assert_eq!(
+                    areas[2].shape,
+                    Shape::Triangle {
+                        a: Position { x: 790, y: 600 },
+                        b: Position { x: 785, y: 590 },
+                        c: Position { x: 780, y: 600 },
+                    },
+                );
+                assert_eq!(
+                    areas[3].shape,
+                    Shape::Triangle {
+                        a: Position { x: 785, y: 590 },
+                        b: Position { x: 780, y: 600 },
+                        c: Position { x: 775, y: 590 },
+                    }
+                );
+            }
+
+            #[test]
+            fn has_a_chromatic_scale() {
+                let areas = Areas::triangles(800, 600, 10).areas;
+                let vec: Vec<i32> = areas
+                    .into_iter()
+                    .map(|area| area.midi_note)
+                    .take(5)
+                    .collect();
+                assert_eq!(vec, vec![36, 37, 38, 39, 40]);
+            }
+
+            #[test]
+            fn has_multiple_rows() {
+                let areas = Areas::triangles(800, 600, 10).areas;
+                assert_eq!(
+                    areas[30].shape,
+                    Shape::Triangle {
+                        a: Position { x: 800, y: 585 },
+                        b: Position { x: 795, y: 575 },
+                        c: Position { x: 790, y: 585 },
+                    }
+                );
+                assert_eq!(
+                    areas[33].shape,
+                    Shape::Triangle {
+                        a: Position { x: 785, y: 575 },
+                        b: Position { x: 780, y: 585 },
+                        c: Position { x: 775, y: 575 },
+                    }
+                );
+            }
+
+            #[test]
+            fn rows_are_one_octave_apart() {
+                let areas = Areas::triangles(800, 600, 10).areas;
+                let vec: Vec<i32> = areas
+                    .into_iter()
+                    .map(|area| area.midi_note)
+                    .skip(30)
+                    .take(5)
+                    .collect();
+                assert_eq!(vec, vec![48, 49, 50, 51, 52]);
             }
         }
     }
