@@ -4,10 +4,13 @@ use self::clap::{App, Arg};
 use std::fmt::Display;
 use std::str::FromStr;
 use ErrorString;
+use LayoutType;
+use ALL_LAYOUT_TYPES;
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct Args {
     pub volume: f32,
+    pub layout_type: LayoutType,
     pub start_note: i32,
     pub midi: bool,
     pub dev_mode: bool,
@@ -22,6 +25,17 @@ pub fn parse<'a, 'b>(app: App<'a, 'b>) -> Result<Args, ErrorString> {
                 .long("volume")
                 .value_name("VOLUME")
                 .help("Sets a custom sound volume (default: 1.0)")
+                .takes_value(true),
+        )
+        .arg(
+            Arg::with_name("layout")
+                .long("layout")
+                .value_name("LAYOUT_TYPE")
+                .help(&format!(
+                    "layout type, possible values: {:?}, (default: {:?})",
+                    ALL_LAYOUT_TYPES,
+                    LayoutType::default()
+                ))
                 .takes_value(true),
         )
         .arg(
@@ -48,8 +62,10 @@ pub fn parse<'a, 'b>(app: App<'a, 'b>) -> Result<Args, ErrorString> {
     let start_note: i32 = parse_with_default(matches.value_of("pitch"), 36)?;
     let midi = matches.is_present("midi");
     let dev_mode = matches.is_present("dev-mode");
+    let layout_type = parse_layout_type(matches.value_of("layout"))?;
     Ok(Args {
         volume,
+        layout_type,
         start_note,
         midi,
         dev_mode,
@@ -66,5 +82,18 @@ where
         Some(string) => string
             .parse()
             .map_err(|e| ErrorString::from(format!("{}", e))),
+    }
+}
+
+fn parse_layout_type(input: Option<&str>) -> Result<LayoutType, ErrorString> {
+    match input {
+        None => Ok(LayoutType::default()),
+        Some("Stripes") => Ok(LayoutType::Stripes),
+        Some("Peas") => Ok(LayoutType::Peas),
+        Some("Triangles") => Ok(LayoutType::Triangles),
+        Some(layout) => Err(ErrorString(format!(
+            "unknown layout: {}, possible values: {:?}",
+            layout, ALL_LAYOUT_TYPES
+        ))),
     }
 }

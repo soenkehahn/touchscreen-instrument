@@ -87,13 +87,33 @@ fn get_binary_name() -> Result<String, ErrorString> {
     Ok(binary_name.to_string())
 }
 
-fn get_areas() -> Areas {
-    Areas::triangles(TOUCH_WIDTH as i32, TOUCH_HEIGHT as i32, 1400)
+#[derive(Debug, Clone, Copy)]
+pub enum LayoutType {
+    Stripes,
+    Peas,
+    Triangles,
 }
 
-fn get_note_event_source() -> Result<NoteEventSource, ErrorString> {
+impl Default for LayoutType {
+    fn default() -> LayoutType {
+        LayoutType::Triangles
+    }
+}
+
+const ALL_LAYOUT_TYPES: [LayoutType; 3] =
+    [LayoutType::Stripes, LayoutType::Peas, LayoutType::Triangles];
+
+fn get_areas(cli_args: cli::Args) -> Areas {
+    match cli_args.layout_type {
+        LayoutType::Stripes => Areas::stripes(TOUCH_WIDTH, TOUCH_HEIGHT, 1000, cli_args.start_note),
+        LayoutType::Peas => Areas::peas(TOUCH_WIDTH, TOUCH_HEIGHT, 1400),
+        LayoutType::Triangles => Areas::triangles(TOUCH_WIDTH as i32, TOUCH_HEIGHT as i32, 1400),
+    }
+}
+
+fn get_note_event_source(cli_args: cli::Args) -> Result<NoteEventSource, ErrorString> {
     let touches = PositionSource::new("/dev/input/event15")?;
-    let areas = get_areas();
+    let areas = get_areas(cli_args);
     areas.clone().spawn_ui();
     Ok(NoteEventSource::new(areas, touches))
 }
@@ -115,9 +135,9 @@ fn get_player(cli_args: cli::Args) -> Result<Box<Player>, ErrorString> {
 fn main() -> Result<(), ErrorString> {
     let cli_args = cli::parse(clap::App::new(get_binary_name()?))?;
     if cli_args.dev_mode {
-        get_areas().run_ui();
+        get_areas(cli_args).run_ui();
     } else {
-        let note_event_source = get_note_event_source()?;
+        let note_event_source = get_note_event_source(cli_args)?;
         let player = get_player(cli_args)?;
         player.consume(note_event_source);
     }
