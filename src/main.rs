@@ -98,6 +98,7 @@ custom_derive! {
         Stripes,
         Peas,
         Triangles,
+        Parallelograms,
     }
 }
 
@@ -112,6 +113,13 @@ fn get_areas(cli_args: cli::Args) -> Areas {
         LayoutType::Stripes => Areas::stripes(TOUCH_WIDTH, TOUCH_HEIGHT, 1000, cli_args.start_note),
         LayoutType::Peas => Areas::peas(TOUCH_WIDTH, TOUCH_HEIGHT, 1400),
         LayoutType::Triangles => Areas::triangles(TOUCH_WIDTH as i32, TOUCH_HEIGHT as i32, 1400),
+        LayoutType::Parallelograms => Areas::parallelograms(
+            TOUCH_WIDTH as i32,
+            TOUCH_HEIGHT as i32,
+            (1000, 1300),
+            200,
+            4,
+        ),
     }
 }
 
