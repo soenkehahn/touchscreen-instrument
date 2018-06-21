@@ -82,8 +82,8 @@ impl Shape {
                 Box::new([a.y as i16, b.y as i16, c.y as i16]),
             ),
             Shape::Parallelogram { base, u, v } => (
-                Box::new([base.x as i16, u.x as i16, (u.x + v.x) as i16, v.x as i16]),
-                Box::new([base.y as i16, u.y as i16, (u.y + v.y) as i16, v.y as i16]),
+                Box::new([base.x as i16, (u.x + base.x) as i16, (u.x + v.x + base.x) as i16, (v.x + base.x) as i16]),
+                Box::new([base.y as i16, (u.y + base.y) as i16, (u.y + v.y + base.y) as i16, (v.y + base.y) as i16]),
             ),
         };
         for x in xs.iter_mut() {
@@ -290,7 +290,7 @@ mod test {
             use super::*;
 
             #[test]
-            fn converts_correctly() {
+            fn converts_correctly_base_zero() {
                 let parallelogram = Shape::Parallelogram {
                     base: Position { x: 0, y: 0 },
                     u: Position { x: 10, y: 5 },
@@ -299,6 +299,19 @@ mod test {
 
                 let expected: (Box<[i16]>, Box<[i16]>) =
                     (Box::new([0, 10, 15, 5]), Box::new([0, 5, 15, 10]));
+                assert_eq!(parallelogram.to_polygon(1.0, 1.0), expected);
+            }
+
+            #[test]
+            fn converts_correctly_base_nonzero() {
+                let parallelogram = Shape::Parallelogram {
+                    base: Position { x: 33, y: 77 },
+                    u: Position { x: 10, y: 5 },
+                    v: Position { x: 5, y: 10 },
+                };
+
+                let expected: (Box<[i16]>, Box<[i16]>) =
+                    (Box::new([33, 43, 48, 38]), Box::new([77, 82, 92, 87]));
                 assert_eq!(parallelogram.to_polygon(1.0, 1.0), expected);
             }
 
