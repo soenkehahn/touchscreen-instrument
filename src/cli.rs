@@ -5,7 +5,6 @@ use std::fmt::Display;
 use std::str::FromStr;
 use ErrorString;
 use LayoutType;
-use ALL_LAYOUT_TYPES;
 
 #[derive(Debug, Clone, Copy)]
 pub struct Args {
@@ -17,7 +16,8 @@ pub struct Args {
 }
 
 pub fn parse<'a, 'b>(app: App<'a, 'b>) -> Result<Args, ErrorString> {
-    let matches = app.version("0.1.0")
+    let matches = app
+        .version("0.1.0")
         .author("Sönke Hahn <soenkehahn@gmail.com>")
         .about("musical instrument for touch screens")
         .arg(
@@ -33,7 +33,7 @@ pub fn parse<'a, 'b>(app: App<'a, 'b>) -> Result<Args, ErrorString> {
                 .value_name("LAYOUT_TYPE")
                 .help(&format!(
                     "layout type, possible values: {:?}, (default: {:?})",
-                    ALL_LAYOUT_TYPES,
+                    LayoutType::iter_variants().collect::<Vec<LayoutType>>(),
                     LayoutType::default()
                 ))
                 .takes_value(true),
@@ -93,7 +93,8 @@ fn parse_layout_type(input: Option<&str>) -> Result<LayoutType, ErrorString> {
         Some("Triangles") => Ok(LayoutType::Triangles),
         Some(layout) => Err(ErrorString(format!(
             "unknown layout: {}, possible values: {:?}",
-            layout, ALL_LAYOUT_TYPES
+            layout,
+            LayoutType::iter_variants().collect::<Vec<LayoutType>>()
         ))),
     }
 }

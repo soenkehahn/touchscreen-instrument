@@ -4,6 +4,11 @@ extern crate clap;
 extern crate jack;
 extern crate nix;
 
+#[macro_use]
+extern crate custom_derive;
+#[macro_use]
+extern crate enum_derive;
+
 mod areas;
 mod cli;
 mod evdev;
@@ -87,11 +92,13 @@ fn get_binary_name() -> Result<String, ErrorString> {
     Ok(binary_name.to_string())
 }
 
-#[derive(Debug, Clone, Copy)]
-pub enum LayoutType {
-    Stripes,
-    Peas,
-    Triangles,
+custom_derive! {
+#[derive(Debug, Clone, Copy, IterVariants(LayoutTypeVariants))]
+    pub enum LayoutType {
+        Stripes,
+        Peas,
+        Triangles,
+    }
 }
 
 impl Default for LayoutType {
@@ -99,9 +106,6 @@ impl Default for LayoutType {
         LayoutType::Triangles
     }
 }
-
-const ALL_LAYOUT_TYPES: [LayoutType; 3] =
-    [LayoutType::Stripes, LayoutType::Peas, LayoutType::Triangles];
 
 fn get_areas(cli_args: cli::Args) -> Areas {
     match cli_args.layout_type {

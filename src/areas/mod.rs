@@ -142,7 +142,8 @@ impl Areas {
     }
 
     pub fn frequency(&self, position: Position) -> NoteEvent {
-        let touched: Option<&Area> = self.areas
+        let touched: Option<&Area> = self
+            .areas
             .iter()
             .filter(|area| area.shape.contains(position))
             .next();
