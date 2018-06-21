@@ -27,6 +27,7 @@ impl Area {
         }
     }
 }
+
 #[derive(Clone)]
 pub struct Areas {
     areas: Vec<Area>,
@@ -35,7 +36,6 @@ pub struct Areas {
 }
 
 impl Areas {
-    #[allow(dead_code)]
     pub fn stripes(
         touch_width: u32,
         touch_height: u32,
@@ -61,7 +61,6 @@ impl Areas {
         }
     }
 
-    #[allow(dead_code)]
     pub fn peas(touch_width: u32, touch_height: u32, rect_size: i32) -> Areas {
         let mut areas = vec![];
         for row in 0..4 {
@@ -87,7 +86,6 @@ impl Areas {
         }
     }
 
-    #[allow(dead_code)]
     pub fn triangles(touch_width: i32, touch_height: i32, size: i32) -> Areas {
         let mut areas = vec![];
         let half = size / 2;
@@ -144,7 +142,8 @@ impl Areas {
     }
 
     pub fn frequency(&self, position: Position) -> NoteEvent {
-        let touched: Option<&Area> = self.areas
+        let touched: Option<&Area> = self
+            .areas
             .iter()
             .filter(|area| area.shape.contains(position))
             .next();

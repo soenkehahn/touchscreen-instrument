@@ -10,6 +10,8 @@ sdl2 = { version = "*", features = ["gfx"] }
 palette = "*"
 clap = "*"
 nix = "*"
+custom_derive = "*"
+enum_derive = "*"
 
 [features]
 ci = []

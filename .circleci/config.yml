@@ -13,11 +13,6 @@ jobs:
             apt-get install --yes libsdl2-dev libsdl2-gfx-dev libjack-jackd2-dev
       - checkout
       - run:
-          name: check formatting
-          command: |
-            rustup component add rustfmt-preview
-            cargo fmt -- --write-mode=diff
-      - run:
           name: tests
           command: cargo test --features=ci
       - run:
