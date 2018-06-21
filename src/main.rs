@@ -116,7 +116,7 @@ fn get_areas(cli_args: cli::Args) -> Areas {
 }
 
 fn get_note_event_source(cli_args: cli::Args) -> Result<NoteEventSource, ErrorString> {
-    let touches = PositionSource::new("/dev/input/event15")?;
+    let touches = PositionSource::new("/dev/input/by-id/usb-ILITEK_Multi-Touch-V5100-event-if00")?;
     let areas = get_areas(cli_args);
     areas.clone().spawn_ui();
     Ok(NoteEventSource::new(areas, touches))
