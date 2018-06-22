@@ -118,7 +118,7 @@ fn get_areas(cli_args: cli::Args) -> Areas {
 fn get_note_event_source(cli_args: cli::Args) -> Result<NoteEventSource, ErrorString> {
     let touches = PositionSource::new("/dev/input/by-id/usb-ILITEK_Multi-Touch-V5100-event-if00")?;
     let areas = get_areas(cli_args);
-    areas.clone().spawn_ui();
+    areas.clone().spawn_ui(cli_args);
     Ok(NoteEventSource::new(areas, touches))
 }
 
@@ -139,7 +139,7 @@ fn get_player(cli_args: cli::Args) -> Result<Box<Player>, ErrorString> {
 fn main() -> Result<(), ErrorString> {
     let cli_args = cli::parse(clap::App::new(get_binary_name()?))?;
     if cli_args.dev_mode {
-        get_areas(cli_args).run_ui();
+        get_areas(cli_args).run_ui(cli_args);
     } else {
         let note_event_source = get_note_event_source(cli_args)?;
         let player = get_player(cli_args)?;

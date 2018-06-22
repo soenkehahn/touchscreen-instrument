@@ -9,18 +9,19 @@ use self::sdl2::video::Window;
 use self::sdl2::EventPump;
 use self::sdl2::VideoSubsystem;
 use areas::{Area, Areas};
+use cli;
 use get_binary_name;
 use ErrorString;
 
 impl Areas {
-    pub fn spawn_ui(self) {
+    pub fn spawn_ui(self, cli_args: cli::Args) {
         ::std::thread::spawn(move || {
-            self.run_ui();
+            self.run_ui(cli_args);
         });
     }
 
-    pub fn run_ui(self) {
-        if let Err(e) = Ui::run_ui(self) {
+    pub fn run_ui(self, cli_args: cli::Args) {
+        if let Err(e) = Ui::run_ui(cli_args, self) {
             eprintln!("error in ui thread: {:?}", e);
         }
     }
@@ -35,8 +36,8 @@ struct Ui {
 }
 
 impl Ui {
-    fn run_ui(areas: Areas) -> Result<(), ErrorString> {
-        let mut ui = Ui::new(areas)?;
+    fn run_ui(cli_args: cli::Args, areas: Areas) -> Result<(), ErrorString> {
+        let mut ui = Ui::new(cli_args, areas)?;
         ui.run_main_loop()?;
         ui.quit();
         Ok(())
@@ -49,16 +50,17 @@ impl Ui {
             .map_err(From::from)
     }
 
-    fn new(areas: Areas) -> Result<Ui, ErrorString> {
+    fn new(cli_args: cli::Args, areas: Areas) -> Result<Ui, ErrorString> {
         let sdl_context = sdl2::init()?;
         let video_subsystem = sdl_context.video()?;
         let screen_rect = Ui::get_screen_rect(&video_subsystem)?;
+        let window_size = if cli_args.dev_mode {
+            (800, 600)
+        } else {
+            (screen_rect.width(), screen_rect.height())
+        };
         let window = video_subsystem
-            .window(
-                &get_binary_name()?,
-                screen_rect.width(),
-                screen_rect.height(),
-            )
+            .window(&get_binary_name()?, window_size.0, window_size.1)
             .position(screen_rect.x(), screen_rect.y())
             .borderless()
             .build()?;
@@ -68,8 +70,8 @@ impl Ui {
             canvas,
             event_pump,
             areas: areas.areas.clone(),
-            x_factor: screen_rect.width() as f32 / areas.touch_width as f32,
-            y_factor: screen_rect.height() as f32 / areas.touch_height as f32,
+            x_factor: window_size.0 as f32 / areas.touch_width as f32,
+            y_factor: window_size.1 as f32 / areas.touch_height as f32,
         };
         ui.draw()?;
         Ok(ui)
