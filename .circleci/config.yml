@@ -6,12 +6,17 @@ jobs:
       - image: rust:1.26.2-stretch
 
     steps:
+      - checkout
+      - run:
+          name: check formatting
+          command: |
+            rustup component add rustfmt-preview
+            cargo fmt -- --write-mode=diff
       - run:
           name: install dependencies
           command: |
             apt-get update &&
             apt-get install --yes libsdl2-dev libsdl2-gfx-dev libjack-jackd2-dev
-      - checkout
       - run:
           name: tests
           command: cargo test --features=ci
