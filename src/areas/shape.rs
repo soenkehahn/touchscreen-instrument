@@ -82,8 +82,18 @@ impl Shape {
                 Box::new([a.y as i16, b.y as i16, c.y as i16]),
             ),
             Shape::Parallelogram { base, u, v } => (
-                Box::new([base.x as i16, (u.x + base.x) as i16, (u.x + v.x + base.x) as i16, (v.x + base.x) as i16]),
-                Box::new([base.y as i16, (u.y + base.y) as i16, (u.y + v.y + base.y) as i16, (v.y + base.y) as i16]),
+                Box::new([
+                    base.x as i16,
+                    (u.x + base.x) as i16,
+                    (u.x + v.x + base.x) as i16,
+                    (v.x + base.x) as i16,
+                ]),
+                Box::new([
+                    base.y as i16,
+                    (u.y + base.y) as i16,
+                    (u.y + v.y + base.y) as i16,
+                    (v.y + base.y) as i16,
+                ]),
             ),
         };
         for x in xs.iter_mut() {
