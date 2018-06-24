@@ -2,6 +2,7 @@ extern crate sdl2;
 
 use evdev::Position;
 
+#[allow(unused)]
 #[derive(Debug, Clone, PartialEq)]
 pub enum Shape {
     Rectangle {
