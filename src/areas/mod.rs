@@ -31,14 +31,14 @@ impl Area {
 #[derive(Clone)]
 pub struct Areas {
     areas: Vec<Area>,
-    touch_width: u32,
-    touch_height: u32,
+    touch_width: i32,
+    touch_height: i32,
 }
 
 impl Areas {
     pub fn stripes(
-        touch_width: u32,
-        touch_height: u32,
+        touch_width: i32,
+        touch_height: i32,
         rect_size: i32,
         start_midi_note: i32,
     ) -> Areas {
@@ -61,7 +61,7 @@ impl Areas {
         }
     }
 
-    pub fn peas(touch_width: u32, touch_height: u32, rect_size: i32) -> Areas {
+    pub fn peas(touch_width: i32, touch_height: i32, rect_size: i32) -> Areas {
         let mut areas = vec![];
         for row in 0..4 {
             for i in 0..36 {
@@ -71,7 +71,7 @@ impl Areas {
                 areas.push(Area::new(
                     Shape::Rectangle {
                         x: i * rect_size / 2,
-                        y: touch_height as i32 + pea_offset + row_offset,
+                        y: touch_height + pea_offset + row_offset,
                         width: rect_size,
                         height: rect_size,
                     },
@@ -136,8 +136,8 @@ impl Areas {
         }
         Areas {
             areas,
-            touch_width: touch_width as u32,
-            touch_height: touch_height as u32,
+            touch_width,
+            touch_height,
         }
     }
 
@@ -156,7 +156,7 @@ impl Areas {
                 areas.push(Area::new(
                     Shape::Parallelogram {
                         base: Position {
-                            x: touch_width - width * col + -(slantiness * row) as i32,
+                            x: touch_width - width * col + -(slantiness * row),
                             y: touch_height - height * row,
                         },
                         u: Position { x: -width, y: 0 },
@@ -171,8 +171,8 @@ impl Areas {
         }
         Areas {
             areas,
-            touch_width: touch_width as u32,
-            touch_height: touch_height as u32,
+            touch_width,
+            touch_height,
         }
     }
 
