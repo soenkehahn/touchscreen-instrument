@@ -24,8 +24,8 @@ use std::clone::Clone;
 use std::f32::consts::PI;
 use std::fmt::Debug;
 
-const TOUCH_WIDTH: u32 = 16383;
-const TOUCH_HEIGHT: u32 = 9570;
+const TOUCH_WIDTH: i32 = 16383;
+const TOUCH_HEIGHT: i32 = 9570;
 
 pub struct ErrorString(String);
 
