@@ -118,7 +118,7 @@ fn get_areas(cli_args: cli::Args) -> Areas {
             TOUCH_HEIGHT as i32,
             (1000, 1300),
             200,
-            4,
+            5,
         ),
     }
 }
