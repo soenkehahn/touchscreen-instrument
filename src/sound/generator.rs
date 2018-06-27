@@ -5,7 +5,7 @@ use sound::TAU;
 #[derive(Clone)]
 pub struct Args {
     pub amplitude: f32,
-    pub decay: f32,
+    pub release: f32,
     pub wave_form: WaveForm,
 }
 
@@ -20,7 +20,7 @@ impl Args {
 pub struct Generator {
     amplitude: f32,
     wave_form: WaveForm,
-    decay_per_sample: f32,
+    release_per_sample: f32,
     oscillator_state: OscillatorState,
 }
 
@@ -28,13 +28,13 @@ impl Generator {
     pub fn new(args: Args, sample_rate: i32) -> Generator {
         let Args {
             amplitude,
-            decay,
+            release,
             wave_form,
         } = args;
         Generator {
             amplitude,
             wave_form,
-            decay_per_sample: 1.0 / (sample_rate as f32 * decay),
+            release_per_sample: 1.0 / (sample_rate as f32 * release),
             oscillator_state: OscillatorState::Muted,
         }
     }
@@ -44,7 +44,7 @@ impl Generator {
             frequency,
             phase: match self.oscillator_state {
                 OscillatorState::Playing { phase, .. } => phase,
-                OscillatorState::Decaying { .. } => 0.0,
+                OscillatorState::Releasing { .. } => 0.0,
                 OscillatorState::Muted => 0.0,
             },
         };
@@ -53,20 +53,20 @@ impl Generator {
     pub fn note_off(&mut self) {
         match self.oscillator_state {
             OscillatorState::Playing { frequency, phase } => {
-                self.oscillator_state = OscillatorState::Decaying {
-                    decay_amplitude: 1.0,
+                self.oscillator_state = OscillatorState::Releasing {
+                    release_amplitude: 1.0,
                     frequency,
                     phase,
                 };
             }
-            OscillatorState::Decaying { .. } => {}
+            OscillatorState::Releasing { .. } => {}
             OscillatorState::Muted => {}
         }
     }
 
     fn crank_phase(&mut self, sample_rate: i32) {
         match self.oscillator_state {
-            OscillatorState::Decaying {
+            OscillatorState::Releasing {
                 frequency,
                 ref mut phase,
                 ..
@@ -83,14 +83,14 @@ impl Generator {
         };
     }
 
-    fn step_decay(&mut self) {
+    fn step_release(&mut self) {
         let mute = match self.oscillator_state {
-            OscillatorState::Decaying {
-                ref mut decay_amplitude,
+            OscillatorState::Releasing {
+                ref mut release_amplitude,
                 ..
             } => {
-                *decay_amplitude -= self.decay_per_sample;
-                (*decay_amplitude <= 0.0)
+                *release_amplitude -= self.release_per_sample;
+                (*release_amplitude <= 0.0)
             }
             _ => false,
         };
@@ -101,7 +101,7 @@ impl Generator {
 
     fn step(&mut self, sample_rate: i32) {
         self.crank_phase(sample_rate);
-        self.step_decay();
+        self.step_release();
     }
 
     pub fn generate(&mut self, sample_rate: i32, buffer: &mut [f32]) {
@@ -111,12 +111,12 @@ impl Generator {
                 OscillatorState::Playing { phase, .. } => {
                     *sample += self.wave_form.run(phase) * self.amplitude;
                 }
-                OscillatorState::Decaying {
+                OscillatorState::Releasing {
                     phase,
-                    decay_amplitude,
+                    release_amplitude,
                     ..
                 } => {
-                    *sample += self.wave_form.run(phase) * self.amplitude * decay_amplitude;
+                    *sample += self.wave_form.run(phase) * self.amplitude * release_amplitude;
                 }
                 OscillatorState::Muted => {}
             }
@@ -130,10 +130,10 @@ pub enum OscillatorState {
         frequency: f32,
         phase: f32,
     },
-    Decaying {
+    Releasing {
         frequency: f32,
         phase: f32,
-        decay_amplitude: f32,
+        release_amplitude: f32,
     },
     Muted,
 }
@@ -152,7 +152,7 @@ mod test {
             fn gives_every_slot_a_tenth_of_the_volume() {
                 let args = Args {
                     amplitude: 1.0,
-                    decay: 0.0,
+                    release: 0.0,
                     wave_form: WaveForm::new(|_| 0.0),
                 };
                 for slot_args in args.unfold_generator_args().into_iter() {
@@ -178,7 +178,7 @@ mod test {
             let mut generator = Generator::new(
                 Args {
                     amplitude: 1.0,
-                    decay: 0.0,
+                    release: 0.0,
                     wave_form: WaveForm::new(|x| x.sin()),
                 },
                 SAMPLE_RATE,
@@ -191,7 +191,7 @@ mod test {
             fn get_phase(&self) -> f32 {
                 match self {
                     OscillatorState::Playing { phase, .. } => *phase,
-                    OscillatorState::Decaying { phase, .. } => *phase,
+                    OscillatorState::Releasing { phase, .. } => *phase,
                     OscillatorState::Muted => panic!("get_phase: Muted"),
                 }
             }
@@ -316,7 +316,7 @@ mod test {
                 let mut generator = Generator::new(
                     Args {
                         amplitude: 1.0,
-                        decay: 0.0,
+                        release: 0.0,
                         wave_form: WaveForm::new(|x| x.sin()),
                     },
                     SAMPLE_RATE,
@@ -344,7 +344,7 @@ mod test {
                 let mut generator = Generator::new(
                     Args {
                         amplitude: 1.0,
-                        decay: 0.0,
+                        release: 0.0,
                         wave_form: WaveForm::new(|phase| phase * 5.0),
                     },
                     SAMPLE_RATE,
@@ -361,7 +361,7 @@ mod test {
                 let mut generator = Generator::new(
                     Args {
                         amplitude: 0.25,
-                        decay: 0.0,
+                        release: 0.0,
                         wave_form: WaveForm::new(|_phase| 0.4),
                     },
                     SAMPLE_RATE,
@@ -373,11 +373,11 @@ mod test {
             }
 
             #[test]
-            fn allows_to_specify_a_decay_time() {
+            fn allows_to_specify_a_release_time() {
                 let mut generator = Generator::new(
                     Args {
                         amplitude: 1.0,
-                        decay: 0.5,
+                        release: 0.5,
                         wave_form: WaveForm::new(|_phase| 0.5),
                     },
                     10,
@@ -417,7 +417,7 @@ mod test {
                     let mut generator = Generator::new(
                         Args {
                             amplitude: 0.5,
-                            decay: 0.0,
+                            release: 0.0,
                             wave_form: WaveForm::new(|_phase| 0.5),
                         },
                         sample_rate,
@@ -430,12 +430,12 @@ mod test {
                 }
 
                 #[test]
-                fn adds_its_values_to_the_given_buffer_during_decay() {
+                fn adds_its_values_to_the_given_buffer_during_release() {
                     let sample_rate = 10;
                     let mut a = Generator::new(
                         Args {
                             amplitude: 1.0,
-                            decay: 1.0,
+                            release: 1.0,
                             wave_form: WaveForm::new(|_phase| 0.5),
                         },
                         sample_rate,

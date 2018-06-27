@@ -144,7 +144,7 @@ fn get_player(cli_args: &cli::Args) -> Result<Box<Player>, ErrorString> {
         false => {
             let generator_args = generator::Args {
                 amplitude: cli_args.volume,
-                decay: 0.005,
+                release: 0.005,
                 wave_form: mk_wave_form(cli_args),
             };
             Ok(Box::new(AudioPlayer::new(generator_args)?))
