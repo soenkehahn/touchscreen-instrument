@@ -4,8 +4,6 @@ set -o errexit
 
 # from https://wiki.linuxaudio.org/wiki/raspberrypi
 export DBUS_SESSION_BUS_ADDRESS=unix:path=/run/dbus/system_bus_socket
-jackd -dalsa &
-
 RUST_APP=$(which rust-device-reading)
 xinit $RUST_APP --layout Parallelograms &
 sleep 3
