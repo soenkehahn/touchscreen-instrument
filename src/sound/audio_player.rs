@@ -32,6 +32,8 @@ impl AudioPlayer {
 
         let left_port = client.register_port("left-output", AudioOut)?;
         let right_port = client.register_port("right-output", AudioOut)?;
+        let left_port_clone = left_port.clone_unowned();
+        let right_port_clone = right_port.clone_unowned();
 
         let notification_handler = XRunLogger::new_and_spawn();
         let process_handler = AudioProcessHandler {
@@ -41,11 +43,24 @@ impl AudioPlayer {
             },
             generators_mutex: generators_mutex.clone(),
         };
+
+        let system_left = client.port_by_name("system:playback_1").ok_or("Couldn't find system audio")?;
+        let system_right = client.port_by_name("system:playback_2").ok_or("Couldn't find system audio")?;
+        client.connect_ports(&left_port_clone, &system_left)?;
+        client.connect_ports(&right_port_clone, &system_right)?;
         let async_client = client.activate_async(notification_handler, process_handler)?;
+        
+
+        println!("{:?}", system_left);
+
+
+        
         Ok(AudioPlayer {
             _client: async_client,
             generators_mutex: generators_mutex.clone(),
         })
+
+        
     }
 }
 
