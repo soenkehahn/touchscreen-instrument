@@ -23,7 +23,7 @@ impl AudioPlayer {
         F: Fn(f32) -> f32 + 'static + Send + Clone,
     {
         let name = get_binary_name()?;
-        let (client, _status) = jack::Client::new(&name, jack::ClientOptions::NO_START_SERVER)?;
+        let (client, _status) = jack::Client::new(&name, jack::ClientOptions::empty())?;
         let generators = slot_map(generator_args.unfold_generator_args(), |args| {
             Generator::new((*args).clone(), client.sample_rate() as i32)
         });
