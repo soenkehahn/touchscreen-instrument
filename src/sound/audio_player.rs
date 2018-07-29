@@ -14,7 +14,7 @@ use std::*;
 use ErrorString;
 
 pub struct AudioPlayer {
-    _client: AsyncClient<XRunLogger, AudioProcessHandler>,
+    async_client: AsyncClient<XRunLogger, AudioProcessHandler>,
     pub generators_mutex: Arc<Mutex<Slots<Generator>>>,
 }
 
@@ -29,38 +29,45 @@ impl AudioPlayer {
             Generator::new((*args).clone(), client.sample_rate() as i32)
         });
         let generators_mutex = Arc::new(Mutex::new(generators));
-
-        let left_port = client.register_port("left-output", AudioOut)?;
-        let right_port = client.register_port("right-output", AudioOut)?;
-        let left_port_clone = left_port.clone_unowned();
-        let right_port_clone = right_port.clone_unowned();
+        let ports = Stereo {
+            left: client.register_port("left-output", AudioOut)?,
+            right: client.register_port("right-output", AudioOut)?,
+        };
+        let port_clones = Stereo {
+            left: ports.left.clone_unowned(),
+            right: ports.right.clone_unowned(),
+        };
 
         let notification_handler = XRunLogger::new_and_spawn();
         let process_handler = AudioProcessHandler {
-            ports: Stereo {
-                left: left_port,
-                right: right_port,
-            },
+            ports,
             generators_mutex: generators_mutex.clone(),
         };
-
-        let system_left = client.port_by_name("system:playback_1").ok_or("Couldn't find system audio")?;
-        let system_right = client.port_by_name("system:playback_2").ok_or("Couldn't find system audio")?;
-        client.connect_ports(&left_port_clone, &system_left)?;
-        client.connect_ports(&right_port_clone, &system_right)?;
         let async_client = client.activate_async(notification_handler, process_handler)?;
-        
-
-        println!("{:?}", system_left);
-
-
-        
-        Ok(AudioPlayer {
-            _client: async_client,
+        let audio_player = AudioPlayer {
+            async_client,
             generators_mutex: generators_mutex.clone(),
-        })
+        };
+        audio_player.connect_to_system_ports(port_clones)?;
+        Ok(audio_player)
+    }
 
-        
+    fn connect_to_port(&self, source_port: &Port<Unowned>, name: &str) -> Result<(), ErrorString> {
+        let destination_port = self
+            .async_client
+            .as_client()
+            .port_by_name(name)
+            .ok_or(format!("Couldn't find audio port {}", name))?;
+        self.async_client
+            .as_client()
+            .connect_ports(source_port, &destination_port)?;
+        Ok(())
+    }
+
+    fn connect_to_system_ports(&self, ports: Stereo<Port<Unowned>>) -> Result<(), ErrorString> {
+        self.connect_to_port(&ports.left, "system:playback_1")?;
+        self.connect_to_port(&ports.right, "system:playback_2")?;
+        Ok(())
     }
 }
 
