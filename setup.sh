@@ -4,10 +4,11 @@
 export DBUS_SESSION_BUS_ADDRESS=unix:path=/run/dbus/system_bus_socket
 jackd -dalsa &
 
+RUST_APP=`which rust-device-reading`
 
-rust-device-reading --layout Parallelograms &
+xinit $RUST_APP --layout Parallelograms &
 
-sleep 1
+sleep 3 
 
 # connect the clients 
 SYSTEM_LEFT = "system:playback_1"
