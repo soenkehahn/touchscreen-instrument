@@ -62,7 +62,6 @@ impl Ui {
         let window = video_subsystem
             .window(&get_binary_name()?, window_size.0, window_size.1)
             .position(screen_rect.x(), screen_rect.y())
-            .fullscreen()
             .borderless()
             .build()?;
         let canvas = window.into_canvas().build()?;
