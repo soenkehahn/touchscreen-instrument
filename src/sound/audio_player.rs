@@ -2,6 +2,7 @@ extern crate jack;
 
 use super::generator;
 use super::generator::Generator;
+use super::xrun_logger::XRunLogger;
 use super::Player;
 use areas::note_event_source::NoteEventSource;
 use evdev::{slot_map, Slots};
@@ -13,7 +14,7 @@ use std::*;
 use ErrorString;
 
 pub struct AudioPlayer {
-    _client: AsyncClient<(), AudioProcessHandler>,
+    _client: AsyncClient<XRunLogger, AudioProcessHandler>,
     pub generators_mutex: Arc<Mutex<Slots<Generator>>>,
 }
 
@@ -32,7 +33,7 @@ impl AudioPlayer {
         let left_port = client.register_port("left-output", AudioOut)?;
         let right_port = client.register_port("right-output", AudioOut)?;
 
-        let notification_handler = ();
+        let notification_handler = XRunLogger::new_and_spawn();
         let process_handler = AudioProcessHandler {
             ports: Stereo {
                 left: left_port,
