@@ -12,3 +12,4 @@ sleep 3
 
 jack_connect "system:playback_1" "rust-device-reading:left-output"
 jack_connect "system:playback_2" "rust-device-reading:right-output"
+jack_bufsize 512
