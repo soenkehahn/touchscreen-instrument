@@ -4,4 +4,4 @@ debug_run:
 	./raspberry_debug.sh
 
 build:
-	cargo build
+	cargo build --release
