@@ -1,5 +1,7 @@
 extern crate jack;
+extern crate skipchannel;
 
+use self::skipchannel::*;
 use super::generator;
 use super::generator::Generator;
 use super::xrun_logger::XRunLogger;
@@ -10,13 +12,12 @@ use get_binary_name;
 use jack::*;
 use sound::NoteEvent;
 use std::process::Command;
-use std::sync::{Arc, Mutex};
 use std::*;
 use ErrorString;
 
 pub struct AudioPlayer {
     async_client: AsyncClient<XRunLogger, AudioProcessHandler>,
-    pub generators_mutex: Arc<Mutex<Slots<Generator>>>,
+    sender: Sender<Slots<NoteEvent>>,
 }
 
 impl AudioPlayer {
@@ -29,7 +30,6 @@ impl AudioPlayer {
         let generators = slot_map(generator_args.unfold_generator_args(), |args| {
             Generator::new((*args).clone(), client.sample_rate() as i32)
         });
-        let generators_mutex = Arc::new(Mutex::new(generators));
         let ports = Stereo {
             left: client.register_port("left-output", AudioOut)?,
             right: client.register_port("right-output", AudioOut)?,
@@ -40,14 +40,16 @@ impl AudioPlayer {
         };
 
         let notification_handler = XRunLogger::new_and_spawn();
+        let (sender, receiver) = skipchannel();
         let process_handler = AudioProcessHandler {
             ports,
-            generators_mutex: generators_mutex.clone(),
+            receiver,
+            generators,
         };
         let async_client = client.activate_async(notification_handler, process_handler)?;
         let audio_player = AudioPlayer {
             async_client,
-            generators_mutex: generators_mutex.clone(),
+            sender,
         };
         audio_player.connect_to_system_ports(port_clones)?;
         audio_player.set_period(512)?;
@@ -85,23 +87,7 @@ impl AudioPlayer {
 impl Player for AudioPlayer {
     fn consume(&self, note_event_source: NoteEventSource) {
         for slots in note_event_source {
-            match self.generators_mutex.lock() {
-                Err(e) => {
-                    eprintln!("main_: error: {:?}", e);
-                }
-                Ok(mut generators) => {
-                    for (event, generator) in slots.into_iter().zip(generators.iter_mut()) {
-                        match event {
-                            NoteEvent::NoteOff => {
-                                generator.note_off();
-                            }
-                            NoteEvent::NoteOn(frequency) => {
-                                generator.note_on(*frequency);
-                            }
-                        }
-                    }
-                }
-            }
+            self.sender.send(slots);
         }
     }
 }
@@ -113,29 +99,48 @@ struct Stereo<Port> {
 
 pub struct AudioProcessHandler {
     ports: Stereo<Port<AudioOut>>,
-    generators_mutex: Arc<Mutex<Slots<Generator>>>,
+    receiver: Receiver<Slots<NoteEvent>>,
+    generators: Slots<Generator>,
+}
+
+impl AudioProcessHandler {
+    fn handle_events(&mut self) {
+        match self.receiver.recv() {
+            None => {}
+            Some(slots) => {
+                for (event, generator) in slots.into_iter().zip(self.generators.iter_mut()) {
+                    match event {
+                        NoteEvent::NoteOff => {
+                            generator.note_off();
+                        }
+                        NoteEvent::NoteOn(frequency) => {
+                            generator.note_on(*frequency);
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+fn fill_buffer(client: &Client, generators: &mut Slots<Generator>, buffer: &mut [f32]) {
+    for sample in buffer.iter_mut() {
+        *sample = 0.0;
+    }
+    for generator in generators.iter_mut() {
+        generator.generate(client.sample_rate() as i32, buffer);
+    }
 }
 
 impl ProcessHandler for AudioProcessHandler {
     fn process(&mut self, client: &Client, scope: &ProcessScope) -> Control {
-        match self.generators_mutex.lock() {
-            Ok(mut generators) => {
-                let left_buffer: &mut [f32] = self.ports.left.as_mut_slice(scope);
-                for sample in left_buffer.iter_mut() {
-                    *sample = 0.0;
-                }
-                for generator in generators.iter_mut() {
-                    generator.generate(client.sample_rate() as i32, left_buffer);
-                }
-                self.ports
-                    .right
-                    .as_mut_slice(scope)
-                    .copy_from_slice(left_buffer);
-            }
-            Err(e) => {
-                eprintln!("process: error: {:?}", e);
-            }
-        }
+        self.handle_events();
+        let left_buffer: &mut [f32] = self.ports.left.as_mut_slice(scope);
+        fill_buffer(client, &mut self.generators, left_buffer);
+        self.ports
+            .right
+            .as_mut_slice(scope)
+            .copy_from_slice(left_buffer);
         Control::Continue
     }
 }
