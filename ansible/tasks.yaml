@@ -1,0 +1,51 @@
+- hosts: all
+  tasks:
+    - name: updating apt packages
+      apt:
+        name: "*"
+        state: "latest"
+        update_cache: yes
+      become: true
+
+    - name: installing dependencies
+      apt:
+        name:
+          - git
+          - vim
+          - autoconf
+          - libtool-bin
+
+          # - jackd2
+          - libjack-jackd2-dev
+          - libsdl2-dev
+          - libsdl2-gfx-dev
+          - xinit
+        state: "latest"
+        # update_cache: yes
+      become: true
+
+    - name: cloning repo
+      git:
+        repo: 'https://github.com/soenkehahn/rust-device-reading'
+        dest: /home/pi/rust-device-reading
+        version: ced0a9a
+
+    - name: downloading rustup install script
+      get_url:
+        url: https://sh.rustup.rs
+        dest: /opt/rustup-installer.sh
+        mode: 0655
+      become: true
+
+    - name: installing rustup
+      shell: /opt/rustup-installer.sh --no-modify-path -y
+
+    - name: 'adding ~/.cargo/bin to $PATH'
+      lineinfile:
+        path: /home/pi/.profile
+        line: 'PATH="$HOME/.cargo/bin:$PATH"'
+
+    - name: compiling
+      shell:
+        cmd: /home/pi/.cargo/bin/cargo build --release
+        chdir: rust-device-reading

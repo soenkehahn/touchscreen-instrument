@@ -8,3 +8,6 @@ debug_stop:
 
 build:
 	cargo build --release
+
+deploy:
+	(cd ansible && ansible-playbook -i hosts tasks.yaml)
