@@ -24,15 +24,16 @@
         # update_cache: yes
       become: true
 
-    - name: allow to start X11 programs
+    - name: allowing to start X11 programs
       lineinfile:
         path: /etc/X11/Xwrapper.config
         regexp: "^allowed_users=.*"
         line: 'allowed_users=anybody'
       become: true
 
-    - name: Allow access to audio device
+    - name: allowing access to audio device
       copy:
+        dest: /etc/dbus-1/system.d/audio-devices.conf
         content: |
           <!DOCTYPE busconfig PUBLIC
             "-//freedesktop//DTD D-BUS Bus Configuration 1.0//EN"
@@ -42,8 +43,35 @@
               <allow own="org.freedesktop.ReserveDevice1.Audio0" />
             </policy>
           </busconfig>
+      become: true
 
-        dest: /etc/dbus-1/system.d/audio-devices.conf
+    - name: disabling overscan
+      lineinfile:
+        path: /boot/config.txt
+        regexp: 'disable_overscan=.*'
+        line: 'disable_overscan=1'
+      become: true
+
+    - name: adding group 'realtime'
+      group:
+        name: realtime
+        state: present
+      become: true
+
+    - name: adding user pi to group 'realtime'
+      user:
+        name: pi
+        groups:
+          - realtime
+        append: yes
+      become: true
+
+    - name: allowing realtime priority
+      copy:
+        dest: /etc/security/limits.d/99-realtime.conf
+        content: |
+          @realtime - rtprio 99
+          @realtime - memlock unlimited
       become: true
 
     - name: cloning repo
