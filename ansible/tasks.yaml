@@ -15,13 +15,35 @@
           - autoconf
           - libtool-bin
 
-          # - jackd2
+          - jackd2
           - libjack-jackd2-dev
           - libsdl2-dev
           - libsdl2-gfx-dev
           - xinit
         state: "latest"
         # update_cache: yes
+      become: true
+
+    - name: allow to start X11 programs
+      lineinfile:
+        path: /etc/X11/Xwrapper.config
+        regexp: "^allowed_users=.*"
+        line: 'allowed_users=anybody'
+      become: true
+
+    - name: Allow access to audio device
+      copy:
+        content: |
+          <!DOCTYPE busconfig PUBLIC
+            "-//freedesktop//DTD D-BUS Bus Configuration 1.0//EN"
+            "http://www.freedesktop.org/standards/dbus/1.0/busconfig.dtd">
+          <busconfig>
+            <policy group="audio">
+              <allow own="org.freedesktop.ReserveDevice1.Audio0" />
+            </policy>
+          </busconfig>
+
+        dest: /etc/dbus-1/system.d/audio-devices.conf
       become: true
 
     - name: cloning repo
