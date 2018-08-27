@@ -21,7 +21,7 @@
           - libsdl2-gfx-dev
           - xinit
         state: "latest"
-        # update_cache: yes
+        update_cache: yes
       become: true
 
     - name: allowing to start X11 programs
@@ -74,12 +74,6 @@
           @realtime - memlock unlimited
       become: true
 
-    - name: cloning repo
-      git:
-        repo: 'https://github.com/soenkehahn/rust-device-reading'
-        dest: /home/pi/rust-device-reading
-        version: ced0a9a
-
     - name: downloading rustup install script
       get_url:
         url: https://sh.rustup.rs
@@ -95,7 +89,30 @@
         path: /home/pi/.profile
         line: 'PATH="$HOME/.cargo/bin:$PATH"'
 
+    - name: cloning repo
+      git:
+        repo: 'https://github.com/soenkehahn/rust-device-reading'
+        dest: /home/pi/rust-device-reading
+        version: ced0a9a
+
     - name: compiling
       shell:
         cmd: /home/pi/.cargo/bin/cargo build --release
         chdir: rust-device-reading
+
+    - name: starting the instrument on boot
+      copy:
+        dest: /etc/rc.local
+        content: |
+          #!/bin/sh -e
+
+          _IP=$(hostname -I) || true
+          if [ "$_IP" ]; then
+            printf "My IP address is %s\n" "$_IP"
+          fi
+
+          cd /home/pi/rust-device-reading
+          su -c ./raspberry_debug.sh pi
+
+          exit 0
+      become: true
