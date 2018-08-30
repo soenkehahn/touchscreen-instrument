@@ -16,7 +16,8 @@ pub struct Args {
 }
 
 pub fn parse<'a, 'b>(app: App<'a, 'b>) -> Result<Args, ErrorString> {
-    let matches = app.version("0.1.0")
+    let matches = app
+        .version("0.1.0")
         .author("Sönke Hahn <soenkehahn@gmail.com>")
         .about("musical instrument for touch screens")
         .arg(
