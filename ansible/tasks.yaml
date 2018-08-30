@@ -1,0 +1,110 @@
+- hosts: all
+  tasks:
+    - name: installing dependencies
+      apt:
+        name:
+          - git
+          - vim
+          - autoconf
+          - libtool-bin
+          - jackd2
+          - libjack-jackd2-dev
+          - libsdl2-dev
+          - libsdl2-gfx-dev
+          - xinit
+        state: "latest"
+        update_cache: yes
+      become: true
+
+    - name: allowing to start X11 programs
+      lineinfile:
+        path: /etc/X11/Xwrapper.config
+        regexp: "^allowed_users=.*"
+        line: 'allowed_users=anybody'
+      become: true
+
+    - name: allowing access to audio device
+      copy:
+        dest: /etc/dbus-1/system.d/audio-devices.conf
+        content: |
+          <!DOCTYPE busconfig PUBLIC
+            "-//freedesktop//DTD D-BUS Bus Configuration 1.0//EN"
+            "http://www.freedesktop.org/standards/dbus/1.0/busconfig.dtd">
+          <busconfig>
+            <policy group="audio">
+              <allow own="org.freedesktop.ReserveDevice1.Audio0" />
+            </policy>
+          </busconfig>
+      become: true
+
+    - name: disabling overscan
+      lineinfile:
+        path: /boot/config.txt
+        regexp: 'disable_overscan=.*'
+        line: 'disable_overscan=1'
+      become: true
+
+    - name: adding group 'realtime'
+      group:
+        name: realtime
+        state: present
+      become: true
+
+    - name: adding user pi to group 'realtime'
+      user:
+        name: pi
+        groups:
+          - realtime
+        append: yes
+      become: true
+
+    - name: allowing realtime priority
+      copy:
+        dest: /etc/security/limits.d/99-realtime.conf
+        content: |
+          @realtime - rtprio 99
+          @realtime - memlock unlimited
+      become: true
+
+    - name: downloading rustup install script
+      get_url:
+        url: https://sh.rustup.rs
+        dest: /opt/rustup-installer.sh
+        mode: 0655
+      become: true
+
+    - name: installing rustup
+      shell: /opt/rustup-installer.sh --no-modify-path -y
+
+    - name: 'adding ~/.cargo/bin to $PATH'
+      lineinfile:
+        path: /home/pi/.profile
+        line: 'PATH="$HOME/.cargo/bin:$PATH"'
+
+    - name: cloning repo
+      git:
+        repo: 'https://github.com/soenkehahn/rust-device-reading'
+        dest: /home/pi/rust-device-reading
+        version: ced0a9a
+
+    - name: compiling
+      shell:
+        cmd: /home/pi/.cargo/bin/cargo build --release
+        chdir: rust-device-reading
+
+    - name: starting the instrument on boot
+      copy:
+        dest: /etc/rc.local
+        content: |
+          #!/bin/sh -e
+
+          _IP=$(hostname -I) || true
+          if [ "$_IP" ]; then
+            printf "My IP address is %s\n" "$_IP"
+          fi
+
+          cd /home/pi/rust-device-reading
+          su -c ./raspberry_debug.sh pi
+
+          exit 0
+      become: true
