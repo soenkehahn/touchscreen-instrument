@@ -1,12 +1,5 @@
 - hosts: all
   tasks:
-    - name: updating apt packages
-      apt:
-        name: "*"
-        state: "latest"
-        update_cache: yes
-      become: true
-
     - name: installing dependencies
       apt:
         name:
@@ -14,7 +7,6 @@
           - vim
           - autoconf
           - libtool-bin
-
           - jackd2
           - libjack-jackd2-dev
           - libsdl2-dev
