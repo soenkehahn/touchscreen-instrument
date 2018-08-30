@@ -7,7 +7,4 @@ export DBUS_SESSION_BUS_ADDRESS=unix:path=/run/dbus/system_bus_socket
 
 xinit $PWD/target/release/rust-device-reading \
     --layout Parallelograms \
-    --volume 5 &
-sleep 5
-
-jack_bufsize 512
+    --volume 5
