@@ -52,6 +52,12 @@ impl AudioPlayer {
         Ok(audio_player)
     }
 
+    fn connect_to_system_ports(&self, ports: Stereo<Port<Unowned>>) -> Result<(), ErrorString> {
+        self.connect_to_port(&ports.left, "system:playback_1")?;
+        self.connect_to_port(&ports.right, "system:playback_2")?;
+        Ok(())
+    }
+
     fn connect_to_port(&self, source_port: &Port<Unowned>, name: &str) -> Result<(), ErrorString> {
         let destination_port = self
             .async_client
@@ -61,12 +67,6 @@ impl AudioPlayer {
         self.async_client
             .as_client()
             .connect_ports(source_port, &destination_port)?;
-        Ok(())
-    }
-
-    fn connect_to_system_ports(&self, ports: Stereo<Port<Unowned>>) -> Result<(), ErrorString> {
-        self.connect_to_port(&ports.left, "system:playback_1")?;
-        self.connect_to_port(&ports.right, "system:playback_2")?;
         Ok(())
     }
 }
