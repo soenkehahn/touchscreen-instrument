@@ -9,6 +9,7 @@ use evdev::{slot_map, Slots};
 use get_binary_name;
 use jack::*;
 use sound::NoteEvent;
+use std::process::Command;
 use std::sync::{Arc, Mutex};
 use std::*;
 use ErrorString;
@@ -49,6 +50,7 @@ impl AudioPlayer {
             generators_mutex: generators_mutex.clone(),
         };
         audio_player.connect_to_system_ports(port_clones)?;
+        audio_player.set_period(512)?;
         Ok(audio_player)
     }
 
@@ -67,6 +69,15 @@ impl AudioPlayer {
         self.async_client
             .as_client()
             .connect_ports(source_port, &destination_port)?;
+        Ok(())
+    }
+
+    fn set_period(&self, period: i32) -> Result<(), ErrorString> {
+        let output = Command::new("jack_bufsize")
+            .arg(format!("{}", period))
+            .output()?;
+        println!("{}", String::from_utf8_lossy(&output.stdout));
+        println!("{}", String::from_utf8_lossy(&output.stderr));
         Ok(())
     }
 }
