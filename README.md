@@ -1,3 +1,30 @@
+# touchscreen-instrument
+
+This is a musical instrument running on linux using an external monitor with
+touchscreen support. It currently works with the `gechic 1503i` monitor.
+
+## development
+
+You'll need [rustup](https://rustup.rs/).
+
+Run the test-suite with:
+
+`cargo test`
+
+Run the debug version:
+
+`cargo run`
+
+Build the release version:
+
+`cargo build --release`
+
+Install and run the release version:
+
+`cargo install --force && touchscreen-instrument`
+
+
+
 # running on raspberry pi
 
 ## setup
