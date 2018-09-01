@@ -1,5 +1,5 @@
 [package]
-name = "rust-device-reading"
+name = "touchscreen-instrument"
 version = "0.1.0"
 authors = ["Sönke Hahn <soenkehahn@gmail.com>"]
 

@@ -83,14 +83,14 @@
 
     - name: cloning repo
       git:
-        repo: 'https://github.com/soenkehahn/rust-device-reading'
-        dest: /home/pi/rust-device-reading
+        repo: 'https://github.com/soenkehahn/touchscreen-instrument'
+        dest: /home/pi/touchscreen-instrument
         version: ced0a9a
 
     - name: compiling
       shell:
         cmd: /home/pi/.cargo/bin/cargo build --release
-        chdir: rust-device-reading
+        chdir: touchscreen-instrument
 
     - name: starting the instrument on boot
       copy:
@@ -103,7 +103,7 @@
             printf "My IP address is %s\n" "$_IP"
           fi
 
-          cd /home/pi/rust-device-reading
+          cd /home/pi/touchscreen-instrument
           su -c ./raspberry_debug.sh pi
 
           exit 0
