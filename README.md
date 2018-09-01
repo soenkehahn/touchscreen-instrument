@@ -5,7 +5,8 @@ touchscreen support. It currently works with the `gechic 1503i` monitor.
 
 ## development
 
-You'll need [rustup](https://rustup.rs/).
+You'll need [rustup](https://rustup.rs/) and a few dependencies as listed
+[here](https://github.com/soenkehahn/touchscreen-instrument/blob/master/ansible/tasks.yaml#L3).
 
 Run the test-suite with:
 
@@ -15,6 +16,15 @@ Run the debug version:
 
 `cargo run`
 
+There is a command line interface, see:
+
+`cargo run -- --help`
+
+If you don't have a touchscreen attached to your computer, you can still run
+just the ui of the program with:
+
+`cargo run -- --dev-mode`
+
 Build the release version:
 
 `cargo build --release`
@@ -23,19 +33,13 @@ Install and run the release version:
 
 `cargo install --force && touchscreen-instrument`
 
+## raspberry pi
 
+There's an ansible script that sets up the `touchscreen-instrument` on a
+raspberry pi. It assumes that raspbian is installed and that the device can be
+accessed with ssh through `pi@raspberrypi.local`. Run the deployment with:
 
-# running on raspberry pi
+`make deploy`
 
-## setup
-
-- install rustup
-- apt-get install jackd2 libjack-jackd2-dev libsdl2-dev libsdl2-gfx-dev xinit
-- cargo install --force
-- follow this guide: https://wiki.linuxaudio.org/wiki/raspberrypi
-- disable_overscan=1 in /boot/config.txt
-- set `allowed_users=anybody` in /etc/X11/Xwrapper.config
-
-## starting the instrument
-
-`make debug`
+This'll take some time on the first run. It compiles the program on the
+raspberry.
