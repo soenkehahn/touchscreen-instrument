@@ -104,7 +104,7 @@ custom_derive! {
 
 impl Default for LayoutType {
     fn default() -> LayoutType {
-        LayoutType::Triangles
+        LayoutType::Parallelograms
     }
 }
 
