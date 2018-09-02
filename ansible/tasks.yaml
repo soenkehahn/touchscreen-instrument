@@ -91,9 +91,11 @@
         version: master
 
     - name: compiling
-      shell:
+      command:
         cmd: /home/pi/.cargo/bin/cargo build --release
         chdir: touchscreen-instrument
+      register: compiling
+      changed_when: '"Compiling" in compiling.stderr'
 
     - name: starting the instrument on boot
       copy:
