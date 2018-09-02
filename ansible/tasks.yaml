@@ -74,8 +74,10 @@
         mode: 0655
       become: true
 
-    - name: installing rustup
-      shell: /opt/rustup-installer.sh --no-modify-path -y
+    - name: installing rustup and cargo
+      command: /opt/rustup-installer.sh --no-modify-path -y
+      args:
+        creates: /home/pi/.cargo/bin/cargo
 
     - name: 'adding ~/.cargo/bin to $PATH'
       lineinfile:
