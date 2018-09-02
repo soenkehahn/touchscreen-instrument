@@ -1,0 +1,41 @@
+
+# between 1024 and 128
+
+perceived | period
+good | 128
+bad | 1024
+good | 128
+bad | 1024
+bad | 1024
+bad | 1024
+good | 128
+
+
+# between 1024 and 256
+
+perceived | period
+good | 256
+good | 256
+bad | 1024
+good | 256
+bad | 1024
+bad | 1024
+bad | 1024
+
+
+# between 512 and 256
+
+perceived | period | correct
+good | 256 | true
+bad | 512  | true
+bad | 512  | true
+bad | 512  | true
+good | 512 | false
+good | 256 | true
+bad | 512  | true
+good | 256 | true
+bad | 512  | true
+bad | 256  | false
+bad | 256  | false
+good | 256 | true
+bad | 256  | false
