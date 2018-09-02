@@ -88,7 +88,7 @@
       git:
         repo: 'https://github.com/soenkehahn/touchscreen-instrument'
         dest: /home/pi/touchscreen-instrument
-        version: ced0a9a
+        version: master
 
     - name: compiling
       shell:
