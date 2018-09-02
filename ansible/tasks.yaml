@@ -13,6 +13,7 @@
           - libsdl2-gfx-dev
           - xinit
         state: "latest"
+        cache_valid_time: 3600
         update_cache: yes
       become: true
 
@@ -73,8 +74,10 @@
         mode: 0655
       become: true
 
-    - name: installing rustup
-      shell: /opt/rustup-installer.sh --no-modify-path -y
+    - name: installing rustup and cargo
+      command: /opt/rustup-installer.sh --no-modify-path -y
+      args:
+        creates: /home/pi/.cargo/bin/cargo
 
     - name: 'adding ~/.cargo/bin to $PATH'
       lineinfile:
@@ -85,12 +88,14 @@
       git:
         repo: 'https://github.com/soenkehahn/touchscreen-instrument'
         dest: /home/pi/touchscreen-instrument
-        version: ced0a9a
+        version: master
 
     - name: compiling
-      shell:
+      command:
         cmd: /home/pi/.cargo/bin/cargo build --release
         chdir: touchscreen-instrument
+      register: compiling
+      changed_when: '"Compiling" in compiling.stderr'
 
     - name: starting the instrument on boot
       copy:
