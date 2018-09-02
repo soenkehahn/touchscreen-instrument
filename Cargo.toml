@@ -12,7 +12,7 @@ clap = "*"
 nix = "*"
 custom_derive = "*"
 enum_derive = "*"
-skipchannel = { git = "https://github.com/soenkehahn/rust-skipchannel", rev = "185489bad799b3bbef04d1" }
+skipchannel = { git = "https://github.com/soenkehahn/rust-skipchannel", rev = "20733d3" }
 
 [features]
 ci = []
