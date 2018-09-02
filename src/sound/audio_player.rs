@@ -121,26 +121,30 @@ impl AudioProcessHandler {
             }
         }
     }
-}
 
-fn fill_buffer(client: &Client, generators: &mut Slots<Generator>, buffer: &mut [f32]) {
-    for sample in buffer.iter_mut() {
-        *sample = 0.0;
+    fn fill_buffer(client: &Client, generators: &mut Slots<Generator>, buffer: &mut [f32]) {
+        for sample in buffer.iter_mut() {
+            *sample = 0.0;
+        }
+        for generator in generators.iter_mut() {
+            generator.generate(client.sample_rate() as i32, buffer);
+        }
     }
-    for generator in generators.iter_mut() {
-        generator.generate(client.sample_rate() as i32, buffer);
+
+    fn fill_buffers(&mut self, client: &Client, scope: &ProcessScope) {
+        let left_buffer: &mut [f32] = self.ports.left.as_mut_slice(scope);
+        AudioProcessHandler::fill_buffer(client, &mut self.generators, left_buffer);
+        self.ports
+            .right
+            .as_mut_slice(scope)
+            .copy_from_slice(left_buffer);
     }
 }
 
 impl ProcessHandler for AudioProcessHandler {
     fn process(&mut self, client: &Client, scope: &ProcessScope) -> Control {
         self.handle_events();
-        let left_buffer: &mut [f32] = self.ports.left.as_mut_slice(scope);
-        fill_buffer(client, &mut self.generators, left_buffer);
-        self.ports
-            .right
-            .as_mut_slice(scope)
-            .copy_from_slice(left_buffer);
+        self.fill_buffers(client, scope);
         Control::Continue
     }
 }
