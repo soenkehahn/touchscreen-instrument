@@ -18,11 +18,10 @@ use areas::{note_event_source::NoteEventSource, Areas};
 use evdev::*;
 use sound::audio_player::AudioPlayer;
 use sound::generator;
+use sound::hammond::mk_hammond;
 use sound::midi_player::MidiPlayer;
-use sound::wave_form::WaveForm;
 use sound::Player;
 use std::clone::Clone;
-use std::f32::consts::PI;
 use std::fmt::Debug;
 
 const TOUCH_WIDTH: i32 = 16383;
@@ -138,7 +137,7 @@ fn get_player(cli_args: &cli::Args) -> Result<Box<Player>, ErrorString> {
             let generator_args = generator::Args {
                 amplitude: cli_args.volume,
                 decay: 0.005,
-                wave_form: WaveForm::new(|phase| if phase < PI { -1.0 } else { 1.0 }),
+                wave_form: mk_hammond(vec![1.0, 0.5, 0.25]),
             };
             Ok(Box::new(AudioPlayer::new(generator_args)?))
         }
