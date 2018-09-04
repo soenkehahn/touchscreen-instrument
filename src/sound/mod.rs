@@ -8,6 +8,8 @@ pub mod xrun_logger;
 
 use areas::note_event_source::NoteEventSource;
 
+const TAU: f32 = ::std::f32::consts::PI * 2.0;
+
 pub trait Player {
     fn consume(&self, note_event_source: NoteEventSource);
 }

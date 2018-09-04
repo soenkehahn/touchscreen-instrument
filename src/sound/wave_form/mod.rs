@@ -1,3 +1,5 @@
+mod memoize;
+
 use std::fmt::Debug;
 
 #[derive(Clone)]
