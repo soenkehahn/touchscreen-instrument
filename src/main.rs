@@ -93,7 +93,7 @@ fn get_binary_name() -> Result<String, ErrorString> {
 }
 
 custom_derive! {
-#[derive(Debug, Clone, Copy, IterVariants(LayoutTypeVariants))]
+#[derive(Debug, Clone, Copy, IterVariants(LayoutTypeVariants), PartialEq)]
     pub enum LayoutType {
         Stripes,
         Peas,
@@ -146,7 +146,7 @@ fn get_player(cli_args: cli::Args) -> Result<Box<Player>, ErrorString> {
 }
 
 fn main() -> Result<(), ErrorString> {
-    let cli_args = cli::parse(clap::App::new(get_binary_name()?))?;
+    let cli_args = cli::parse(get_binary_name()?, std::env::args())?;
     if cli_args.dev_mode {
         get_areas(cli_args).run_ui(cli_args);
     } else {

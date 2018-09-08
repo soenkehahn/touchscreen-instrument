@@ -1,12 +1,13 @@
 extern crate clap;
 
 use self::clap::{App, Arg};
+use std::ffi::OsString;
 use std::fmt::Display;
 use std::str::FromStr;
 use ErrorString;
 use LayoutType;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Args {
     pub volume: f32,
     pub layout_type: LayoutType,
@@ -15,8 +16,17 @@ pub struct Args {
     pub dev_mode: bool,
 }
 
-pub fn parse<'a, 'b>(app: App<'a, 'b>) -> Result<Args, ErrorString> {
-    let matches = app
+pub fn parse<S, T>(binary_name: String, args: T) -> Result<Args, ErrorString>
+where
+    S: Into<OsString> + Clone,
+    T: Iterator<Item = S>,
+{
+    let layout_help = format!(
+        "layout type, possible values: {:?}, (default: {:?})",
+        LayoutType::iter_variants().collect::<Vec<LayoutType>>(),
+        LayoutType::default()
+    );
+    let app = App::new(binary_name)
         .version("0.1.0")
         .author("Sönke Hahn <soenkehahn@gmail.com>")
         .about("musical instrument for touch screens")
@@ -31,11 +41,7 @@ pub fn parse<'a, 'b>(app: App<'a, 'b>) -> Result<Args, ErrorString> {
             Arg::with_name("layout")
                 .long("layout")
                 .value_name("LAYOUT_TYPE")
-                .help(&format!(
-                    "layout type, possible values: {:?}, (default: {:?})",
-                    LayoutType::iter_variants().collect::<Vec<LayoutType>>(),
-                    LayoutType::default()
-                ))
+                .help(&layout_help)
                 .takes_value(true),
         )
         .arg(
@@ -56,19 +62,14 @@ pub fn parse<'a, 'b>(app: App<'a, 'b>) -> Result<Args, ErrorString> {
                 .long("dev-mode")
                 .help("disables touch input and audio output (default: false)")
                 .takes_value(false),
-        )
-        .get_matches();
-    let volume: f32 = parse_with_default(matches.value_of("volume"), 1.0)?;
-    let start_note: i32 = parse_with_default(matches.value_of("pitch"), 36)?;
-    let midi = matches.is_present("midi");
-    let dev_mode = matches.is_present("dev-mode");
-    let layout_type = parse_layout_type(matches.value_of("layout"))?;
+        );
+    let matches = app.get_matches_from(args);
     Ok(Args {
-        volume,
-        layout_type,
-        start_note,
-        midi,
-        dev_mode,
+        volume: parse_with_default(matches.value_of("volume"), 1.0)?,
+        layout_type: parse_layout_type(matches.value_of("layout"))?,
+        start_note: parse_with_default(matches.value_of("pitch"), 36)?,
+        midi: matches.is_present("midi"),
+        dev_mode: matches.is_present("dev-mode"),
     })
 }
 
@@ -97,5 +98,59 @@ fn parse_layout_type(input: Option<&str>) -> Result<LayoutType, ErrorString> {
             layout,
             LayoutType::iter_variants().collect::<Vec<LayoutType>>()
         ))),
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    fn args(extra_args: Vec<&str>) -> Args {
+        let with_binary = {
+            let mut result = vec!["test-binary-name"];
+            result.append(&mut extra_args.clone());
+            result
+        };
+        parse("test-binary-name".to_string(), with_binary.into_iter()).unwrap()
+    }
+
+    #[test]
+    fn has_default_values_when_no_arguments_given() {
+        let expected = Args {
+            volume: 1.0,
+            layout_type: LayoutType::default(),
+            start_note: 36,
+            midi: false,
+            dev_mode: false,
+        };
+        assert_eq!(args(vec![]), expected)
+    }
+
+    #[test]
+    fn allows_to_change_the_volume() {
+        assert_eq!(args(vec!["--volume", "2"]).volume, 2.0);
+    }
+
+    #[test]
+    fn allows_to_change_the_layout_type() {
+        assert_eq!(
+            args(vec!["--layout", "Triangles"]).layout_type,
+            LayoutType::Triangles
+        );
+    }
+
+    #[test]
+    fn allows_to_change_the_pitch() {
+        assert_eq!(args(vec!["--pitch", "48"]).start_note, 48);
+    }
+
+    #[test]
+    fn allows_to_change_to_the_midi_backend() {
+        assert_eq!(args(vec!["--midi"]).midi, true);
+    }
+
+    #[test]
+    fn allows_to_enable_dev_mode() {
+        assert_eq!(args(vec!["--dev-mode"]).dev_mode, true);
     }
 }
