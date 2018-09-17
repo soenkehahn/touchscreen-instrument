@@ -137,7 +137,7 @@ fn get_player(cli_args: cli::Args) -> Result<Box<Player>, ErrorString> {
             let generator_args = generator::Args {
                 amplitude: cli_args.volume,
                 decay: 0.005,
-                wave_form: move |phase| if phase < PI { -1.0 } else { 1.0 },
+                wave_form: |phase| if phase < PI { -1.0 } else { 1.0 },
             };
             Ok(Box::new(AudioPlayer::new(generator_args)?))
         }
