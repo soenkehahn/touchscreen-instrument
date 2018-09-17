@@ -1,22 +1,17 @@
 use evdev::{slot_map, Slots};
+use sound::wave_form::WaveForm;
 
 const TAU: f32 = ::std::f32::consts::PI * 2.0;
 
 #[derive(Clone)]
-pub struct Args<F>
-where
-    F: Fn(f32) -> f32 + 'static + Send,
-{
+pub struct Args {
     pub amplitude: f32,
     pub decay: f32,
-    pub wave_form: F,
+    pub wave_form: WaveForm,
 }
 
-impl<F> Args<F>
-where
-    F: Fn(f32) -> f32 + 'static + Send + Clone,
-{
-    pub fn unfold_generator_args(self) -> Slots<Args<F>> {
+impl Args {
+    pub fn unfold_generator_args(self) -> Slots<Args> {
         let mut args = self;
         args.amplitude /= 10.0;
         slot_map([0; 10], |_| args.clone())
@@ -25,13 +20,13 @@ where
 
 pub struct Generator {
     amplitude: f32,
-    wave_form: Box<Fn(f32) -> f32 + 'static + Send>,
+    wave_form: WaveForm,
     decay_per_sample: f32,
     oscillator_state: OscillatorState,
 }
 
 impl Generator {
-    pub fn new<F: Fn(f32) -> f32 + 'static + Send>(args: Args<F>, sample_rate: i32) -> Generator {
+    pub fn new(args: Args, sample_rate: i32) -> Generator {
         let Args {
             amplitude,
             decay,
@@ -39,7 +34,7 @@ impl Generator {
         } = args;
         Generator {
             amplitude,
-            wave_form: Box::new(wave_form),
+            wave_form,
             decay_per_sample: 1.0 / (sample_rate as f32 * decay),
             oscillator_state: OscillatorState::Muted,
         }
@@ -114,14 +109,14 @@ impl Generator {
         for sample in buffer.iter_mut() {
             match self.oscillator_state {
                 OscillatorState::Playing { phase, .. } => {
-                    *sample += (self.wave_form)(phase) * self.amplitude;
+                    *sample += self.wave_form.run(phase) * self.amplitude;
                 }
                 OscillatorState::Decaying {
                     phase,
                     decay_amplitude,
                     ..
                 } => {
-                    *sample += (self.wave_form)(phase) * self.amplitude * decay_amplitude;
+                    *sample += self.wave_form.run(phase) * self.amplitude * decay_amplitude;
                 }
                 OscillatorState::Muted => {}
             }
@@ -159,7 +154,7 @@ mod test {
                 let args = Args {
                     amplitude: 1.0,
                     decay: 0.0,
-                    wave_form: |_| 0.0,
+                    wave_form: WaveForm::new(|_| 0.0),
                 };
                 for slot_args in args.unfold_generator_args().into_iter() {
                     assert_eq!(slot_args.amplitude, 0.1);
@@ -185,7 +180,7 @@ mod test {
                 Args {
                     amplitude: 1.0,
                     decay: 0.0,
-                    wave_form: |x| x.sin(),
+                    wave_form: WaveForm::new(|x| x.sin()),
                 },
                 SAMPLE_RATE,
             );
@@ -324,7 +319,7 @@ mod test {
                     Args {
                         amplitude: 1.0,
                         decay: 0.0,
-                        wave_form: |x| x.sin(),
+                        wave_form: WaveForm::new(|x| x.sin()),
                     },
                     SAMPLE_RATE,
                 );
@@ -352,7 +347,7 @@ mod test {
                     Args {
                         amplitude: 1.0,
                         decay: 0.0,
-                        wave_form: |phase| phase * 5.0,
+                        wave_form: WaveForm::new(|phase| phase * 5.0),
                     },
                     SAMPLE_RATE,
                 );
@@ -369,7 +364,7 @@ mod test {
                     Args {
                         amplitude: 0.25,
                         decay: 0.0,
-                        wave_form: |_phase| 0.4,
+                        wave_form: WaveForm::new(|_phase| 0.4),
                     },
                     SAMPLE_RATE,
                 );
@@ -385,7 +380,7 @@ mod test {
                     Args {
                         amplitude: 1.0,
                         decay: 0.5,
-                        wave_form: |_phase| 0.5,
+                        wave_form: WaveForm::new(|_phase| 0.5),
                     },
                     10,
                 );
@@ -425,7 +420,7 @@ mod test {
                         Args {
                             amplitude: 0.5,
                             decay: 0.0,
-                            wave_form: |_phase| 0.5,
+                            wave_form: WaveForm::new(|_phase| 0.5),
                         },
                         sample_rate,
                     );
@@ -443,7 +438,7 @@ mod test {
                         Args {
                             amplitude: 1.0,
                             decay: 1.0,
-                            wave_form: |_phase| 0.5,
+                            wave_form: WaveForm::new(|_phase| 0.5),
                         },
                         sample_rate,
                     );
