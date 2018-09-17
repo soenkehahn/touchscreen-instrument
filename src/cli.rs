@@ -36,28 +36,24 @@ where
                 .value_name("VOLUME")
                 .help("Sets a custom sound volume (default: 1.0)")
                 .takes_value(true),
-        )
-        .arg(
+        ).arg(
             Arg::with_name("layout")
                 .long("layout")
                 .value_name("LAYOUT_TYPE")
                 .help(&layout_help)
                 .takes_value(true),
-        )
-        .arg(
+        ).arg(
             Arg::with_name("pitch")
                 .long("pitch")
                 .value_name("MIDI")
                 .help("Sets a custom midi pitch to start from (default: 36)")
                 .takes_value(true),
-        )
-        .arg(
+        ).arg(
             Arg::with_name("midi")
                 .long("midi")
                 .help("switches to the midi backend (default: false)")
                 .takes_value(false),
-        )
-        .arg(
+        ).arg(
             Arg::with_name("dev-mode")
                 .long("dev-mode")
                 .help("disables touch input and audio output (default: false)")

@@ -54,9 +54,11 @@ impl Shape {
                 };
                 let multiplication_factor = 1.0 / (u.x * v.y - v.x * u.y) as f32;
                 let u_component = (translated_position.x * v.y + translated_position.y * (-v.x))
-                    as f32 * multiplication_factor;
+                    as f32
+                    * multiplication_factor;
                 let v_component = (translated_position.x * (-u.y) + translated_position.y * u.x)
-                    as f32 * multiplication_factor;
+                    as f32
+                    * multiplication_factor;
                 u_component >= 0.0 && u_component <= 1.0 && v_component >= 0.0 && v_component <= 1.0
             }
         }
