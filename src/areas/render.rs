@@ -14,14 +14,15 @@ use get_binary_name;
 use ErrorString;
 
 impl Areas {
-    pub fn spawn_ui(self, cli_args: cli::Args) {
+    pub fn spawn_ui(self, cli_args: &cli::Args) {
+        let clone = cli_args.clone();
         ::std::thread::spawn(move || {
-            self.run_ui(cli_args);
+            self.run_ui(&clone);
         });
     }
 
-    pub fn run_ui(self, cli_args: cli::Args) {
-        if let Err(e) = Ui::run_ui(cli_args, self) {
+    pub fn run_ui(self, cli_args: &cli::Args) {
+        if let Err(e) = Ui::run_ui(&cli_args, self) {
             eprintln!("error in ui thread: {:?}", e);
         }
     }
@@ -36,7 +37,7 @@ struct Ui {
 }
 
 impl Ui {
-    fn run_ui(cli_args: cli::Args, areas: Areas) -> Result<(), ErrorString> {
+    fn run_ui(cli_args: &cli::Args, areas: Areas) -> Result<(), ErrorString> {
         let mut ui = Ui::new(cli_args, areas)?;
         ui.run_main_loop()?;
         ui.quit();
@@ -50,7 +51,7 @@ impl Ui {
             .map_err(From::from)
     }
 
-    fn new(cli_args: cli::Args, areas: Areas) -> Result<Ui, ErrorString> {
+    fn new(cli_args: &cli::Args, areas: Areas) -> Result<Ui, ErrorString> {
         let sdl_context = sdl2::init()?;
         let video_subsystem = sdl_context.video()?;
         let screen_rect = Ui::get_screen_rect(&video_subsystem)?;
