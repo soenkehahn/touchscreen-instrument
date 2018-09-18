@@ -20,8 +20,10 @@ use sound::audio_player::AudioPlayer;
 use sound::generator;
 use sound::hammond::mk_hammond;
 use sound::midi_player::MidiPlayer;
+use sound::wave_form::WaveForm;
 use sound::Player;
 use std::clone::Clone;
+use std::f32::consts::PI;
 use std::fmt::Debug;
 
 const TOUCH_WIDTH: i32 = 16383;
@@ -82,6 +84,12 @@ impl From<jack::Error> for ErrorString {
     }
 }
 
+impl From<std::num::ParseFloatError> for ErrorString {
+    fn from(e: std::num::ParseFloatError) -> ErrorString {
+        ErrorString(format!("{:?}", e))
+    }
+}
+
 fn get_binary_name() -> Result<String, ErrorString> {
     let current_exe = std::env::current_exe()?;
     let binary_name = current_exe
@@ -137,11 +145,18 @@ fn get_player(cli_args: &cli::Args) -> Result<Box<Player>, ErrorString> {
             let generator_args = generator::Args {
                 amplitude: cli_args.volume,
                 decay: 0.005,
-                wave_form: mk_hammond(vec![1.0, 0.5, 0.25]),
+                wave_form: mk_wave_form(cli_args),
             };
             Ok(Box::new(AudioPlayer::new(generator_args)?))
         }
         true => Ok(Box::new(MidiPlayer::new()?)),
+    }
+}
+
+fn mk_wave_form(cli_args: &cli::Args) -> WaveForm {
+    match cli_args.sound {
+        cli::Sound::Rectangle => WaveForm::new(|phase| if phase < PI { -1.0 } else { 1.0 }),
+        cli::Sound::Harmonics(ref harmonics) => mk_hammond(harmonics.clone()),
     }
 }
 
