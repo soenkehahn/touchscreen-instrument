@@ -13,7 +13,14 @@ pub struct Args {
     pub layout_type: LayoutType,
     pub start_note: i32,
     pub midi: bool,
+    pub sound: Sound,
     pub dev_mode: bool,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum Sound {
+    Rectangle,
+    Harmonics(Vec<f32>),
 }
 
 pub fn parse<S, T>(binary_name: String, args: T) -> Result<Args, ErrorString>
@@ -49,6 +56,11 @@ where
                 .help("Sets a custom midi pitch to start from (default: 36)")
                 .takes_value(true),
         ).arg(
+            Arg::with_name("harmonics")
+                .long("harmonics")
+                .help("switches to the hammond sound and takes harmonics as arguments, separated by commas, e.g. '1,0.5,0.25'")
+                .takes_value(true),
+        ).arg(
             Arg::with_name("midi")
                 .long("midi")
                 .help("switches to the midi backend (default: false)")
@@ -64,6 +76,7 @@ where
         volume: parse_with_default(matches.value_of("volume"), 1.0)?,
         layout_type: parse_layout_type(matches.value_of("layout"))?,
         start_note: parse_with_default(matches.value_of("pitch"), 36)?,
+        sound: parse_sound(matches.value_of("harmonics"))?,
         midi: matches.is_present("midi"),
         dev_mode: matches.is_present("dev-mode"),
     })
@@ -97,6 +110,19 @@ fn parse_layout_type(input: Option<&str>) -> Result<LayoutType, ErrorString> {
     }
 }
 
+fn parse_sound(input: Option<&str>) -> Result<Sound, ErrorString> {
+    match input {
+        None => Ok(Sound::Rectangle),
+        Some(harmonics) => {
+            let mut vector: Vec<f32> = vec![];
+            for harmonic in harmonics.split(',') {
+                vector.push(harmonic.parse()?)
+            }
+            Ok(Sound::Harmonics(vector))
+        }
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -117,6 +143,7 @@ mod test {
             layout_type: LayoutType::default(),
             start_note: 36,
             midi: false,
+            sound: Sound::Rectangle,
             dev_mode: false,
         };
         assert_eq!(args(vec![]), expected)
@@ -148,5 +175,21 @@ mod test {
     #[test]
     fn allows_to_enable_dev_mode() {
         assert_eq!(args(vec!["--dev-mode"]).dev_mode, true);
+    }
+
+    #[test]
+    fn allows_to_specify_harmonics() {
+        assert_eq!(
+            args(vec!["--harmonics", "0.1,0.2"]).sound,
+            Sound::Harmonics(vec![0.1, 0.2])
+        );
+    }
+
+    #[test]
+    fn allows_to_specify_harmonics_as_integers() {
+        assert_eq!(
+            args(vec!["--harmonics", "1,0,1"]).sound,
+            Sound::Harmonics(vec![1.0, 0.0, 1.0])
+        );
     }
 }
