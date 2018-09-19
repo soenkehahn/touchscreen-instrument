@@ -19,6 +19,7 @@ use evdev::*;
 use sound::audio_player::AudioPlayer;
 use sound::generator;
 use sound::midi_player::MidiPlayer;
+use sound::wave_form::WaveForm;
 use sound::Player;
 use std::clone::Clone;
 use std::f32::consts::PI;
@@ -137,7 +138,7 @@ fn get_player(cli_args: cli::Args) -> Result<Box<Player>, ErrorString> {
             let generator_args = generator::Args {
                 amplitude: cli_args.volume,
                 decay: 0.005,
-                wave_form: |phase| if phase < PI { -1.0 } else { 1.0 },
+                wave_form: WaveForm::new(|phase| if phase < PI { -1.0 } else { 1.0 }),
             };
             Ok(Box::new(AudioPlayer::new(generator_args)?))
         }

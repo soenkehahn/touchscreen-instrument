@@ -21,10 +21,7 @@ pub struct AudioPlayer {
 }
 
 impl AudioPlayer {
-    pub fn new<F>(generator_args: generator::Args<F>) -> Result<AudioPlayer, ErrorString>
-    where
-        F: Fn(f32) -> f32 + 'static + Send + Clone,
-    {
+    pub fn new(generator_args: generator::Args) -> Result<AudioPlayer, ErrorString> {
         let name = get_binary_name()?;
         let (client, _status) = jack::Client::new(&name, jack::ClientOptions::empty())?;
         let generators = slot_map(generator_args.unfold_generator_args(), |args| {
