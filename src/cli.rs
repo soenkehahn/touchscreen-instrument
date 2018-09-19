@@ -7,7 +7,7 @@ use std::str::FromStr;
 use ErrorString;
 use LayoutType;
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Args {
     pub volume: f32,
     pub layout_type: LayoutType,

@@ -109,7 +109,7 @@ impl Default for LayoutType {
     }
 }
 
-fn get_areas(cli_args: cli::Args) -> Areas {
+fn get_areas(cli_args: &cli::Args) -> Areas {
     match cli_args.layout_type {
         LayoutType::Stripes => Areas::stripes(TOUCH_WIDTH, TOUCH_HEIGHT, 1000, cli_args.start_note),
         LayoutType::Peas => Areas::peas(TOUCH_WIDTH, TOUCH_HEIGHT, 1400),
@@ -125,14 +125,14 @@ fn get_areas(cli_args: cli::Args) -> Areas {
     }
 }
 
-fn get_note_event_source(cli_args: cli::Args) -> Result<NoteEventSource, ErrorString> {
+fn get_note_event_source(cli_args: &cli::Args) -> Result<NoteEventSource, ErrorString> {
     let touches = PositionSource::new("/dev/input/by-id/usb-ILITEK_Multi-Touch-V5100-event-if00")?;
     let areas = get_areas(cli_args);
     areas.clone().spawn_ui(cli_args);
     Ok(NoteEventSource::new(areas, touches))
 }
 
-fn get_player(cli_args: cli::Args) -> Result<Box<Player>, ErrorString> {
+fn get_player(cli_args: &cli::Args) -> Result<Box<Player>, ErrorString> {
     match cli_args.midi {
         false => {
             let generator_args = generator::Args {
@@ -147,7 +147,7 @@ fn get_player(cli_args: cli::Args) -> Result<Box<Player>, ErrorString> {
 }
 
 fn main() -> Result<(), ErrorString> {
-    let cli_args = cli::parse(get_binary_name()?, std::env::args())?;
+    let cli_args = &cli::parse(get_binary_name()?, std::env::args())?;
     if cli_args.dev_mode {
         get_areas(cli_args).run_ui(cli_args);
     } else {
