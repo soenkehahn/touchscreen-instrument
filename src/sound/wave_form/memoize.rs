@@ -51,10 +51,9 @@ mod test {
     #[test]
     fn does_not_crash_for_values_outside_the_range() {
         let memoized = WaveForm::new(|x: f32| x * 2.0).memoize(10000);
-        let _ = vec![0.0, -0.1, -TAU, -(TAU + 0.1), TAU, TAU + 0.1, 100000.0]
-            .into_iter()
-            .map(|x| memoized.run(x))
-            .collect::<Vec<f32>>();
+        for x in vec![0.0, -0.1, -TAU, -(TAU + 0.1), TAU, TAU + 0.1, 100000.0] {
+            memoized.run(x);
+        }
     }
 
     #[test]
