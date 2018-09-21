@@ -60,8 +60,7 @@ impl AudioPlayer {
     }
 
     fn connect_to_port(&self, source_port: &Port<Unowned>, name: &str) -> Result<(), ErrorString> {
-        let destination_port = self
-            .async_client
+        let destination_port = self.async_client
             .as_client()
             .port_by_name(name)
             .ok_or(format!("Couldn't find audio port {}", name))?;
