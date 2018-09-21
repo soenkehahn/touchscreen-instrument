@@ -13,6 +13,7 @@ nix = "*"
 custom_derive = "*"
 enum_derive = "*"
 skipchannel = "*"
+chrono = "*"
 
 [features]
 ci = []

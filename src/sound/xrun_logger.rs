@@ -1,3 +1,6 @@
+extern crate chrono;
+
+use self::chrono::prelude::*;
 use jack::*;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
@@ -31,7 +34,11 @@ impl XRunLogger {
     fn output(&mut self) -> Option<String> {
         let counter = self.counter.swap(0, Ordering::Relaxed);
         if counter > 0 {
-            Some(format!("xruns: {}", counter))
+            Some(format!(
+                "[{}]: xruns: {}",
+                Utc::now().format("%F %T"),
+                counter
+            ))
         } else {
             None
         }
@@ -62,7 +69,15 @@ mod test {
     fn output_returns_logged_xruns_as_message() {
         let mut logger = XRunLogger::new();
         logger.xrun_();
-        assert_eq!(logger.output(), Some("xruns: 1".to_string()));
+        assert!(logger.output().unwrap().ends_with("xruns: 1"));
+    }
+
+    #[test]
+    fn output_includes_timestamp() {
+        let mut logger = XRunLogger::new();
+        logger.xrun_();
+        let output = logger.output().unwrap();
+        assert_eq!(output, Utc::now().format("[%F %T]: xruns: 1").to_string());
     }
 
     #[test]
@@ -92,9 +107,10 @@ mod test {
         let mut logger = XRunLogger::new();
         let mut logger_clone = logger.clone();
         logger.xrun_();
-        assert_eq!(
-            run_in_thread(move || logger_clone.output()),
-            Some("xruns: 1".to_string())
+        assert!(
+            run_in_thread(move || logger_clone.output())
+                .unwrap()
+                .ends_with("xruns: 1")
         );
         assert_eq!(logger.output(), None);
     }
