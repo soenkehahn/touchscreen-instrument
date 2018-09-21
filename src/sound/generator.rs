@@ -1,7 +1,6 @@
 use evdev::{slot_map, Slots};
 use sound::wave_form::WaveForm;
-
-const TAU: f32 = ::std::f32::consts::PI * 2.0;
+use sound::TAU;
 
 #[derive(Clone)]
 pub struct Args {
