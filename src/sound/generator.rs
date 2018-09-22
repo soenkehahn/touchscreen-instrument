@@ -45,16 +45,28 @@ impl Generator {
     }
 
     pub fn note_on(&mut self, frequency: f32) {
-        self.oscillator_state = OscillatorState::Attacking {
-            frequency,
-            phase: match self.oscillator_state {
-                OscillatorState::Playing { phase, .. } => phase,
-                OscillatorState::Attacking { phase, .. } => phase,
-                OscillatorState::Releasing { .. } => 0.0,
-                OscillatorState::Muted => 0.0,
+        self.oscillator_state = match self.oscillator_state {
+            OscillatorState::Playing { phase, .. } => OscillatorState::Playing { frequency, phase },
+            OscillatorState::Attacking {
+                phase,
+                attack_amplitude,
+                ..
+            } => OscillatorState::Attacking {
+                frequency,
+                phase,
+                attack_amplitude,
             },
-            attack_amplitude: 0.0,
-        };
+            OscillatorState::Releasing { .. } => OscillatorState::Attacking {
+                frequency,
+                phase: 0.0,
+                attack_amplitude: 0.0,
+            },
+            OscillatorState::Muted => OscillatorState::Attacking {
+                frequency,
+                phase: 0.0,
+                attack_amplitude: 0.0,
+            },
+        }
     }
 
     pub fn note_off(&mut self) {
@@ -434,14 +446,78 @@ mod test {
                 use super::*;
 
                 fn assert_elements_close(a: [f32; 10], b: [f32; 10]) {
-                    let epsilon = 0.0000001;
+                    let epsilon = 0.000001;
                     let mut close = true;
                     for (x, y) in a.iter().zip(b.iter()) {
                         if (x - y).abs() > epsilon {
+                            println!("{} != {}", x, y);
                             close = false;
                         }
                     }
                     assert!(close, "not close enough: {:?} and {:?}", a, b);
+                }
+
+                #[test]
+                fn allows_to_specify_an_attack_time() {
+                    let mut generator = Generator::new(
+                        Args {
+                            attack: 0.5,
+                            amplitude: 1.0,
+                            release: 0.0,
+                            wave_form: WaveForm::new(|_phase| 0.5),
+                        },
+                        10,
+                    );
+                    generator.note_on(1.0);
+                    let mut buffer = buffer();
+                    generator.generate(10, &mut buffer);
+                    assert_elements_close(
+                        buffer,
+                        [0.1, 0.2, 0.3, 0.4, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5],
+                    );
+                }
+
+                #[test]
+                fn does_not_reenter_an_attack_phase_for_subsequent_note_ons_when_playing() {
+                    let mut generator = Generator::new(
+                        Args {
+                            attack: 0.5,
+                            amplitude: 1.0,
+                            release: 0.0,
+                            wave_form: WaveForm::new(|_phase| 0.5),
+                        },
+                        10,
+                    );
+                    generator.note_on(1.0);
+                    generator.generate(10, &mut buffer());
+                    generator.note_on(1.0);
+                    let mut second_buffer = buffer();
+                    generator.generate(10, &mut second_buffer);
+                    assert_elements_close(second_buffer, [0.5; 10]);
+                }
+
+                #[test]
+                fn does_not_restart_an_attack_phase_for_subsequent_note_ons_while_in_attack_phase()
+                {
+                    let mut generator = Generator::new(
+                        Args {
+                            attack: 2.0,
+                            amplitude: 1.0,
+                            release: 0.0,
+                            wave_form: WaveForm::new(|_phase| 1.0),
+                        },
+                        10,
+                    );
+                    generator.note_on(1.0);
+                    generator.generate(10, &mut buffer());
+                    generator.note_on(1.0);
+                    let mut second_buffer = buffer();
+                    generator.generate(10, &mut second_buffer);
+                    let mut expected = buffer();
+                    for i in 0..10 {
+                        expected[i] = 0.5 + (i as f32 + 1.0) * 0.05;
+                    }
+                    assert_elements_close(second_buffer, expected);
                 }
 
                 #[test]
@@ -463,26 +539,6 @@ mod test {
                     assert_elements_close(
                         buffer,
                         [0.4, 0.3, 0.2, 0.1, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                    );
-                }
-
-                #[test]
-                fn allows_to_specify_an_attack_time() {
-                    let mut generator = Generator::new(
-                        Args {
-                            attack: 0.5,
-                            amplitude: 1.0,
-                            release: 0.0,
-                            wave_form: WaveForm::new(|_phase| 0.5),
-                        },
-                        10,
-                    );
-                    generator.note_on(1.0);
-                    let mut buffer = buffer();
-                    generator.generate(10, &mut buffer);
-                    assert_elements_close(
-                        buffer,
-                        [0.1, 0.2, 0.3, 0.4, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5],
                     );
                 }
             }
