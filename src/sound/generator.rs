@@ -106,6 +106,7 @@ impl Generator {
 
     pub fn generate(&mut self, sample_rate: i32, buffer: &mut [f32]) {
         for sample in buffer.iter_mut() {
+            self.step(sample_rate);
             match self.oscillator_state {
                 OscillatorState::Playing { phase, .. } => {
                     *sample += self.wave_form.run(phase) * self.amplitude;
@@ -119,7 +120,6 @@ impl Generator {
                 }
                 OscillatorState::Muted => {}
             }
-            self.step(sample_rate);
         }
     }
 }
@@ -246,7 +246,7 @@ mod test {
                 let mut generator = generator();
                 let buffer = &mut buffer();
                 generator.generate(SAMPLE_RATE, buffer);
-                assert_eq!(buffer[0], 0.0);
+                assert_eq!(buffer[0], (TAU / SAMPLE_RATE as f32).sin());
             }
 
             #[test]
@@ -254,8 +254,8 @@ mod test {
                 let mut generator = generator();
                 let mut buffer = buffer();
                 generator.generate(SAMPLE_RATE, &mut buffer);
-                assert_eq!(buffer[1], (TAU / SAMPLE_RATE as f32).sin());
-                assert_eq!(buffer[2], (2.0 * TAU / SAMPLE_RATE as f32).sin());
+                assert_eq!(buffer[0], (TAU / SAMPLE_RATE as f32).sin());
+                assert_eq!(buffer[1], (2.0 * TAU / SAMPLE_RATE as f32).sin());
             }
 
             #[test]
@@ -268,7 +268,7 @@ mod test {
                 generator.note_on(1.0);
                 let mut buffer = buffer();
                 generator.generate(SAMPLE_RATE, &mut buffer);
-                assert_eq!(buffer[0], 0.0);
+                assert_eq!(buffer[0], (TAU / SAMPLE_RATE as f32).sin());
             }
 
             #[test]
@@ -288,9 +288,9 @@ mod test {
                 generator.note_on(300.0);
                 let mut buffer = buffer();
                 generator.generate(SAMPLE_RATE, &mut buffer);
-                assert_eq!(buffer[1], (300.0 * TAU / SAMPLE_RATE as f32).sin());
-                assert_eq!(buffer[2], (2.0 * 300.0 * TAU / SAMPLE_RATE as f32).sin());
-                assert_eq!(buffer[9], (9.0 * 300.0 * TAU / SAMPLE_RATE as f32).sin());
+                assert_eq!(buffer[0], (300.0 * TAU / SAMPLE_RATE as f32).sin());
+                assert_eq!(buffer[1], (2.0 * 300.0 * TAU / SAMPLE_RATE as f32).sin());
+                assert_eq!(buffer[8], (9.0 * 300.0 * TAU / SAMPLE_RATE as f32).sin());
             }
 
             #[test]
@@ -301,13 +301,12 @@ mod test {
                 generator.note_on(500.0);
                 let mut buffer = buffer();
                 generator.generate(SAMPLE_RATE, &mut buffer);
-                assert_eq!(buffer[0], ((10.0 * 300.0) * TAU / SAMPLE_RATE as f32).sin());
                 assert_eq!(
-                    buffer[1],
+                    buffer[0],
                     ((10.0 * 300.0 + 500.0) * TAU / SAMPLE_RATE as f32).sin()
                 );
                 assert_eq!(
-                    buffer[2],
+                    buffer[1],
                     ((10.0 * 300.0 + 2.0 * 500.0) * TAU / SAMPLE_RATE as f32).sin()
                 );
             }
@@ -353,8 +352,8 @@ mod test {
                 generator.note_on(1.0);
                 let mut buffer = buffer();
                 generator.generate(SAMPLE_RATE, &mut buffer);
-                assert_eq!(buffer[0], 0.0);
-                assert_close(buffer[1], 5.0 * TAU / SAMPLE_RATE as f32);
+                assert_close(buffer[0], 5.0 * TAU / SAMPLE_RATE as f32);
+                assert_close(buffer[1], 2.0 * 5.0 * TAU / SAMPLE_RATE as f32);
             }
 
             #[test]
@@ -388,7 +387,7 @@ mod test {
                 generator.note_off();
                 let mut buffer = buffer();
                 generator.generate(10, &mut buffer);
-                let expected = [0.5, 0.4, 0.3, 0.2, 0.1, 0.0, 0.0, 0.0, 0.0, 0.0];
+                let expected: [f32; 10] = [0.4, 0.3, 0.2, 0.1, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
                 let epsilon = 0.0000001;
                 let mut close = true;
                 for (a, b) in buffer.iter().zip(expected.iter()) {
@@ -447,8 +446,8 @@ mod test {
                     buffer[0] = 0.1;
                     buffer[1] = 0.1;
                     a.generate(sample_rate, &mut buffer);
-                    assert_eq!(buffer[0], 0.1 + 0.5);
-                    assert_close(buffer[1], 0.1 + 0.5 * 0.9);
+                    assert_eq!(buffer[0], 0.1 + 0.5 * 0.9);
+                    assert_close(buffer[1], 0.1 + 0.5 * 0.8);
                 }
             }
         }
