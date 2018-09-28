@@ -46,67 +46,63 @@ impl Generator {
 
     pub fn note_on(&mut self, frequency: f32) {
         self.oscillator_state = match self.oscillator_state {
-            OscillatorState::Playing { phase, .. } => OscillatorState::Playing { frequency, phase },
-            OscillatorState::Attacking {
+            OscillatorState::Playing {
+                ref envelope_phase,
                 phase,
-                attack_amplitude,
                 ..
-            } => OscillatorState::Attacking {
+            } => OscillatorState::Playing {
                 frequency,
                 phase,
-                attack_amplitude,
+                envelope_phase: match envelope_phase {
+                    EnvelopePhase::Attacking {
+                        attack_amplitude, ..
+                    } => EnvelopePhase::Attacking {
+                        attack_amplitude: *attack_amplitude,
+                    },
+                    EnvelopePhase::FullVolume => EnvelopePhase::FullVolume,
+                    EnvelopePhase::Releasing { .. } => EnvelopePhase::Attacking {
+                        attack_amplitude: 0.0,
+                    },
+                },
             },
-            OscillatorState::Releasing { .. } => OscillatorState::Attacking {
+            OscillatorState::Muted => OscillatorState::Playing {
                 frequency,
                 phase: 0.0,
-                attack_amplitude: 0.0,
+                envelope_phase: EnvelopePhase::Attacking {
+                    attack_amplitude: 0.0,
+                },
             },
-            OscillatorState::Muted => OscillatorState::Attacking {
-                frequency,
-                phase: 0.0,
-                attack_amplitude: 0.0,
-            },
-        }
+        };
     }
 
     pub fn note_off(&mut self) {
-        match self.oscillator_state {
-            OscillatorState::Playing { frequency, phase } => {
-                self.oscillator_state = OscillatorState::Releasing {
-                    frequency,
-                    phase,
-                    release_amplitude: 1.0,
-                };
-            }
-            OscillatorState::Attacking {
+        self.oscillator_state = match self.oscillator_state {
+            OscillatorState::Playing {
                 frequency,
                 phase,
-                attack_amplitude,
-            } => {
-                self.oscillator_state = OscillatorState::Releasing {
-                    frequency,
-                    phase,
-                    release_amplitude: attack_amplitude,
-                }
-            }
-            OscillatorState::Releasing { .. } => {}
-            OscillatorState::Muted => {}
+                ref envelope_phase,
+            } => OscillatorState::Playing {
+                frequency,
+                phase,
+                envelope_phase: match envelope_phase {
+                    EnvelopePhase::Attacking { attack_amplitude } => EnvelopePhase::Releasing {
+                        release_amplitude: *attack_amplitude,
+                    },
+                    EnvelopePhase::FullVolume => EnvelopePhase::Releasing {
+                        release_amplitude: 1.0,
+                    },
+                    EnvelopePhase::Releasing { release_amplitude } => EnvelopePhase::Releasing {
+                        release_amplitude: *release_amplitude,
+                    },
+                },
+            },
+            OscillatorState::Muted => OscillatorState::Muted,
         }
     }
 
     fn crank_phase(&mut self, sample_rate: i32) {
         match self.oscillator_state {
-            OscillatorState::Releasing {
-                frequency,
-                ref mut phase,
-                ..
-            }
-            | OscillatorState::Playing {
-                frequency,
-                ref mut phase,
-                ..
-            }
-            | OscillatorState::Attacking {
+            OscillatorState::Playing {
                 frequency,
                 ref mut phase,
                 ..
@@ -118,64 +114,65 @@ impl Generator {
         };
     }
 
-    fn step_release(&mut self) {
+    fn step_envelope(&mut self) {
         let next = match self.oscillator_state {
-            OscillatorState::Releasing {
-                ref mut release_amplitude,
-                ..
-            } => {
-                *release_amplitude -= self.release_per_sample;
-                if *release_amplitude <= 0.0 {
-                    Some(OscillatorState::Muted)
-                } else {
-                    None
-                }
-            }
-            OscillatorState::Attacking {
+            OscillatorState::Playing {
                 frequency,
                 phase,
-                ref mut attack_amplitude,
-            } => {
-                *attack_amplitude += self.attack_per_sample;
-                if *attack_amplitude >= 1.0 {
-                    Some(OscillatorState::Playing { frequency, phase })
-                } else {
-                    None
+                ref mut envelope_phase,
+            } => match envelope_phase {
+                EnvelopePhase::Attacking {
+                    ref mut attack_amplitude,
+                } => {
+                    *attack_amplitude += self.attack_per_sample;
+                    if *attack_amplitude >= 1.0 {
+                        Some(OscillatorState::Playing {
+                            frequency,
+                            phase,
+                            envelope_phase: EnvelopePhase::FullVolume,
+                        })
+                    } else {
+                        None
+                    }
                 }
-            }
+                EnvelopePhase::FullVolume => None,
+                EnvelopePhase::Releasing {
+                    ref mut release_amplitude,
+                    ..
+                } => {
+                    *release_amplitude -= self.release_per_sample;
+                    if *release_amplitude <= 0.0 {
+                        Some(OscillatorState::Muted)
+                    } else {
+                        None
+                    }
+                }
+            },
             _ => None,
         };
-        match next {
-            None => {}
-            Some(n) => {
-                self.oscillator_state = n;
-            }
-        }
+        next.map(|n| self.oscillator_state = n);
     }
 
     fn step(&mut self, sample_rate: i32) {
         self.crank_phase(sample_rate);
-        self.step_release();
+        self.step_envelope();
     }
 
     pub fn generate(&mut self, sample_rate: i32, buffer: &mut [f32]) {
         for sample in buffer.iter_mut() {
             self.step(sample_rate);
             match self.oscillator_state {
-                OscillatorState::Playing { phase, .. } => {
-                    *sample += self.wave_form.run(phase) * self.amplitude;
-                }
-                OscillatorState::Releasing {
+                OscillatorState::Playing {
                     phase,
-                    release_amplitude: adsr_amplitude,
-                    ..
-                }
-                | OscillatorState::Attacking {
-                    phase,
-                    attack_amplitude: adsr_amplitude,
+                    ref envelope_phase,
                     ..
                 } => {
-                    *sample += self.wave_form.run(phase) * self.amplitude * adsr_amplitude;
+                    let envelope_amplitude = match envelope_phase {
+                        EnvelopePhase::Attacking { attack_amplitude } => *attack_amplitude,
+                        EnvelopePhase::FullVolume => 1.0,
+                        EnvelopePhase::Releasing { release_amplitude } => *release_amplitude,
+                    };
+                    *sample += self.wave_form.run(phase) * self.amplitude * envelope_amplitude;
                 }
                 OscillatorState::Muted => {}
             }
@@ -188,18 +185,16 @@ pub enum OscillatorState {
     Playing {
         frequency: f32,
         phase: f32,
-    },
-    Attacking {
-        frequency: f32,
-        phase: f32,
-        attack_amplitude: f32,
-    },
-    Releasing {
-        frequency: f32,
-        phase: f32,
-        release_amplitude: f32,
+        envelope_phase: EnvelopePhase,
     },
     Muted,
+}
+
+#[derive(Debug)]
+pub enum EnvelopePhase {
+    Attacking { attack_amplitude: f32 },
+    FullVolume,
+    Releasing { release_amplitude: f32 },
 }
 
 #[cfg(test)]
@@ -257,8 +252,6 @@ mod test {
             fn get_phase(&self) -> f32 {
                 match self {
                     OscillatorState::Playing { phase, .. } => *phase,
-                    OscillatorState::Attacking { phase, .. } => *phase,
-                    OscillatorState::Releasing { phase, .. } => *phase,
                     OscillatorState::Muted => panic!("get_phase: Muted"),
                 }
             }
