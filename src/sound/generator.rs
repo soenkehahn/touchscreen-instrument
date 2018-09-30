@@ -84,15 +84,11 @@ impl Generator {
             } => VoiceState::Playing {
                 frequency,
                 phase,
-                envelope_phase: match envelope_phase {
-                    EnvelopePhase::Attacking { attack_amplitude } => EnvelopePhase::Releasing {
-                        release_amplitude: *attack_amplitude,
-                    },
-                    EnvelopePhase::FullVolume => EnvelopePhase::Releasing {
-                        release_amplitude: 1.0,
-                    },
-                    EnvelopePhase::Releasing { release_amplitude } => EnvelopePhase::Releasing {
-                        release_amplitude: *release_amplitude,
+                envelope_phase: EnvelopePhase::Releasing {
+                    release_amplitude: match envelope_phase {
+                        EnvelopePhase::Attacking { attack_amplitude } => *attack_amplitude,
+                        EnvelopePhase::FullVolume => 1.0,
+                        EnvelopePhase::Releasing { release_amplitude } => *release_amplitude,
                     },
                 },
             },
