@@ -5,7 +5,8 @@ use sound::TAU;
 #[derive(Clone)]
 pub struct Args {
     pub amplitude: f32,
-    pub decay: f32,
+    pub attack: f32,
+    pub release: f32,
     pub wave_form: WaveForm,
 }
 
@@ -17,61 +18,87 @@ impl Args {
     }
 }
 
+#[derive(Debug)]
 pub struct Generator {
     amplitude: f32,
     wave_form: WaveForm,
-    decay_per_sample: f32,
-    oscillator_state: OscillatorState,
+    attack_per_sample: f32,
+    release_per_sample: f32,
+    oscillator_state: VoiceState,
 }
 
 impl Generator {
     pub fn new(args: Args, sample_rate: i32) -> Generator {
         let Args {
             amplitude,
-            decay,
+            attack,
+            release,
             wave_form,
         } = args;
         Generator {
             amplitude,
             wave_form,
-            decay_per_sample: 1.0 / (sample_rate as f32 * decay),
-            oscillator_state: OscillatorState::Muted,
+            attack_per_sample: 1.0 / (sample_rate as f32 * attack),
+            release_per_sample: 1.0 / (sample_rate as f32 * release),
+            oscillator_state: VoiceState::Muted,
         }
     }
 
     pub fn note_on(&mut self, frequency: f32) {
-        self.oscillator_state = OscillatorState::Playing {
-            frequency,
-            phase: match self.oscillator_state {
-                OscillatorState::Playing { phase, .. } => phase,
-                OscillatorState::Decaying { .. } => 0.0,
-                OscillatorState::Muted => 0.0,
+        self.oscillator_state = match self.oscillator_state {
+            VoiceState::Playing {
+                ref envelope_phase,
+                phase,
+                ..
+            } => VoiceState::Playing {
+                frequency,
+                phase,
+                envelope_phase: match envelope_phase {
+                    EnvelopePhase::Attacking {
+                        attack_amplitude, ..
+                    } => EnvelopePhase::Attacking {
+                        attack_amplitude: *attack_amplitude,
+                    },
+                    EnvelopePhase::FullVolume => EnvelopePhase::FullVolume,
+                    EnvelopePhase::Releasing { .. } => EnvelopePhase::Attacking {
+                        attack_amplitude: 0.0,
+                    },
+                },
+            },
+            VoiceState::Muted => VoiceState::Playing {
+                frequency,
+                phase: 0.0,
+                envelope_phase: EnvelopePhase::Attacking {
+                    attack_amplitude: 0.0,
+                },
             },
         };
     }
 
     pub fn note_off(&mut self) {
-        match self.oscillator_state {
-            OscillatorState::Playing { frequency, phase } => {
-                self.oscillator_state = OscillatorState::Decaying {
-                    decay_amplitude: 1.0,
-                    frequency,
-                    phase,
-                };
-            }
-            OscillatorState::Decaying { .. } => {}
-            OscillatorState::Muted => {}
+        self.oscillator_state = match self.oscillator_state {
+            VoiceState::Playing {
+                frequency,
+                phase,
+                ref envelope_phase,
+            } => VoiceState::Playing {
+                frequency,
+                phase,
+                envelope_phase: EnvelopePhase::Releasing {
+                    release_amplitude: match envelope_phase {
+                        EnvelopePhase::Attacking { attack_amplitude } => *attack_amplitude,
+                        EnvelopePhase::FullVolume => 1.0,
+                        EnvelopePhase::Releasing { release_amplitude } => *release_amplitude,
+                    },
+                },
+            },
+            VoiceState::Muted => VoiceState::Muted,
         }
     }
 
     fn crank_phase(&mut self, sample_rate: i32) {
         match self.oscillator_state {
-            OscillatorState::Decaying {
-                frequency,
-                ref mut phase,
-                ..
-            }
-            | OscillatorState::Playing {
+            VoiceState::Playing {
                 frequency,
                 ref mut phase,
                 ..
@@ -79,63 +106,91 @@ impl Generator {
                 *phase += frequency * TAU / sample_rate as f32;
                 *phase %= TAU;
             }
-            OscillatorState::Muted => {}
+            VoiceState::Muted => {}
         };
     }
 
-    fn step_decay(&mut self) {
-        let mute = match self.oscillator_state {
-            OscillatorState::Decaying {
-                ref mut decay_amplitude,
-                ..
-            } => {
-                *decay_amplitude -= self.decay_per_sample;
-                (*decay_amplitude <= 0.0)
-            }
-            _ => false,
+    fn step_envelope(&mut self) {
+        let next = match self.oscillator_state {
+            VoiceState::Playing {
+                frequency,
+                phase,
+                ref mut envelope_phase,
+            } => match envelope_phase {
+                EnvelopePhase::Attacking {
+                    ref mut attack_amplitude,
+                } => {
+                    *attack_amplitude += self.attack_per_sample;
+                    if *attack_amplitude >= 1.0 {
+                        Some(VoiceState::Playing {
+                            frequency,
+                            phase,
+                            envelope_phase: EnvelopePhase::FullVolume,
+                        })
+                    } else {
+                        None
+                    }
+                }
+                EnvelopePhase::FullVolume => None,
+                EnvelopePhase::Releasing {
+                    ref mut release_amplitude,
+                    ..
+                } => {
+                    *release_amplitude -= self.release_per_sample;
+                    if *release_amplitude <= 0.0 {
+                        Some(VoiceState::Muted)
+                    } else {
+                        None
+                    }
+                }
+            },
+            _ => None,
         };
-        if mute {
-            self.oscillator_state = OscillatorState::Muted;
-        }
+        next.map(|n| self.oscillator_state = n);
     }
 
     fn step(&mut self, sample_rate: i32) {
         self.crank_phase(sample_rate);
-        self.step_decay();
+        self.step_envelope();
     }
 
     pub fn generate(&mut self, sample_rate: i32, buffer: &mut [f32]) {
         for sample in buffer.iter_mut() {
             self.step(sample_rate);
             match self.oscillator_state {
-                OscillatorState::Playing { phase, .. } => {
-                    *sample += self.wave_form.run(phase) * self.amplitude;
-                }
-                OscillatorState::Decaying {
+                VoiceState::Playing {
                     phase,
-                    decay_amplitude,
+                    ref envelope_phase,
                     ..
                 } => {
-                    *sample += self.wave_form.run(phase) * self.amplitude * decay_amplitude;
+                    let envelope_amplitude = match envelope_phase {
+                        EnvelopePhase::Attacking { attack_amplitude } => *attack_amplitude,
+                        EnvelopePhase::FullVolume => 1.0,
+                        EnvelopePhase::Releasing { release_amplitude } => *release_amplitude,
+                    };
+                    *sample += self.wave_form.run(phase) * self.amplitude * envelope_amplitude;
                 }
-                OscillatorState::Muted => {}
+                VoiceState::Muted => {}
             }
         }
     }
 }
 
 #[derive(Debug)]
-pub enum OscillatorState {
+pub enum VoiceState {
     Playing {
         frequency: f32,
         phase: f32,
-    },
-    Decaying {
-        frequency: f32,
-        phase: f32,
-        decay_amplitude: f32,
+        envelope_phase: EnvelopePhase,
     },
     Muted,
+}
+
+#[derive(Debug)]
+pub enum EnvelopePhase {
+    Attacking { attack_amplitude: f32 },
+    FullVolume,
+    Releasing { release_amplitude: f32 },
 }
 
 #[cfg(test)]
@@ -152,7 +207,8 @@ mod test {
             fn gives_every_slot_a_tenth_of_the_volume() {
                 let args = Args {
                     amplitude: 1.0,
-                    decay: 0.0,
+                    attack: 0.0,
+                    release: 0.0,
                     wave_form: WaveForm::new(|_| 0.0),
                 };
                 for slot_args in args.unfold_generator_args().into_iter() {
@@ -178,7 +234,8 @@ mod test {
             let mut generator = Generator::new(
                 Args {
                     amplitude: 1.0,
-                    decay: 0.0,
+                    attack: 0.0,
+                    release: 0.0,
                     wave_form: WaveForm::new(|x| x.sin()),
                 },
                 SAMPLE_RATE,
@@ -187,12 +244,11 @@ mod test {
             generator
         }
 
-        impl OscillatorState {
+        impl VoiceState {
             fn get_phase(&self) -> f32 {
                 match self {
-                    OscillatorState::Playing { phase, .. } => *phase,
-                    OscillatorState::Decaying { phase, .. } => *phase,
-                    OscillatorState::Muted => panic!("get_phase: Muted"),
+                    VoiceState::Playing { phase, .. } => *phase,
+                    VoiceState::Muted => panic!("get_phase: Muted"),
                 }
             }
         }
@@ -316,7 +372,8 @@ mod test {
                 let mut generator = Generator::new(
                     Args {
                         amplitude: 1.0,
-                        decay: 0.0,
+                        attack: 0.0,
+                        release: 0.0,
                         wave_form: WaveForm::new(|x| x.sin()),
                     },
                     SAMPLE_RATE,
@@ -344,7 +401,8 @@ mod test {
                 let mut generator = Generator::new(
                     Args {
                         amplitude: 1.0,
-                        decay: 0.0,
+                        attack: 0.0,
+                        release: 0.0,
                         wave_form: WaveForm::new(|phase| phase * 5.0),
                     },
                     SAMPLE_RATE,
@@ -361,7 +419,8 @@ mod test {
                 let mut generator = Generator::new(
                     Args {
                         amplitude: 0.25,
-                        decay: 0.0,
+                        attack: 0.0,
+                        release: 0.0,
                         wave_form: WaveForm::new(|_phase| 0.4),
                     },
                     SAMPLE_RATE,
@@ -372,30 +431,105 @@ mod test {
                 assert_eq!(buffer[0], 0.1);
             }
 
-            #[test]
-            fn allows_to_specify_a_decay_time() {
-                let mut generator = Generator::new(
-                    Args {
-                        amplitude: 1.0,
-                        decay: 0.5,
-                        wave_form: WaveForm::new(|_phase| 0.5),
-                    },
-                    10,
-                );
-                generator.note_on(1.0);
-                generator.generate(10, &mut buffer());
-                generator.note_off();
-                let mut buffer = buffer();
-                generator.generate(10, &mut buffer);
-                let expected: [f32; 10] = [0.4, 0.3, 0.2, 0.1, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
-                let epsilon = 0.0000001;
-                let mut close = true;
-                for (a, b) in buffer.iter().zip(expected.iter()) {
-                    if (a - b).abs() > epsilon {
-                        close = false;
+            mod adsr {
+                use super::*;
+
+                fn assert_elements_close(a: [f32; 10], b: [f32; 10]) {
+                    let epsilon = 0.000001;
+                    let mut close = true;
+                    for (x, y) in a.iter().zip(b.iter()) {
+                        if (x - y).abs() > epsilon {
+                            println!("{} != {}", x, y);
+                            close = false;
+                        }
                     }
+                    assert!(close, "not close enough: {:?} and {:?}", a, b);
                 }
-                assert!(close, "not close enough: {:?} and {:?}", buffer, expected);
+
+                #[test]
+                fn allows_to_specify_an_attack_time() {
+                    let mut generator = Generator::new(
+                        Args {
+                            attack: 0.5,
+                            amplitude: 1.0,
+                            release: 0.0,
+                            wave_form: WaveForm::new(|_phase| 0.5),
+                        },
+                        10,
+                    );
+                    generator.note_on(1.0);
+                    let mut buffer = buffer();
+                    generator.generate(10, &mut buffer);
+                    assert_elements_close(
+                        buffer,
+                        [0.1, 0.2, 0.3, 0.4, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5],
+                    );
+                }
+
+                #[test]
+                fn does_not_reenter_an_attack_phase_for_subsequent_note_ons_when_playing() {
+                    let mut generator = Generator::new(
+                        Args {
+                            attack: 0.5,
+                            amplitude: 1.0,
+                            release: 0.0,
+                            wave_form: WaveForm::new(|_phase| 0.5),
+                        },
+                        10,
+                    );
+                    generator.note_on(1.0);
+                    generator.generate(10, &mut buffer());
+                    generator.note_on(1.0);
+                    let mut second_buffer = buffer();
+                    generator.generate(10, &mut second_buffer);
+                    assert_elements_close(second_buffer, [0.5; 10]);
+                }
+
+                #[test]
+                fn does_not_restart_an_attack_phase_for_subsequent_note_ons_while_in_attack_phase()
+                {
+                    let mut generator = Generator::new(
+                        Args {
+                            attack: 2.0,
+                            amplitude: 1.0,
+                            release: 0.0,
+                            wave_form: WaveForm::new(|_phase| 1.0),
+                        },
+                        10,
+                    );
+                    generator.note_on(1.0);
+                    generator.generate(10, &mut buffer());
+                    generator.note_on(1.0);
+                    let mut second_buffer = buffer();
+                    generator.generate(10, &mut second_buffer);
+                    let mut expected = buffer();
+                    for i in 0..10 {
+                        expected[i] = 0.5 + (i as f32 + 1.0) * 0.05;
+                    }
+                    assert_elements_close(second_buffer, expected);
+                }
+
+                #[test]
+                fn allows_to_specify_a_release_time() {
+                    let mut generator = Generator::new(
+                        Args {
+                            amplitude: 1.0,
+                            attack: 0.0,
+                            release: 0.5,
+                            wave_form: WaveForm::new(|_phase| 0.5),
+                        },
+                        10,
+                    );
+                    generator.note_on(1.0);
+                    generator.generate(10, &mut buffer());
+                    generator.note_off();
+                    let mut buffer = buffer();
+                    generator.generate(10, &mut buffer);
+                    assert_elements_close(
+                        buffer,
+                        [0.4, 0.3, 0.2, 0.1, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                    );
+                }
             }
 
             mod polyphony {
@@ -417,7 +551,8 @@ mod test {
                     let mut generator = Generator::new(
                         Args {
                             amplitude: 0.5,
-                            decay: 0.0,
+                            attack: 0.0,
+                            release: 0.0,
                             wave_form: WaveForm::new(|_phase| 0.5),
                         },
                         sample_rate,
@@ -430,19 +565,21 @@ mod test {
                 }
 
                 #[test]
-                fn adds_its_values_to_the_given_buffer_during_decay() {
+                fn adds_its_values_to_the_given_buffer_during_release() {
                     let sample_rate = 10;
                     let mut a = Generator::new(
                         Args {
                             amplitude: 1.0,
-                            decay: 1.0,
+                            attack: 0.0,
+                            release: 1.0,
                             wave_form: WaveForm::new(|_phase| 0.5),
                         },
                         sample_rate,
                     );
-                    a.note_on(440.0);
-                    a.note_off();
                     let mut buffer = buffer();
+                    a.note_on(440.0);
+                    a.generate(sample_rate, &mut buffer);
+                    a.note_off();
                     buffer[0] = 0.1;
                     buffer[1] = 0.1;
                     a.generate(sample_rate, &mut buffer);
