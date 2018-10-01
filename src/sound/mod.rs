@@ -1,10 +1,10 @@
 pub mod audio_player;
 pub mod generator;
 pub mod hammond;
+pub mod logger;
 pub mod midi;
 pub mod midi_player;
 pub mod wave_form;
-pub mod xrun_logger;
 
 use areas::note_event_source::NoteEventSource;
 

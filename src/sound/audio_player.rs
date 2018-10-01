@@ -4,7 +4,7 @@ extern crate skipchannel;
 use self::skipchannel::*;
 use super::generator;
 use super::generator::Generator;
-use super::xrun_logger::XRunLogger;
+use super::logger::Logger;
 use super::Player;
 use areas::note_event_source::NoteEventSource;
 use evdev::{slot_map, Slots};
@@ -16,7 +16,7 @@ use std::*;
 use ErrorString;
 
 pub struct AudioPlayer {
-    async_client: AsyncClient<XRunLogger, AudioProcessHandler>,
+    async_client: AsyncClient<Logger, AudioProcessHandler>,
     sender: Sender<Slots<NoteEvent>>,
 }
 
@@ -36,14 +36,15 @@ impl AudioPlayer {
             right: ports.right.clone_unowned(),
         };
 
-        let notification_handler = XRunLogger::new_and_spawn();
+        let logger = Logger::new_and_spawn();
         let (sender, receiver) = skipchannel();
         let process_handler = AudioProcessHandler {
+            logger: logger.clone(),
             ports,
             receiver,
             generators,
         };
-        let async_client = client.activate_async(notification_handler, process_handler)?;
+        let async_client = client.activate_async(logger, process_handler)?;
         let audio_player = AudioPlayer {
             async_client,
             sender,
@@ -95,6 +96,7 @@ struct Stereo<Port> {
 }
 
 pub struct AudioProcessHandler {
+    logger: Logger,
     ports: Stereo<Port<AudioOut>>,
     receiver: Receiver<Slots<NoteEvent>>,
     generators: Slots<Generator>,
@@ -119,18 +121,24 @@ impl AudioProcessHandler {
         }
     }
 
-    fn fill_buffer(client: &Client, generators: &mut Slots<Generator>, buffer: &mut [f32]) {
+    fn fill_buffer(
+        logger: &Logger,
+        client: &Client,
+        generators: &mut Slots<Generator>,
+        buffer: &mut [f32],
+    ) {
         for sample in buffer.iter_mut() {
             *sample = 0.0;
         }
         for generator in generators.iter_mut() {
             generator.generate(client.sample_rate() as i32, buffer);
         }
+        logger.check_clipping(buffer);
     }
 
     fn fill_buffers(&mut self, client: &Client, scope: &ProcessScope) {
         let left_buffer: &mut [f32] = self.ports.left.as_mut_slice(scope);
-        AudioProcessHandler::fill_buffer(client, &mut self.generators, left_buffer);
+        AudioProcessHandler::fill_buffer(&self.logger, client, &mut self.generators, left_buffer);
         self.ports
             .right
             .as_mut_slice(scope)
