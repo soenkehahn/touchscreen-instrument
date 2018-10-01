@@ -25,6 +25,7 @@ use sound::Player;
 use std::clone::Clone;
 use std::f32::consts::PI;
 use std::fmt::Debug;
+use std::process::exit;
 
 const TOUCH_WIDTH: i32 = 16383;
 const TOUCH_HEIGHT: i32 = 9570;
@@ -161,7 +162,7 @@ fn mk_wave_form(cli_args: &cli::Args) -> WaveForm {
     }
 }
 
-fn main() -> Result<(), ErrorString> {
+fn run() -> Result<(), ErrorString> {
     let cli_args = &cli::parse(get_binary_name()?, std::env::args())?;
     if cli_args.dev_mode {
         get_areas(cli_args).run_ui(cli_args);
@@ -171,4 +172,14 @@ fn main() -> Result<(), ErrorString> {
         player.consume(note_event_source);
     }
     Ok(())
+}
+
+fn main() {
+    match run() {
+        Ok(()) => {}
+        Err(ErrorString(message)) => {
+            eprintln!("{}", message);
+            exit(1);
+        }
+    }
 }
