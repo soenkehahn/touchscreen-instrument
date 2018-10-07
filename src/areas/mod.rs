@@ -5,6 +5,7 @@ pub mod note_event_source;
 pub mod render;
 pub mod shape;
 
+use self::palette::rgb::Srgb;
 use self::sdl2::pixels::Color;
 use self::shape::Shape;
 use evdev::Position;
@@ -191,7 +192,6 @@ impl Areas {
 
     fn make_color(midi_note: i32) -> Color {
         use self::palette::rgb::Rgb;
-        use self::palette::rgb::Srgb;
         use self::palette::Hsv;
 
         let hue_number = (midi_note * 7) % 12;
@@ -268,22 +268,18 @@ mod test {
             #[test]
             fn cycles_through_twelve_colors_by_hue_in_cycle_of_fifth() {
                 use self::palette::Hsv;
-                use self::palette::Srgb;
 
-                let mut color: Hsv = Srgb::new(0.0, 0.0, 1.0).into();
                 assert_eq!(
                     Areas::make_color(60),
-                    Areas::convert_color(Srgb::from(color).into_format())
+                    Areas::convert_color(Srgb::from(Hsv::new(240.0, 1.0, 1.0)).into_format())
                 );
-                color.hue = color.hue + 360.0 / 12.0;
                 assert_eq!(
                     Areas::make_color(67),
-                    Areas::convert_color(Srgb::from(color).into_format())
+                    Areas::convert_color(Srgb::from(Hsv::new(270.0, 1.0, 1.0)).into_format())
                 );
-                color.hue = color.hue + 360.0 / 12.0;
                 assert_eq!(
                     Areas::make_color(62),
-                    Areas::convert_color(Srgb::from(color).into_format())
+                    Areas::convert_color(Srgb::from(Hsv::new(300.0, 1.0, 1.0)).into_format())
                 );
             }
         }
