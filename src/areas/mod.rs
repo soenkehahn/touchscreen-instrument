@@ -270,10 +270,14 @@ mod test {
                 use self::palette::Hsv;
                 use self::palette::Srgb;
 
-                let mut color = Hsv::from(Srgb::new(0.0, 0.0, 1.0));
+                let mut color: Hsv = Srgb::new(0.0, 0.0, 1.0).into();
+                assert_eq!(
+                    Areas::make_color(60),
+                    Areas::convert_color(Srgb::from(color).into_format())
+                );
                 color.hue = color.hue + 360.0 / 12.0;
                 assert_eq!(
-                    Areas::make_color(7),
+                    Areas::make_color(67),
                     Areas::convert_color(Srgb::from(color).into_format())
                 );
                 color.hue = color.hue + 360.0 / 12.0;
