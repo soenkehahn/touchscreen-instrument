@@ -153,7 +153,7 @@ impl Areas {
         let ncols = (touch_height as f32 / height as f32).ceil() as i32;
         let nrows = (touch_width as f32 / width as f32).ceil() as i32;
         for row in 0..nrows {
-            for col in -1..ncols {
+            for col in -3..ncols {
                 areas.push(Area::new(
                     Shape::Parallelogram {
                         base: Position {
