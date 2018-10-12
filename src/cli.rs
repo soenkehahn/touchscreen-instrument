@@ -2,8 +2,6 @@ extern crate clap;
 
 use self::clap::{App, Arg};
 use std::ffi::OsString;
-use std::fmt::Display;
-use std::str::FromStr;
 use ErrorString;
 use LayoutType;
 
@@ -11,7 +9,6 @@ use LayoutType;
 pub struct Args {
     pub volume: f32,
     pub layout_type: LayoutType,
-    pub start_note: i32,
     pub midi: bool,
     pub sound: Sound,
     pub dev_mode: bool,
@@ -50,12 +47,6 @@ where
                 .help(&layout_help)
                 .takes_value(true),
         ).arg(
-            Arg::with_name("pitch")
-                .long("pitch")
-                .value_name("MIDI")
-                .help("Sets a custom midi pitch to start from (default: 36)")
-                .takes_value(true),
-        ).arg(
             Arg::with_name("harmonics")
                 .long("harmonics")
                 .help("switches to the hammond sound and takes harmonics as arguments, separated by commas, e.g. '1,0.5,0.25'")
@@ -73,22 +64,17 @@ where
         );
     let matches = app.get_matches_from(args);
     Ok(Args {
-        volume: parse_with_default(matches.value_of("volume"), 1.0)?,
+        volume: parse_volume(matches.value_of("volume"))?,
         layout_type: parse_layout_type(matches.value_of("layout"))?,
-        start_note: parse_with_default(matches.value_of("pitch"), 36)?,
         sound: parse_sound(matches.value_of("harmonics"))?,
         midi: matches.is_present("midi"),
         dev_mode: matches.is_present("dev-mode"),
     })
 }
 
-fn parse_with_default<N>(input: Option<&str>, default: N) -> Result<N, ErrorString>
-where
-    N: FromStr,
-    <N as FromStr>::Err: Display,
-{
+fn parse_volume(input: Option<&str>) -> Result<f32, ErrorString> {
     match input {
-        None => Ok(default),
+        None => Ok(1.0),
         Some(string) => string
             .parse()
             .map_err(|e| ErrorString::from(format!("{}", e))),
@@ -141,7 +127,6 @@ mod test {
         let expected = Args {
             volume: 1.0,
             layout_type: LayoutType::default(),
-            start_note: 36,
             midi: false,
             sound: Sound::Rectangle,
             dev_mode: false,
@@ -160,11 +145,6 @@ mod test {
             args(vec!["--layout", "Triangles"]).layout_type,
             LayoutType::Triangles
         );
-    }
-
-    #[test]
-    fn allows_to_change_the_pitch() {
-        assert_eq!(args(vec!["--pitch", "48"]).start_note, 48);
     }
 
     #[test]
