@@ -11,7 +11,6 @@ use LayoutType;
 pub struct Args {
     pub volume: f32,
     pub layout_type: LayoutType,
-    pub start_note: i32,
     pub midi: bool,
     pub sound: Sound,
     pub dev_mode: bool,
@@ -50,12 +49,6 @@ where
                 .help(&layout_help)
                 .takes_value(true),
         ).arg(
-            Arg::with_name("pitch")
-                .long("pitch")
-                .value_name("MIDI")
-                .help("Sets a custom midi pitch to start from (default: 36)")
-                .takes_value(true),
-        ).arg(
             Arg::with_name("harmonics")
                 .long("harmonics")
                 .help("switches to the hammond sound and takes harmonics as arguments, separated by commas, e.g. '1,0.5,0.25'")
@@ -75,7 +68,6 @@ where
     Ok(Args {
         volume: parse_with_default(matches.value_of("volume"), 1.0)?,
         layout_type: parse_layout_type(matches.value_of("layout"))?,
-        start_note: parse_with_default(matches.value_of("pitch"), 36)?,
         sound: parse_sound(matches.value_of("harmonics"))?,
         midi: matches.is_present("midi"),
         dev_mode: matches.is_present("dev-mode"),
@@ -141,7 +133,6 @@ mod test {
         let expected = Args {
             volume: 1.0,
             layout_type: LayoutType::default(),
-            start_note: 36,
             midi: false,
             sound: Sound::Rectangle,
             dev_mode: false,
@@ -160,11 +151,6 @@ mod test {
             args(vec!["--layout", "Triangles"]).layout_type,
             LayoutType::Triangles
         );
-    }
-
-    #[test]
-    fn allows_to_change_the_pitch() {
-        assert_eq!(args(vec!["--pitch", "48"]).start_note, 48);
     }
 
     #[test]
