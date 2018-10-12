@@ -2,8 +2,6 @@ extern crate clap;
 
 use self::clap::{App, Arg};
 use std::ffi::OsString;
-use std::fmt::Display;
-use std::str::FromStr;
 use ErrorString;
 use LayoutType;
 
@@ -66,7 +64,7 @@ where
         );
     let matches = app.get_matches_from(args);
     Ok(Args {
-        volume: parse_with_default(matches.value_of("volume"), 1.0)?,
+        volume: parse_volume(matches.value_of("volume"))?,
         layout_type: parse_layout_type(matches.value_of("layout"))?,
         sound: parse_sound(matches.value_of("harmonics"))?,
         midi: matches.is_present("midi"),
@@ -74,13 +72,9 @@ where
     })
 }
 
-fn parse_with_default<N>(input: Option<&str>, default: N) -> Result<N, ErrorString>
-where
-    N: FromStr,
-    <N as FromStr>::Err: Display,
-{
+fn parse_volume(input: Option<&str>) -> Result<f32, ErrorString> {
     match input {
-        None => Ok(default),
+        None => Ok(1.0),
         Some(string) => string
             .parse()
             .map_err(|e| ErrorString::from(format!("{}", e))),
