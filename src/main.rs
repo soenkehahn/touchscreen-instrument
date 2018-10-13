@@ -12,10 +12,12 @@ extern crate enum_derive;
 mod areas;
 mod cli;
 mod evdev;
+mod quit;
 mod sound;
 
 use areas::{note_event_source::NoteEventSource, Areas};
 use evdev::*;
+use quit::Quitter;
 use sound::audio_player::AudioPlayer;
 use sound::generator;
 use sound::hammond::mk_hammond;
@@ -133,10 +135,13 @@ fn get_areas(cli_args: &cli::Args) -> Areas {
     }
 }
 
-fn get_note_event_source(cli_args: &cli::Args) -> Result<NoteEventSource, ErrorString> {
+fn get_note_event_source(
+    cli_args: &cli::Args,
+    quitter: Quitter,
+) -> Result<NoteEventSource, ErrorString> {
     let touches = PositionSource::new("/dev/input/by-id/usb-ILITEK_Multi-Touch-V5100-event-if00")?;
     let areas = get_areas(cli_args);
-    areas.clone().spawn_ui(cli_args);
+    areas.clone().spawn_ui(cli_args, quitter);
     Ok(NoteEventSource::new(areas, touches))
 }
 
@@ -164,10 +169,11 @@ fn mk_wave_form(cli_args: &cli::Args) -> WaveForm {
 
 fn run() -> Result<(), ErrorString> {
     let cli_args = &cli::parse(get_binary_name()?, std::env::args())?;
+    let quitter = Quitter::new();
     if cli_args.dev_mode {
-        get_areas(cli_args).run_ui(cli_args);
+        get_areas(cli_args).run_ui(cli_args, quitter);
     } else {
-        let note_event_source = get_note_event_source(cli_args)?;
+        let note_event_source = get_note_event_source(cli_args, quitter)?;
         let player = get_player(cli_args)?;
         player.consume(note_event_source);
     }

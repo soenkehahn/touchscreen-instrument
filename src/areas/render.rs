@@ -11,18 +11,19 @@ use self::sdl2::VideoSubsystem;
 use areas::{Area, Areas};
 use cli;
 use get_binary_name;
+use quit::Quitter;
 use ErrorString;
 
 impl Areas {
-    pub fn spawn_ui(self, cli_args: &cli::Args) {
+    pub fn spawn_ui(self, cli_args: &cli::Args, quitter: Quitter) {
         let clone = cli_args.clone();
         ::std::thread::spawn(move || {
-            self.run_ui(&clone);
+            self.run_ui(&clone, quitter);
         });
     }
 
-    pub fn run_ui(self, cli_args: &cli::Args) {
-        if let Err(e) = Ui::run_ui(&cli_args, self) {
+    pub fn run_ui(self, cli_args: &cli::Args, quitter: Quitter) {
+        if let Err(e) = Ui::run_ui(&cli_args, quitter, self) {
             eprintln!("error in ui thread: {:?}", e);
         }
     }
@@ -37,10 +38,10 @@ struct Ui {
 }
 
 impl Ui {
-    fn run_ui(cli_args: &cli::Args, areas: Areas) -> Result<(), ErrorString> {
+    fn run_ui(cli_args: &cli::Args, quitter: Quitter, areas: Areas) -> Result<(), ErrorString> {
         let mut ui = Ui::new(cli_args, areas)?;
         ui.run_main_loop()?;
-        ui.quit();
+        quitter.quit();
         Ok(())
     }
 
@@ -93,10 +94,6 @@ impl Ui {
             }
         }
         Ok(())
-    }
-
-    fn quit(&self) {
-        ::std::process::exit(0);
     }
 
     fn draw(&mut self) -> Result<(), ErrorString> {
