@@ -15,6 +15,7 @@ custom_derive = "*"
 enum_derive = "*"
 skipchannel = "*"
 chrono = "*"
+tempdir = "*"
 
 [features]
 ci = []

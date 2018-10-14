@@ -12,11 +12,13 @@ extern crate enum_derive;
 mod areas;
 mod cli;
 mod evdev;
+mod guitarix;
 mod quit;
 mod sound;
 
 use areas::{note_event_source::NoteEventSource, Areas};
 use evdev::*;
+use guitarix::Guitarix;
 use quit::Quitter;
 use sound::audio_player::AudioPlayer;
 use sound::generator;
@@ -173,8 +175,9 @@ fn run() -> Result<(), ErrorString> {
     if cli_args.dev_mode {
         get_areas(cli_args).run_ui(cli_args, quitter);
     } else {
-        let note_event_source = get_note_event_source(cli_args, quitter)?;
+        let note_event_source = get_note_event_source(cli_args, quitter.clone())?;
         let player = get_player(cli_args)?;
+        Guitarix::run(quitter)?;
         player.consume(note_event_source);
     }
     Ok(())
