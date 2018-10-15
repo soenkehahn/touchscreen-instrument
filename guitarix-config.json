@@ -1314,14 +1314,5 @@
       "zita_rev1.output.level": 0,
       "zita_rev1.position": 13
     }
-  },
-  "jack_connections", {
-    "input": ["touchscreen-instrument:left-output"],
-    "output1": ["system:playback_1"],
-    "output2": ["system:playback_2"],
-    "midi_input": [],
-    "midi_output": [],
-    "insert_out": ["%F:in_0"],
-    "insert_in": ["%A:out_0"]
   }
 ]
