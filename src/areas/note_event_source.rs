@@ -54,18 +54,16 @@ pub mod test {
         touches.into_iter().map(from_single)
     }
 
-    fn pos(x: i32) -> Position {
-        Position { x, y: 5 }
-    }
-
     mod note_event_source {
         use super::*;
 
         #[test]
         fn yields_frequencies() {
-            let areas = Areas::stripes(800, 600, 10, 48);
-            let mut frequencies =
-                NoteEventSource::new(areas, mock_touches(vec![TouchState::Touch(pos(5))]));
+            let areas = Areas::parallelograms(800, 600, (6, 10), 6, 48, 7);
+            let mut frequencies = NoteEventSource::new(
+                areas,
+                mock_touches(vec![TouchState::Touch(Position { x: 798, y: 595 })]),
+            );
             assert_eq!(
                 frequencies.next(),
                 Some(from_single(NoteOn(midi_to_frequency(48))))
@@ -74,7 +72,7 @@ pub mod test {
 
         #[test]
         fn yields_notouch_for_pauses() {
-            let areas = Areas::stripes(800, 600, 10, 48);
+            let areas = Areas::parallelograms(800, 600, (6, 10), 6, 48, 7);
             let mut frequencies =
                 NoteEventSource::new(areas, mock_touches(vec![TouchState::NoTouch]));
             assert_eq!(frequencies.next(), Some(from_single(NoteOff)));
@@ -82,9 +80,11 @@ pub mod test {
 
         #[test]
         fn allows_to_specify_the_starting_note() {
-            let areas = Areas::stripes(800, 600, 10, 49);
-            let mut frequencies =
-                NoteEventSource::new(areas, mock_touches(vec![TouchState::Touch(pos(5))]));
+            let areas = Areas::parallelograms(800, 600, (6, 10), 6, 49, 7);
+            let mut frequencies = NoteEventSource::new(
+                areas,
+                mock_touches(vec![TouchState::Touch(Position { x: 798, y: 595 })]),
+            );
             assert_eq!(
                 frequencies.next(),
                 Some(from_single(NoteOn(midi_to_frequency(49))))

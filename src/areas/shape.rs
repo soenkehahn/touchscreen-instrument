@@ -340,41 +340,22 @@ mod test {
             }
         }
 
-        mod stripes {
+        mod parallelograms {
             use areas::Areas;
 
             #[test]
             fn translates_touch_coordinates_to_screen_coordinates() {
-                let areas = Areas::stripes(1000, 1000, 10, 48).areas;
-                let expected: (Box<[i16]>, Box<[i16]>) =
-                    (Box::new([14, 21, 21, 14]), Box::new([0, 0, 5000, 5000]));
-                assert_eq!(
-                    areas
-                        .get(2)
-                        .unwrap()
-                        .shape
-                        .to_polygon(700.0 / 1000.0, 500.0 / 1000.0),
-                    expected
+                let screen_polygon = Areas::parallelograms(1000, 1000, (10, 10), 0, 48, 7)
+                    .areas
+                    .get(1)
+                    .unwrap()
+                    .shape
+                    .to_polygon(700.0 / 1000.0, 500.0 / 1000.0);
+                let expected: (Box<[i16]>, Box<[i16]>) = (
+                    Box::new([700, 693, 693, 700]),
+                    Box::new([500, 500, 495, 495]),
                 );
-            }
-
-            #[test]
-            fn factors_in_the_area_size() {
-                let areas = Areas::stripes(1000, 1000, 12, 48).areas;
-                let x1 = (24.0 * 0.7) as i16;
-                let x2 = (36.0 * 0.7) as i16;
-                let y1 = (1.0 * 0.5) as i16;
-                let y2 = ((1.0 * 0.5) + (10000.0 * 0.5)) as i16;
-                let expected: (Box<[i16]>, Box<[i16]>) =
-                    (Box::new([x1, x2, x2, x1]), Box::new([y1, y1, y2, y2]));
-                assert_eq!(
-                    areas
-                        .get(2)
-                        .unwrap()
-                        .shape
-                        .to_polygon(700.0 / 1000.0, 500.0 / 1000.0),
-                    expected
-                );
+                assert_eq!(screen_polygon, expected);
             }
         }
     }
