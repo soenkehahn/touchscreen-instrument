@@ -108,8 +108,8 @@ fn get_binary_name() -> Result<String, ErrorString> {
 custom_derive! {
 #[derive(Debug, Clone, Copy, IterVariants(LayoutTypeVariants), PartialEq)]
     pub enum LayoutType {
-        Triangles,
         Parallelograms,
+        Dummy,
     }
 }
 
@@ -119,9 +119,8 @@ impl Default for LayoutType {
     }
 }
 
-fn get_areas(cli_args: &cli::Args) -> Areas {
-    match cli_args.layout_type {
-        LayoutType::Triangles => Areas::triangles(TOUCH_WIDTH as i32, TOUCH_HEIGHT as i32, 1400),
+fn get_areas(layout_type: &LayoutType) -> Areas {
+    match layout_type {
         LayoutType::Parallelograms => Areas::parallelograms(
             TOUCH_WIDTH as i32,
             TOUCH_HEIGHT as i32,
@@ -130,6 +129,7 @@ fn get_areas(cli_args: &cli::Args) -> Areas {
             24,
             5,
         ),
+        LayoutType::Dummy => get_areas(&LayoutType::Parallelograms),
     }
 }
 
@@ -138,7 +138,7 @@ fn get_note_event_source(
     quitter: Quitter,
 ) -> Result<NoteEventSource, ErrorString> {
     let touches = PositionSource::new("/dev/input/by-id/usb-ILITEK_Multi-Touch-V5100-event-if00")?;
-    let areas = get_areas(cli_args);
+    let areas = get_areas(&cli_args.layout_type);
     areas.clone().spawn_ui(cli_args, quitter);
     Ok(NoteEventSource::new(areas, touches))
 }
@@ -169,7 +169,7 @@ fn run() -> Result<(), ErrorString> {
     let cli_args = &cli::parse(get_binary_name()?, std::env::args())?;
     let quitter = Quitter::new();
     if cli_args.dev_mode {
-        get_areas(cli_args).run_ui(cli_args, quitter);
+        get_areas(&cli_args.layout_type).run_ui(cli_args, quitter);
     } else {
         let note_event_source = get_note_event_source(cli_args, quitter.clone())?;
         let player = get_player(cli_args)?;
