@@ -36,31 +36,6 @@ pub struct Areas {
 }
 
 impl Areas {
-    pub fn peas(touch_width: i32, touch_height: i32, rect_size: i32) -> Areas {
-        let mut areas = vec![];
-        for row in 0..4 {
-            for i in 0..36 {
-                let row_offset = -((2.5 * rect_size as f32 * row as f32) as i32 + 2 * rect_size);
-                let note_is_even = i % 2 == 0;
-                let pea_offset = if note_is_even { rect_size } else { 0 };
-                areas.push(Area::new(
-                    Shape::Rectangle {
-                        x: i * rect_size / 2,
-                        y: touch_height + pea_offset + row_offset,
-                        width: rect_size,
-                        height: rect_size,
-                    },
-                    36 + i + row * 12,
-                ));
-            }
-        }
-        Areas {
-            areas,
-            touch_width,
-            touch_height,
-        }
-    }
-
     pub fn triangles(touch_width: i32, touch_height: i32, size: i32) -> Areas {
         let mut areas = vec![];
         let half = size / 2;
@@ -217,82 +192,6 @@ mod test {
                     Areas::make_color(62),
                     Areas::convert_color(Srgb::from(color).into_format())
                 );
-            }
-        }
-
-        mod peas {
-            use super::*;
-
-            #[test]
-            fn returns_correct_rectangles_in_the_lowest_row() {
-                let areas = Areas::peas(800, 600, 10);
-                let areas = areas.areas;
-                assert_eq!(
-                    areas[0].shape,
-                    Shape::Rectangle {
-                        x: 0,
-                        y: 590,
-                        width: 10,
-                        height: 10,
-                    }
-                );
-                assert_eq!(
-                    areas[1].shape,
-                    Shape::Rectangle {
-                        x: 5,
-                        y: 580,
-                        width: 10,
-                        height: 10,
-                    }
-                );
-                assert_eq!(
-                    areas[2].shape,
-                    Shape::Rectangle {
-                        x: 10,
-                        y: 590,
-                        width: 10,
-                        height: 10
-                    }
-                );
-            }
-
-            #[test]
-            fn returns_multiple_rows() {
-                let areas = Areas::peas(800, 600, 10).areas;
-                assert_eq!(
-                    areas[36].shape,
-                    Shape::Rectangle {
-                        x: 0,
-                        y: 565,
-                        width: 10,
-                        height: 10
-                    }
-                );
-                assert_eq!(
-                    areas[37].shape,
-                    Shape::Rectangle {
-                        x: 5,
-                        y: 555,
-                        width: 10,
-                        height: 10
-                    }
-                );
-                assert_eq!(
-                    areas[38].shape,
-                    Shape::Rectangle {
-                        x: 10,
-                        y: 565,
-                        width: 10,
-                        height: 10
-                    }
-                );
-            }
-
-            #[test]
-            fn subsequent_rows_are_one_octaves_higher() {
-                let areas = Areas::peas(800, 600, 10).areas;
-                assert_eq!(areas[0].midi_note, 36);
-                assert_eq!(areas[36].midi_note, 36 + 12);
             }
         }
 
