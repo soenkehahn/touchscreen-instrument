@@ -4,6 +4,7 @@ use evdev::Position;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Shape {
+    #[allow(dead_code)]
     Rectangle {
         x: i32,
         y: i32,
