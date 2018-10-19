@@ -1,6 +1,6 @@
 extern crate sdl2;
 
-use self::sdl2::event::Event;
+use self::sdl2::event::{Event, WindowEvent};
 use self::sdl2::gfx::primitives::DrawRenderer;
 use self::sdl2::keyboard::Keycode;
 use self::sdl2::pixels::Color;
@@ -32,6 +32,7 @@ impl Areas {
 struct Ui {
     canvas: Canvas<Window>,
     event_pump: EventPump,
+    refocused: bool,
     areas: Vec<Area>,
     x_factor: f32,
     y_factor: f32,
@@ -71,6 +72,7 @@ impl Ui {
         let mut ui = Ui {
             canvas,
             event_pump,
+            refocused: false,
             areas: areas.areas.clone(),
             x_factor: window_size.0 as f32 / areas.touch_width as f32,
             y_factor: window_size.1 as f32 / areas.touch_height as f32,
@@ -79,17 +81,40 @@ impl Ui {
         Ok(ui)
     }
 
+    fn handle_redraw(&mut self, event: Event) -> Result<(), ErrorString> {
+        match event {
+            Event::Window { .. } => self.draw()?,
+            _ => {}
+        }
+        Ok(())
+    }
+
+    fn handle_refocusing(&mut self, event: Event) {
+        if !self.refocused {
+            match event {
+                Event::Window {
+                    win_event: WindowEvent::FocusLost,
+                    ..
+                } => {
+                    self.canvas.window_mut().raise();
+                    self.refocused = true;
+                }
+                _ => {}
+            }
+        }
+    }
+
     fn run_main_loop(&mut self) -> Result<(), ErrorString> {
         'main: loop {
-            match self.event_pump.wait_event() {
+            let event = self.event_pump.wait_event();
+            self.handle_redraw(event.clone())?;
+            self.handle_refocusing(event.clone());
+            match event {
                 Event::Quit { .. }
                 | Event::KeyDown {
                     keycode: Some(Keycode::Escape),
                     ..
                 } => break 'main,
-                Event::Window { .. } => {
-                    self.draw()?;
-                }
                 _ => {}
             }
         }
