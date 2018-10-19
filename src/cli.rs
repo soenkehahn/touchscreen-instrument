@@ -84,8 +84,8 @@ fn parse_volume(input: Option<&str>) -> Result<f32, ErrorString> {
 fn parse_layout_type(input: Option<&str>) -> Result<LayoutType, ErrorString> {
     match input {
         None => Ok(LayoutType::default()),
-        Some("Triangles") => Ok(LayoutType::Triangles),
         Some("Parallelograms") => Ok(LayoutType::Parallelograms),
+        Some("Dummy") => Ok(LayoutType::Dummy),
         Some(layout) => Err(ErrorString(format!(
             "unknown layout: {}, possible values: {:?}",
             layout,
@@ -140,8 +140,8 @@ mod test {
     #[test]
     fn allows_to_change_the_layout_type() {
         assert_eq!(
-            args(vec!["--layout", "Triangles"]).layout_type,
-            LayoutType::Triangles
+            args(vec!["--layout", "Dummy"]).layout_type,
+            LayoutType::Dummy
         );
     }
 
