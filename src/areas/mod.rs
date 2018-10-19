@@ -28,7 +28,7 @@ impl Area {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Areas {
     areas: Vec<Area>,
     touch_width: i32,
@@ -36,31 +36,6 @@ pub struct Areas {
 }
 
 impl Areas {
-    pub fn stripes(
-        touch_width: i32,
-        touch_height: i32,
-        rect_size: i32,
-        start_midi_note: i32,
-    ) -> Areas {
-        let mut areas = vec![];
-        for i in 0..30 {
-            areas.push(Area::new(
-                Shape::Rectangle {
-                    x: i * rect_size,
-                    y: 1,
-                    width: rect_size,
-                    height: 10000,
-                },
-                start_midi_note + i,
-            ));
-        }
-        Areas {
-            areas,
-            touch_width,
-            touch_height,
-        }
-    }
-
     pub fn peas(touch_width: i32, touch_height: i32, rect_size: i32) -> Areas {
         let mut areas = vec![];
         for row in 0..4 {
@@ -209,48 +184,9 @@ impl Areas {
 #[cfg(test)]
 mod test {
     use super::*;
-    use sound::NoteEvent::*;
-
-    fn pos(x: i32) -> Position {
-        Position { x, y: 5 }
-    }
 
     mod areas {
         use super::*;
-
-        mod frequency {
-            use super::*;
-
-            mod stripes {
-                use super::*;
-
-                #[test]
-                fn maps_x_values_to_frequencies() {
-                    let areas = Areas::stripes(800, 600, 10, 48);
-                    assert_eq!(areas.frequency(pos(5)), NoteOn(midi_to_frequency(48)));
-                }
-
-                #[test]
-                fn maps_higher_x_values_to_higher_frequencies() {
-                    let areas = Areas::stripes(800, 600, 10, 48);
-                    assert_eq!(areas.frequency(pos(15)), NoteOn(midi_to_frequency(49)));
-                }
-
-                #[test]
-                fn has_non_continuous_steps() {
-                    let areas = Areas::stripes(800, 600, 10, 48);
-                    assert_eq!(areas.frequency(pos(9)), NoteOn(midi_to_frequency(48)));
-                    assert_eq!(areas.frequency(pos(10)), NoteOn(midi_to_frequency(49)));
-                }
-
-                #[test]
-                fn allows_to_change_area_size() {
-                    let areas = Areas::stripes(800, 600, 12, 48);
-                    assert_eq!(areas.frequency(pos(11)), NoteOn(midi_to_frequency(48)));
-                    assert_eq!(areas.frequency(pos(12)), NoteOn(midi_to_frequency(49)));
-                }
-            }
-        }
 
         mod make_color {
             use super::*;
@@ -281,59 +217,6 @@ mod test {
                     Areas::make_color(62),
                     Areas::convert_color(Srgb::from(color).into_format())
                 );
-            }
-        }
-
-        mod stripes {
-            use super::*;
-
-            #[test]
-            fn returns_a_rectangle_for_the_lowest_pitch() {
-                let areas = Areas::stripes(800, 600, 10, 48).areas;
-                assert_eq!(
-                    areas.get(0).unwrap().shape,
-                    Shape::Rectangle {
-                        x: 0,
-                        y: 1,
-                        width: 10,
-                        height: 10000
-                    }
-                );
-            }
-
-            #[test]
-            fn returns_rectangles_for_higher_pitches() {
-                let areas = Areas::stripes(800, 600, 10, 48).areas;
-                assert_eq!(
-                    areas.get(1).unwrap().shape,
-                    Shape::Rectangle {
-                        x: 10,
-                        y: 1,
-                        width: 10,
-                        height: 10000
-                    }
-                );
-                assert_eq!(
-                    areas.get(2).unwrap().shape,
-                    Shape::Rectangle {
-                        x: 20,
-                        y: 1,
-                        width: 10,
-                        height: 10000
-                    }
-                );
-            }
-
-            #[test]
-            fn returns_blue_for_c() {
-                let areas = Areas::stripes(800, 600, 10, 60).areas;
-                assert_eq!(areas.get(0).unwrap().color, Color::RGB(0, 0, 254));
-            }
-
-            #[test]
-            fn returns_blue_for_c_when_starting_at_different_notes() {
-                let areas = Areas::stripes(800, 600, 10, 59).areas;
-                assert_eq!(areas.get(1).unwrap().color, Color::RGB(0, 0, 254));
             }
         }
 

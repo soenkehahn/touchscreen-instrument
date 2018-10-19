@@ -108,7 +108,6 @@ fn get_binary_name() -> Result<String, ErrorString> {
 custom_derive! {
 #[derive(Debug, Clone, Copy, IterVariants(LayoutTypeVariants), PartialEq)]
     pub enum LayoutType {
-        Stripes,
         Peas,
         Triangles,
         Parallelograms,
@@ -123,7 +122,6 @@ impl Default for LayoutType {
 
 fn get_areas(cli_args: &cli::Args) -> Areas {
     match cli_args.layout_type {
-        LayoutType::Stripes => Areas::stripes(TOUCH_WIDTH, TOUCH_HEIGHT, 1000, 36),
         LayoutType::Peas => Areas::peas(TOUCH_WIDTH, TOUCH_HEIGHT, 1400),
         LayoutType::Triangles => Areas::triangles(TOUCH_WIDTH as i32, TOUCH_HEIGHT as i32, 1400),
         LayoutType::Parallelograms => Areas::parallelograms(

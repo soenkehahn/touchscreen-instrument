@@ -84,7 +84,6 @@ fn parse_volume(input: Option<&str>) -> Result<f32, ErrorString> {
 fn parse_layout_type(input: Option<&str>) -> Result<LayoutType, ErrorString> {
     match input {
         None => Ok(LayoutType::default()),
-        Some("Stripes") => Ok(LayoutType::Stripes),
         Some("Peas") => Ok(LayoutType::Peas),
         Some("Triangles") => Ok(LayoutType::Triangles),
         Some("Parallelograms") => Ok(LayoutType::Parallelograms),
