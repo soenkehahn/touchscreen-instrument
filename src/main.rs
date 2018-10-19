@@ -110,7 +110,7 @@ custom_derive! {
 #[derive(Debug, Clone, Copy, IterVariants(LayoutTypeVariants), PartialEq)]
     pub enum LayoutType {
         Parallelograms,
-        Dummy,
+        Flipped,
     }
 }
 
@@ -130,7 +130,7 @@ fn get_areas(layout_type: &LayoutType) -> Areas {
             24,
             5,
         ),
-        LayoutType::Dummy => get_areas(&LayoutType::Parallelograms),
+        LayoutType::Flipped => Areas::flipped(TOUCH_WIDTH as i32, TOUCH_HEIGHT as i32, 15, 15, 24),
     }
 }
 

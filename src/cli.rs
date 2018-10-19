@@ -85,7 +85,7 @@ fn parse_layout_type(input: Option<&str>) -> Result<LayoutType, ErrorString> {
     match input {
         None => Ok(LayoutType::default()),
         Some("Parallelograms") => Ok(LayoutType::Parallelograms),
-        Some("Dummy") => Ok(LayoutType::Dummy),
+        Some("Flipped") => Ok(LayoutType::Flipped),
         Some(layout) => Err(ErrorString(format!(
             "unknown layout: {}, possible values: {:?}",
             layout,
@@ -140,8 +140,8 @@ mod test {
     #[test]
     fn allows_to_change_the_layout_type() {
         assert_eq!(
-            args(vec!["--layout", "Dummy"]).layout_type,
-            LayoutType::Dummy
+            args(vec!["--layout", "Flipped"]).layout_type,
+            LayoutType::Flipped
         );
     }
 
