@@ -130,7 +130,7 @@ fn get_areas(layout_type: &LayoutType) -> Areas {
             24,
             5,
         ),
-        LayoutType::Flipped => Areas::flipped(TOUCH_WIDTH as i32, TOUCH_HEIGHT as i32, 15, 15, 24),
+        LayoutType::Flipped => Areas::flipped(TOUCH_WIDTH as i32, TOUCH_HEIGHT as i32, 16, 11, 36),
     }
 }
 
