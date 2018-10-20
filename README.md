@@ -3,6 +3,9 @@
 This is a musical instrument running on linux using an external monitor with
 touchscreen support. It currently works with the `gechic 1503i` monitor.
 
+Here's a video of a performance using the instrument by @caroline-lin, @dan-f
+and @soenkehahn: https://youtu.be/9unGIcbHJ0A
+
 ## development
 
 You'll need [rustup](https://rustup.rs/) and a few dependencies as listed
