@@ -104,18 +104,24 @@ impl Ui {
         }
     }
 
+    fn handle_quit(&self, event: Event) -> bool {
+        match event {
+            Event::Quit { .. }
+            | Event::KeyDown {
+                keycode: Some(Keycode::Escape),
+                ..
+            } => true,
+            _ => false,
+        }
+    }
+
     fn run_main_loop(&mut self) -> Result<(), ErrorString> {
         'main: loop {
             let event = self.event_pump.wait_event();
             self.handle_redraw(event.clone())?;
             self.handle_refocusing(event.clone());
-            match event {
-                Event::Quit { .. }
-                | Event::KeyDown {
-                    keycode: Some(Keycode::Escape),
-                    ..
-                } => break 'main,
-                _ => {}
+            if self.handle_quit(event.clone()) {
+                break 'main;
             }
         }
         Ok(())
