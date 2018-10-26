@@ -1,7 +1,7 @@
 extern crate evdev_rs;
 
 use evdev::evdev_rs::enums::{EventCode, EventType::*, EV_ABS, EV_SYN::*};
-use evdev::evdev_rs::*;
+use evdev::evdev_rs::{Device, GrabMode, InputEvent, ReadStatus, BLOCKING, NORMAL};
 use std::fs::File;
 use AddMessage;
 use ErrorString;
@@ -224,6 +224,7 @@ mod test {
     use super::TouchState::*;
     use super::*;
     use evdev::evdev_rs::enums::{EventCode, EventType, EV_ABS::*};
+    use evdev::evdev_rs::TimeVal;
 
     struct Mock;
 
