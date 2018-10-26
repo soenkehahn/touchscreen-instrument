@@ -81,7 +81,7 @@ impl Ui {
         Ok(ui)
     }
 
-    fn handle_redraw(&mut self, event: Event) -> Result<(), ErrorString> {
+    fn handle_redraw(&mut self, event: &Event) -> Result<(), ErrorString> {
         match event {
             Event::Window { .. } => self.draw()?,
             _ => {}
@@ -89,7 +89,7 @@ impl Ui {
         Ok(())
     }
 
-    fn handle_refocusing(&mut self, event: Event) {
+    fn handle_refocusing(&mut self, event: &Event) {
         if !self.refocused {
             match event {
                 Event::Window {
@@ -104,7 +104,7 @@ impl Ui {
         }
     }
 
-    fn handle_quit(&self, event: Event) -> bool {
+    fn handle_quit(&self, event: &Event) -> bool {
         match event {
             Event::Quit { .. }
             | Event::KeyDown {
@@ -118,9 +118,9 @@ impl Ui {
     fn run_main_loop(&mut self) -> Result<(), ErrorString> {
         'main: loop {
             let event = self.event_pump.wait_event();
-            self.handle_redraw(event.clone())?;
-            self.handle_refocusing(event.clone());
-            if self.handle_quit(event.clone()) {
+            self.handle_redraw(&event)?;
+            self.handle_refocusing(&event);
+            if self.handle_quit(&event) {
                 break 'main;
             }
         }
