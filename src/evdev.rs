@@ -152,11 +152,9 @@ pub struct PositionSource {
 }
 
 impl PositionSource {
-    fn new_from_iterator(
-        input_event_source: impl Iterator<Item = InputEvent> + 'static,
-    ) -> PositionSource {
+    fn new_from_iterator(syn_chunk_source: SynChunkSource) -> PositionSource {
         PositionSource {
-            syn_chunk_source: SynChunkSource::new(input_event_source),
+            syn_chunk_source: syn_chunk_source,
             slots: [SlotState {
                 position: Position { x: 0, y: 0 },
                 btn_touch: false,
@@ -166,9 +164,9 @@ impl PositionSource {
     }
 
     pub fn new(file: &str) -> Result<PositionSource, ErrorString> {
-        Ok(PositionSource::new_from_iterator(InputEventSource::new(
-            file,
-        )?))
+        Ok(PositionSource::new_from_iterator(SynChunkSource::new(
+            InputEventSource::new(file)?,
+        )))
     }
 }
 
@@ -242,7 +240,7 @@ mod test {
         }
 
         fn positions(vec: Vec<InputEvent>) -> PositionSource {
-            PositionSource::new_from_iterator(vec.into_iter())
+            PositionSource::new_from_iterator(SynChunkSource::new(vec.into_iter()))
         }
     }
 
