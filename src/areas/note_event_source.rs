@@ -59,7 +59,14 @@ pub mod test {
 
         #[test]
         fn yields_frequencies() {
-            let areas = Areas::parallelograms(800, 600, (6, 10), 6, 48, 7);
+            let areas = Areas::parallelograms(
+                800,
+                600,
+                Position { x: -6, y: -6 },
+                Position { x: -0, y: -10 },
+                48,
+                7,
+            );
             let mut frequencies = NoteEventSource::new(
                 areas,
                 mock_touches(vec![TouchState::Touch(Position { x: 798, y: 595 })]),
@@ -72,7 +79,14 @@ pub mod test {
 
         #[test]
         fn yields_notouch_for_pauses() {
-            let areas = Areas::parallelograms(800, 600, (6, 10), 6, 48, 7);
+            let areas = Areas::parallelograms(
+                800,
+                600,
+                Position { x: -6, y: -6 },
+                Position { x: -0, y: -10 },
+                48,
+                7,
+            );
             let mut frequencies =
                 NoteEventSource::new(areas, mock_touches(vec![TouchState::NoTouch]));
             assert_eq!(frequencies.next(), Some(from_single(NoteOff)));
@@ -80,7 +94,14 @@ pub mod test {
 
         #[test]
         fn allows_to_specify_the_starting_note() {
-            let areas = Areas::parallelograms(800, 600, (6, 10), 6, 49, 7);
+            let areas = Areas::parallelograms(
+                800,
+                600,
+                Position { x: -6, y: -6 },
+                Position { x: -0, y: -10 },
+                49,
+                7,
+            );
             let mut frequencies = NoteEventSource::new(
                 areas,
                 mock_touches(vec![TouchState::Touch(Position { x: 798, y: 595 })]),

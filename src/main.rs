@@ -128,8 +128,8 @@ fn get_areas(layout_type: &LayoutType) -> Areas {
         LayoutType::Parallelograms => Areas::parallelograms(
             TOUCH_WIDTH as i32,
             TOUCH_HEIGHT as i32,
-            (1000, 1300),
-            200,
+            Position { x: -1000, y: -200 },
+            Position { x: 0, y: -1300 },
             24,
             5,
         ),

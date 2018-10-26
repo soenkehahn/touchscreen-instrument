@@ -225,16 +225,23 @@ mod test {
         }
 
         mod parallelograms {
+            use super::*;
             use areas::Areas;
 
             #[test]
             fn translates_touch_coordinates_to_screen_coordinates() {
-                let screen_polygon = Areas::parallelograms(1000, 1000, (10, 10), 0, 48, 7)
-                    .areas
-                    .get(1)
-                    .unwrap()
-                    .shape
-                    .to_polygon(700.0 / 1000.0, 500.0 / 1000.0);
+                let screen_polygon = Areas::parallelograms(
+                    1000,
+                    1000,
+                    Position { x: -10, y: 0 },
+                    Position { x: -0, y: -10 },
+                    48,
+                    7,
+                ).areas
+                .get(1)
+                .unwrap()
+                .shape
+                .to_polygon(700.0 / 1000.0, 500.0 / 1000.0);
                 let expected: (Box<[i16]>, Box<[i16]>) = (
                     Box::new([700, 693, 693, 700]),
                     Box::new([500, 500, 495, 495]),
