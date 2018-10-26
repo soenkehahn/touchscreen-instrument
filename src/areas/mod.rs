@@ -72,7 +72,7 @@ impl Areas {
         }
     }
 
-    pub fn flipped(
+    pub fn grid(
         touch_width: i32,
         touch_height: i32,
         row_length: i32,
@@ -336,12 +336,12 @@ mod test {
             }
         }
 
-        mod flipped {
+        mod grid {
             use super::*;
 
             #[test]
             fn has_the_base_note_in_the_lower_right_corner() {
-                let areas = Areas::flipped(800, 600, 80, 60, 0).areas;
+                let areas = Areas::grid(800, 600, 80, 60, 0).areas;
                 assert_eq!(
                     areas[0].shape,
                     Shape::Rectangle {
@@ -355,7 +355,7 @@ mod test {
 
             #[test]
             fn takes_the_screen_size_into_account() {
-                let areas = Areas::flipped(8000, 1200, 80, 60, 0).areas;
+                let areas = Areas::grid(8000, 1200, 80, 60, 0).areas;
                 assert_eq!(
                     areas[0].shape,
                     Shape::Rectangle {
@@ -369,7 +369,7 @@ mod test {
 
             #[test]
             fn renders_the_bottom_row() {
-                let areas = Areas::flipped(800, 600, 80, 60, 0).areas;
+                let areas = Areas::grid(800, 600, 80, 60, 0).areas;
                 for i in 0..80 {
                     assert_eq!(
                         areas[i].shape,
@@ -387,7 +387,7 @@ mod test {
 
             #[test]
             fn bottom_row_are_semitones() {
-                let areas = Areas::flipped(800, 600, 80, 60, 0).areas;
+                let areas = Areas::grid(800, 600, 80, 60, 0).areas;
                 for i in 0..80 {
                     assert_eq!(areas[i].midi_note, i as i32)
                 }
@@ -395,7 +395,7 @@ mod test {
 
             #[test]
             fn renders_a_second_row() {
-                let areas = Areas::flipped(800, 600, 80, 60, 0).areas;
+                let areas = Areas::grid(800, 600, 80, 60, 0).areas;
                 for i in 0..80 {
                     assert_eq!(
                         areas[i as usize + 80],
@@ -414,7 +414,7 @@ mod test {
 
             #[test]
             fn renders_the_top_row() {
-                let areas = Areas::flipped(800, 600, 80, 60, 0).areas;
+                let areas = Areas::grid(800, 600, 80, 60, 0).areas;
                 for i in 0..80 {
                     assert_eq!(
                         areas[i as usize + 80 * 59],
@@ -433,13 +433,13 @@ mod test {
 
             #[test]
             fn allows_to_configure_the_number_of_rectangles() {
-                assert_eq!(Areas::flipped(800, 600, 80, 60, 0).areas.len(), 80 * 60);
-                assert_eq!(Areas::flipped(800, 600, 10, 6, 0).areas.len(), 10 * 6);
+                assert_eq!(Areas::grid(800, 600, 80, 60, 0).areas.len(), 80 * 60);
+                assert_eq!(Areas::grid(800, 600, 10, 6, 0).areas.len(), 10 * 6);
             }
 
             #[test]
             fn allows_to_configure_the_base_note() {
-                let areas = Areas::flipped(800, 600, 80, 60, 36).areas;
+                let areas = Areas::grid(800, 600, 80, 60, 36).areas;
                 assert_eq!(areas[0].midi_note, 36);
                 assert_eq!(areas[1].midi_note, 37);
                 assert_eq!(areas[80].midi_note, 41);
