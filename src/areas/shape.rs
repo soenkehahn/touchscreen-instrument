@@ -226,18 +226,20 @@ mod test {
 
         mod parallelograms {
             use super::*;
-            use areas::Areas;
+            use areas::{Areas, ParallelogramConfig};
 
             #[test]
             fn translates_touch_coordinates_to_screen_coordinates() {
-                let screen_polygon = Areas::parallelograms(
-                    1000,
-                    1000,
-                    Position { x: -10, y: 0 },
-                    Position { x: -0, y: -10 },
-                    48,
-                    7,
-                ).areas
+                let screen_polygon = Areas::parallelograms_(ParallelogramConfig {
+                    touch_width: 1000,
+                    touch_height: 1000,
+                    u: Position { x: -10, y: 0 },
+                    v: Position { x: -0, y: -10 },
+                    column_range: (-1, 100),
+                    row_range: (0, 100),
+                    start_midi_note: 48,
+                    row_interval: 7,
+                }).areas
                 .get(1)
                 .unwrap()
                 .shape

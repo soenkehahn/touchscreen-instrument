@@ -35,30 +35,43 @@ pub struct Areas {
     touch_height: i32,
 }
 
+pub struct ParallelogramConfig {
+    pub touch_width: i32,
+    pub touch_height: i32,
+    pub u: Position,
+    pub v: Position,
+    pub column_range: (i32, i32),
+    pub row_range: (i32, i32),
+    pub start_midi_note: i32,
+    pub row_interval: i32,
+}
+
 impl Areas {
-    pub fn parallelograms(
-        touch_width: i32,
-        touch_height: i32,
-        u: Position,
-        v: Position,
-        start_midi_note: i32,
-        row_interval: i32,
+    pub fn parallelograms_(
+        ParallelogramConfig {
+            touch_width,
+            touch_height,
+            u,
+            v,
+            column_range,
+            row_range,
+            start_midi_note,
+            row_interval,
+        }: ParallelogramConfig,
     ) -> Areas {
         let mut areas = vec![];
-        let ncols = (touch_height as f32 / -v.y as f32).ceil() as i32;
-        let nrows = (touch_width as f32 / -u.x as f32).ceil() as i32;
-        for row in 0..nrows {
-            for col in -1..ncols {
+        for row in row_range.0..row_range.1 {
+            for column in column_range.0..column_range.1 {
                 areas.push(Area::new(
                     Shape::Parallelogram {
                         base: Position {
-                            x: touch_width + u.x * row + v.x * col,
-                            y: touch_height + v.y * col + u.y * row,
+                            x: touch_width + u.x * row + v.x * column,
+                            y: touch_height + v.y * column + u.y * row,
                         },
                         u,
                         v,
                     },
-                    start_midi_note + col + row * row_interval,
+                    start_midi_note + column + row * row_interval,
                 ));
             }
         }
@@ -172,14 +185,16 @@ mod test {
 
             #[test]
             fn renders_a_parallelogram_in_the_bottom_corner() {
-                let areas = Areas::parallelograms(
-                    800,
-                    600,
-                    Position { x: -6, y: -6 },
-                    Position { x: -0, y: -10 },
-                    36,
-                    7,
-                ).areas;
+                let areas = Areas::parallelograms_(ParallelogramConfig {
+                    touch_width: 800,
+                    touch_height: 600,
+                    u: Position { x: -6, y: -6 },
+                    v: Position { x: -0, y: -10 },
+                    column_range: (-1, 60),
+                    row_range: (0, 134),
+                    start_midi_note: 36,
+                    row_interval: 7,
+                }).areas;
                 assert_eq!(
                     areas[1].shape,
                     Shape::Parallelogram {
@@ -192,14 +207,16 @@ mod test {
 
             #[test]
             fn renders_subsequent_parallelograms_in_the_bottom_row() {
-                let areas = Areas::parallelograms(
-                    800,
-                    600,
-                    Position { x: -6, y: -6 },
-                    Position { x: -0, y: -10 },
-                    36,
-                    7,
-                ).areas;
+                let areas = Areas::parallelograms_(ParallelogramConfig {
+                    touch_width: 800,
+                    touch_height: 600,
+                    u: Position { x: -6, y: -6 },
+                    v: Position { x: -0, y: -10 },
+                    column_range: (-1, 60),
+                    row_range: (0, 134),
+                    start_midi_note: 36,
+                    row_interval: 7,
+                }).areas;
                 assert_eq!(
                     areas[2..4]
                         .into_iter()
@@ -222,14 +239,16 @@ mod test {
 
             #[test]
             fn renders_edge_parallelograms_in_first_row() {
-                let areas = Areas::parallelograms(
-                    800,
-                    605,
-                    Position { x: -6, y: -6 },
-                    Position { x: -0, y: -10 },
-                    36,
-                    7,
-                ).areas;
+                let areas = Areas::parallelograms_(ParallelogramConfig {
+                    touch_width: 800,
+                    touch_height: 605,
+                    u: Position { x: -6, y: -6 },
+                    v: Position { x: -0, y: -10 },
+                    column_range: (-1, 61),
+                    row_range: (0, 134),
+                    start_midi_note: 36,
+                    row_interval: 7,
+                }).areas;
                 assert_eq!(
                     areas[61].shape,
                     Shape::Parallelogram {
@@ -242,14 +261,16 @@ mod test {
 
             #[test]
             fn first_row_is_chromatic_scale() {
-                let areas = Areas::parallelograms(
-                    800,
-                    600,
-                    Position { x: -6, y: -6 },
-                    Position { x: -0, y: -10 },
-                    36,
-                    7,
-                ).areas;
+                let areas = Areas::parallelograms_(ParallelogramConfig {
+                    touch_width: 800,
+                    touch_height: 600,
+                    u: Position { x: -6, y: -6 },
+                    v: Position { x: -0, y: -10 },
+                    column_range: (-1, 60),
+                    row_range: (0, 134),
+                    start_midi_note: 36,
+                    row_interval: 7,
+                }).areas;
                 assert_eq!(
                     areas[0..3]
                         .into_iter()
@@ -261,14 +282,16 @@ mod test {
 
             #[test]
             fn renders_second_row() {
-                let areas = Areas::parallelograms(
-                    800,
-                    600,
-                    Position { x: -6, y: -6 },
-                    Position { x: -0, y: -10 },
-                    36,
-                    7,
-                ).areas;
+                let areas = Areas::parallelograms_(ParallelogramConfig {
+                    touch_width: 800,
+                    touch_height: 600,
+                    u: Position { x: -6, y: -6 },
+                    v: Position { x: -0, y: -10 },
+                    column_range: (-1, 60),
+                    row_range: (0, 134),
+                    start_midi_note: 36,
+                    row_interval: 7,
+                }).areas;
                 assert_eq!(
                     areas[62..64]
                         .into_iter()
@@ -291,14 +314,16 @@ mod test {
 
             #[test]
             fn second_row_is_a_fifth_higher() {
-                let areas = Areas::parallelograms(
-                    800,
-                    600,
-                    Position { x: -6, y: -6 },
-                    Position { x: -0, y: -10 },
-                    36,
-                    7,
-                ).areas;
+                let areas = Areas::parallelograms_(ParallelogramConfig {
+                    touch_width: 800,
+                    touch_height: 600,
+                    u: Position { x: -6, y: -6 },
+                    v: Position { x: -0, y: -10 },
+                    column_range: (-1, 60),
+                    row_range: (0, 134),
+                    start_midi_note: 36,
+                    row_interval: 7,
+                }).areas;
                 assert_eq!(
                     areas[62..65]
                         .into_iter()
@@ -310,14 +335,16 @@ mod test {
 
             #[test]
             fn allows_to_change_interval_between_rows() {
-                let areas = Areas::parallelograms(
-                    800,
-                    600,
-                    Position { x: -6, y: -6 },
-                    Position { x: -0, y: -10 },
-                    36,
-                    4,
-                ).areas;
+                let areas = Areas::parallelograms_(ParallelogramConfig {
+                    touch_width: 800,
+                    touch_height: 600,
+                    u: Position { x: -6, y: -6 },
+                    v: Position { x: -0, y: -10 },
+                    column_range: (-1, 60),
+                    row_range: (0, 134),
+                    start_midi_note: 36,
+                    row_interval: 4,
+                }).areas;
                 assert_eq!(
                     areas[62..65]
                         .into_iter()
@@ -329,14 +356,16 @@ mod test {
 
             #[test]
             fn allows_to_change_the_base_midi_note() {
-                let areas = Areas::parallelograms(
-                    800,
-                    600,
-                    Position { x: -6, y: -6 },
-                    Position { x: -0, y: -10 },
-                    48,
-                    7,
-                ).areas;
+                let areas = Areas::parallelograms_(ParallelogramConfig {
+                    touch_width: 800,
+                    touch_height: 600,
+                    u: Position { x: -6, y: -6 },
+                    v: Position { x: -0, y: -10 },
+                    column_range: (-1, 60),
+                    row_range: (0, 134),
+                    start_midi_note: 48,
+                    row_interval: 7,
+                }).areas;
                 assert_eq!(
                     areas[0..3]
                         .into_iter()
@@ -348,14 +377,16 @@ mod test {
 
             #[test]
             fn allows_to_configure_parallelogram_slanting() {
-                let areas = Areas::parallelograms(
-                    800,
-                    600,
-                    Position { x: -6, y: -3 },
-                    Position { x: -0, y: -10 },
-                    36,
-                    4,
-                ).areas;
+                let areas = Areas::parallelograms_(ParallelogramConfig {
+                    touch_width: 800,
+                    touch_height: 600,
+                    u: Position { x: -6, y: -3 },
+                    v: Position { x: -0, y: -10 },
+                    column_range: (-1, 60),
+                    row_range: (0, 134),
+                    start_midi_note: 36,
+                    row_interval: 4,
+                }).areas;
                 assert_eq!(
                     areas[1].shape,
                     Shape::Parallelogram {
@@ -376,14 +407,16 @@ mod test {
 
             #[test]
             fn allows_to_configure_parallelogram_width() {
-                let areas = Areas::parallelograms(
-                    800,
-                    600,
-                    Position { x: -10, y: -6 },
-                    Position { x: -0, y: -10 },
-                    36,
-                    4,
-                ).areas;
+                let areas = Areas::parallelograms_(ParallelogramConfig {
+                    touch_width: 800,
+                    touch_height: 600,
+                    u: Position { x: -10, y: -6 },
+                    v: Position { x: -0, y: -10 },
+                    column_range: (-1, 60),
+                    row_range: (0, 80),
+                    start_midi_note: 36,
+                    row_interval: 4,
+                }).areas;
                 assert_eq!(
                     areas[1].shape,
                     Shape::Parallelogram {
@@ -404,14 +437,16 @@ mod test {
 
             #[test]
             fn works_with_non_zero_row_slants() {
-                let areas = Areas::parallelograms(
-                    800,
-                    600,
-                    Position { x: -6, y: -6 },
-                    Position { x: -5, y: -10 },
-                    36,
-                    7,
-                ).areas;
+                let areas = Areas::parallelograms_(ParallelogramConfig {
+                    touch_width: 800,
+                    touch_height: 600,
+                    u: Position { x: -6, y: -6 },
+                    v: Position { x: -5, y: -10 },
+                    column_range: (-1, 60),
+                    row_range: (0, 134),
+                    start_midi_note: 36,
+                    row_interval: 7,
+                }).areas;
                 assert_eq!(
                     areas[1].shape,
                     Shape::Parallelogram {
