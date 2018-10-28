@@ -58,7 +58,7 @@ impl Ui {
         let video_subsystem = sdl_context.video()?;
         let screen_rect = Ui::get_screen_rect(&video_subsystem)?;
         let window_size = if cli_args.dev_mode {
-            (800, 600)
+            (1920, 1080)
         } else {
             (screen_rect.width(), screen_rect.height())
         };
