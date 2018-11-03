@@ -230,7 +230,7 @@ mod test {
 
             #[test]
             fn translates_touch_coordinates_to_screen_coordinates() {
-                let screen_polygon = Areas::parallelograms_(ParallelogramConfig {
+                let screen_polygon = Areas::parallelograms(ParallelogramConfig {
                     touch_width: 1000,
                     touch_height: 1000,
                     u: Position { x: -10, y: 0 },

@@ -47,7 +47,7 @@ pub struct ParallelogramConfig {
 }
 
 impl Areas {
-    pub fn parallelograms_(
+    pub fn parallelograms(
         ParallelogramConfig {
             touch_width,
             touch_height,
@@ -185,7 +185,7 @@ mod test {
 
             #[test]
             fn renders_a_parallelogram_in_the_bottom_corner() {
-                let areas = Areas::parallelograms_(ParallelogramConfig {
+                let areas = Areas::parallelograms(ParallelogramConfig {
                     touch_width: 800,
                     touch_height: 600,
                     u: Position { x: -6, y: -6 },
@@ -207,7 +207,7 @@ mod test {
 
             #[test]
             fn renders_subsequent_parallelograms_in_the_bottom_row() {
-                let areas = Areas::parallelograms_(ParallelogramConfig {
+                let areas = Areas::parallelograms(ParallelogramConfig {
                     touch_width: 800,
                     touch_height: 600,
                     u: Position { x: -6, y: -6 },
@@ -239,7 +239,7 @@ mod test {
 
             #[test]
             fn renders_edge_parallelograms_in_first_row() {
-                let areas = Areas::parallelograms_(ParallelogramConfig {
+                let areas = Areas::parallelograms(ParallelogramConfig {
                     touch_width: 800,
                     touch_height: 605,
                     u: Position { x: -6, y: -6 },
@@ -261,7 +261,7 @@ mod test {
 
             #[test]
             fn first_row_is_chromatic_scale() {
-                let areas = Areas::parallelograms_(ParallelogramConfig {
+                let areas = Areas::parallelograms(ParallelogramConfig {
                     touch_width: 800,
                     touch_height: 600,
                     u: Position { x: -6, y: -6 },
@@ -282,7 +282,7 @@ mod test {
 
             #[test]
             fn renders_second_row() {
-                let areas = Areas::parallelograms_(ParallelogramConfig {
+                let areas = Areas::parallelograms(ParallelogramConfig {
                     touch_width: 800,
                     touch_height: 600,
                     u: Position { x: -6, y: -6 },
@@ -314,7 +314,7 @@ mod test {
 
             #[test]
             fn second_row_is_a_fifth_higher() {
-                let areas = Areas::parallelograms_(ParallelogramConfig {
+                let areas = Areas::parallelograms(ParallelogramConfig {
                     touch_width: 800,
                     touch_height: 600,
                     u: Position { x: -6, y: -6 },
@@ -335,7 +335,7 @@ mod test {
 
             #[test]
             fn allows_to_change_interval_between_rows() {
-                let areas = Areas::parallelograms_(ParallelogramConfig {
+                let areas = Areas::parallelograms(ParallelogramConfig {
                     touch_width: 800,
                     touch_height: 600,
                     u: Position { x: -6, y: -6 },
@@ -356,7 +356,7 @@ mod test {
 
             #[test]
             fn allows_to_change_the_base_midi_note() {
-                let areas = Areas::parallelograms_(ParallelogramConfig {
+                let areas = Areas::parallelograms(ParallelogramConfig {
                     touch_width: 800,
                     touch_height: 600,
                     u: Position { x: -6, y: -6 },
@@ -377,7 +377,7 @@ mod test {
 
             #[test]
             fn allows_to_configure_parallelogram_slanting() {
-                let areas = Areas::parallelograms_(ParallelogramConfig {
+                let areas = Areas::parallelograms(ParallelogramConfig {
                     touch_width: 800,
                     touch_height: 600,
                     u: Position { x: -6, y: -3 },
@@ -407,7 +407,7 @@ mod test {
 
             #[test]
             fn allows_to_configure_parallelogram_width() {
-                let areas = Areas::parallelograms_(ParallelogramConfig {
+                let areas = Areas::parallelograms(ParallelogramConfig {
                     touch_width: 800,
                     touch_height: 600,
                     u: Position { x: -10, y: -6 },
@@ -437,7 +437,7 @@ mod test {
 
             #[test]
             fn works_with_non_zero_row_slants() {
-                let areas = Areas::parallelograms_(ParallelogramConfig {
+                let areas = Areas::parallelograms(ParallelogramConfig {
                     touch_width: 800,
                     touch_height: 600,
                     u: Position { x: -6, y: -6 },

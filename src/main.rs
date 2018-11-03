@@ -125,12 +125,12 @@ impl Default for LayoutType {
 
 fn get_areas(layout_type: &LayoutType) -> Areas {
     match layout_type {
-        LayoutType::Parallelograms => Areas::parallelograms_(ParallelogramConfig {
+        LayoutType::Parallelograms => Areas::parallelograms(ParallelogramConfig {
             touch_width: TOUCH_WIDTH as i32,
             touch_height: TOUCH_HEIGHT as i32,
             u: Position { x: -1000, y: -200 },
             v: Position { x: 0, y: -1300 },
-            column_range: (-1, 8),
+            column_range: (-3, 8),
             row_range: (0, 17),
             start_midi_note: 24,
             row_interval: 5,
