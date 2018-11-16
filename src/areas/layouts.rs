@@ -22,6 +22,22 @@ pub fn grid(
     number_of_rows: i32,
     start_midi_note: i32,
 ) -> Areas {
+    grid_(
+        touch_width,
+        touch_height,
+        row_length,
+        number_of_rows,
+        start_midi_note,
+    )
+}
+
+pub fn grid_(
+    touch_width: i32,
+    touch_height: i32,
+    row_length: i32,
+    number_of_rows: i32,
+    start_midi_note: i32,
+) -> Areas {
     Areas::new(ParallelogramConfig {
         touch_width,
         touch_height,
@@ -41,9 +57,14 @@ pub fn grid(
     })
 }
 
+pub fn foo(touch_width: i32, touch_height: i32) -> Areas {
+    grid(touch_width, touch_height, 9, 17, 24)
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
+
     mod grid {
         use super::*;
         use areas::shape::Shape;

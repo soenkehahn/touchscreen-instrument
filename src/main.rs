@@ -20,7 +20,7 @@ mod quit;
 mod sound;
 mod utils;
 
-use areas::layouts::{grid, parallelograms};
+use areas::layouts::{foo, grid, parallelograms};
 use areas::{note_event_source::NoteEventSource, Areas};
 use evdev::*;
 use guitarix::Guitarix;
@@ -115,6 +115,7 @@ custom_derive! {
     pub enum LayoutType {
         Parallelograms,
         Grid,
+        Foo,
     }
 }
 
@@ -128,6 +129,7 @@ fn get_areas(layout_type: &LayoutType) -> Areas {
     match layout_type {
         LayoutType::Parallelograms => parallelograms(TOUCH_WIDTH as i32, TOUCH_HEIGHT as i32),
         LayoutType::Grid => grid(TOUCH_WIDTH as i32, TOUCH_HEIGHT as i32, 16, 11, 36),
+        LayoutType::Foo => foo(TOUCH_WIDTH as i32, TOUCH_HEIGHT as i32),
     }
 }
 
