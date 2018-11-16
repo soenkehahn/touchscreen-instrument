@@ -20,7 +20,8 @@ mod quit;
 mod sound;
 mod utils;
 
-use areas::{note_event_source::NoteEventSource, Areas, Orientation, ParallelogramConfig};
+use areas::layouts::{grid, parallelograms};
+use areas::{note_event_source::NoteEventSource, Areas};
 use evdev::*;
 use guitarix::Guitarix;
 use quit::Quitter;
@@ -125,18 +126,8 @@ impl Default for LayoutType {
 
 fn get_areas(layout_type: &LayoutType) -> Areas {
     match layout_type {
-        LayoutType::Parallelograms => Areas::parallelograms(ParallelogramConfig {
-            touch_width: TOUCH_WIDTH as i32,
-            touch_height: TOUCH_HEIGHT as i32,
-            orientation: Orientation::Portrait,
-            u: Position { x: 0, y: -1300 },
-            v: Position { x: -1000, y: -200 },
-            column_range: (-3, 8),
-            row_range: (0, 17),
-            start_midi_note: 24,
-            row_interval: 5,
-        }),
-        LayoutType::Grid => Areas::grid(TOUCH_WIDTH as i32, TOUCH_HEIGHT as i32, 16, 11, 36),
+        LayoutType::Parallelograms => parallelograms(TOUCH_WIDTH as i32, TOUCH_HEIGHT as i32),
+        LayoutType::Grid => grid(TOUCH_WIDTH as i32, TOUCH_HEIGHT as i32, 16, 11, 36),
     }
 }
 

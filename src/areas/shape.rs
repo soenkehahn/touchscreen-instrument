@@ -157,13 +157,13 @@ mod test {
             }
         }
 
-        mod parallelograms {
+        mod new {
             use super::*;
             use areas::{Areas, Orientation, ParallelogramConfig};
 
             #[test]
             fn translates_touch_coordinates_to_screen_coordinates() {
-                let screen_polygon = Areas::parallelograms(ParallelogramConfig {
+                let screen_polygon = Areas::new(ParallelogramConfig {
                     touch_width: 1000,
                     touch_height: 1000,
                     orientation: Orientation::Portrait,

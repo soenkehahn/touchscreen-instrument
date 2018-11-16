@@ -60,7 +60,7 @@ pub mod test {
 
         #[test]
         fn yields_frequencies() {
-            let areas = Areas::parallelograms(ParallelogramConfig {
+            let areas = Areas::new(ParallelogramConfig {
                 touch_width: 800,
                 touch_height: 600,
                 orientation: Orientation::Portrait,
@@ -83,7 +83,7 @@ pub mod test {
 
         #[test]
         fn yields_notouch_for_pauses() {
-            let areas = Areas::parallelograms(ParallelogramConfig {
+            let areas = Areas::new(ParallelogramConfig {
                 touch_width: 800,
                 touch_height: 600,
                 orientation: Orientation::Portrait,
@@ -101,7 +101,7 @@ pub mod test {
 
         #[test]
         fn allows_to_specify_the_starting_note() {
-            let areas = Areas::parallelograms(ParallelogramConfig {
+            let areas = Areas::new(ParallelogramConfig {
                 touch_width: 800,
                 touch_height: 600,
                 orientation: Orientation::Portrait,
