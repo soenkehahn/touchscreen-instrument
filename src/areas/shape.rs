@@ -226,15 +226,16 @@ mod test {
 
         mod parallelograms {
             use super::*;
-            use areas::{Areas, ParallelogramConfig};
+            use areas::{Areas, Orientation, ParallelogramConfig};
 
             #[test]
             fn translates_touch_coordinates_to_screen_coordinates() {
                 let screen_polygon = Areas::parallelograms(ParallelogramConfig {
                     touch_width: 1000,
                     touch_height: 1000,
-                    u: Position { x: -10, y: 0 },
-                    v: Position { x: -0, y: -10 },
+                    orientation: Orientation::Portrait,
+                    u: Position { x: -0, y: -10 },
+                    v: Position { x: -10, y: 0 },
                     column_range: (-1, 100),
                     row_range: (0, 100),
                     start_midi_note: 48,
@@ -245,8 +246,8 @@ mod test {
                 .shape
                 .to_polygon(700.0 / 1000.0, 500.0 / 1000.0);
                 let expected: (Box<[i16]>, Box<[i16]>) = (
-                    Box::new([700, 693, 693, 700]),
-                    Box::new([500, 500, 495, 495]),
+                    Box::new([700, 700, 693, 693]),
+                    Box::new([500, 495, 495, 500]),
                 );
                 assert_eq!(screen_polygon, expected);
             }

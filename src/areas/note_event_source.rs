@@ -56,15 +56,16 @@ pub mod test {
 
     mod note_event_source {
         use super::*;
-        use areas::ParallelogramConfig;
+        use areas::{Orientation, ParallelogramConfig};
 
         #[test]
         fn yields_frequencies() {
             let areas = Areas::parallelograms(ParallelogramConfig {
                 touch_width: 800,
                 touch_height: 600,
-                u: Position { x: -6, y: -6 },
-                v: Position { x: -0, y: -10 },
+                orientation: Orientation::Portrait,
+                u: Position { x: -0, y: -10 },
+                v: Position { x: -6, y: -6 },
                 column_range: (-1, 60),
                 row_range: (0, 134),
                 start_midi_note: 48,
@@ -85,8 +86,9 @@ pub mod test {
             let areas = Areas::parallelograms(ParallelogramConfig {
                 touch_width: 800,
                 touch_height: 600,
-                u: Position { x: -6, y: -6 },
-                v: Position { x: -0, y: -10 },
+                orientation: Orientation::Portrait,
+                u: Position { x: -0, y: -10 },
+                v: Position { x: -6, y: -6 },
                 column_range: (-1, 60),
                 row_range: (0, 134),
                 start_midi_note: 48,
@@ -102,8 +104,9 @@ pub mod test {
             let areas = Areas::parallelograms(ParallelogramConfig {
                 touch_width: 800,
                 touch_height: 600,
-                u: Position { x: -6, y: -6 },
-                v: Position { x: -0, y: -10 },
+                orientation: Orientation::Portrait,
+                u: Position { x: -0, y: -10 },
+                v: Position { x: -6, y: -6 },
                 column_range: (-1, 60),
                 row_range: (0, 134),
                 start_midi_note: 49,
