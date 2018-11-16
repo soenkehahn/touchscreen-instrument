@@ -4,6 +4,9 @@ extern crate clap;
 extern crate jack;
 extern crate nix;
 
+#[cfg(test)]
+#[macro_use]
+extern crate lazy_static;
 #[macro_use]
 extern crate custom_derive;
 #[macro_use]
