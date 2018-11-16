@@ -85,8 +85,13 @@ mod test {
 
     mod config_file {
         use super::*;
-        use std::env::set_current_dir;
+        use std::env::{current_dir, set_current_dir};
         use std::io::prelude::*;
+        use std::sync::Mutex;
+
+        lazy_static! {
+            static ref working_directory_lock: Mutex<()> = Mutex::new(());
+        }
 
         fn read_file(file: PathBuf) -> String {
             let mut f = File::open(file.clone()).expect(&*format!("File::open: {:?}", file));
@@ -98,6 +103,7 @@ mod test {
 
         #[test]
         fn returns_the_default_config() {
+            let _lock = working_directory_lock.lock().unwrap();
             let expected = read_file(Path::new("./guitarix-config.json").to_path_buf());
             let file = ConfigFile::new().unwrap();
             let config = read_file(file.path());
@@ -106,16 +112,16 @@ mod test {
 
         #[test]
         fn works_outside_of_the_git_repo() {
+            let _lock = working_directory_lock.lock().unwrap();
+            let outer_working_directory = current_dir().unwrap();
             let expected = read_file(Path::new("./guitarix-config.json").to_path_buf());
             let temp_dir = TempDir::new("touchscreen-test").expect("TempDir::new");
             set_current_dir(temp_dir.path()).expect("set_current_dir");
 
             let config_file = ConfigFile::new().unwrap();
             let config = read_file(config_file.path());
-            assert_eq!(
-                config.chars().take(10).collect::<Vec<char>>(),
-                expected.chars().take(10).collect::<Vec<char>>()
-            );
+            assert_eq!(config, expected);
+            set_current_dir(outer_working_directory).expect("set_current_dir");
         }
     }
 

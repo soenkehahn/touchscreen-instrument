@@ -16,6 +16,7 @@ enum_derive = "*"
 skipchannel = "*"
 chrono = "*"
 tempdir = "*"
+lazy_static = "*"
 
 [features]
 ci = []
