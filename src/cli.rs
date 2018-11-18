@@ -86,6 +86,7 @@ fn parse_layout_type(input: Option<&str>) -> Result<LayoutType, ErrorString> {
         None => Ok(LayoutType::default()),
         Some("Parallelograms") => Ok(LayoutType::Parallelograms),
         Some("Grid") => Ok(LayoutType::Grid),
+        Some("Grid2") => Ok(LayoutType::Grid2),
         Some(layout) => Err(ErrorString(format!(
             "unknown layout: {}, possible values: {:?}",
             layout,

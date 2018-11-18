@@ -41,9 +41,14 @@ pub fn grid(
     })
 }
 
+pub fn grid2(touch_width: i32, touch_height: i32) -> Areas {
+    grid(touch_width, touch_height, 15, 10, 36)
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
+
     mod grid {
         use super::*;
         use areas::shape::Shape;
