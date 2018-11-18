@@ -153,7 +153,6 @@ mod test {
                 for (i, note_event) in note_events.into_iter().enumerate() {
                     slots[i] = note_event;
                 }
-                println!("{:?}", slots);
                 converter.to_midi(slots, |raw_midi| {
                     result.push(format!("{:?}", raw_midi.bytes));
                 });
