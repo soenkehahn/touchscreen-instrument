@@ -56,10 +56,21 @@ pub mod test {
 
     mod note_event_source {
         use super::*;
+        use areas::{AreasConfig, Orientation};
 
         #[test]
         fn yields_frequencies() {
-            let areas = Areas::parallelograms(800, 600, (6, 10), 6, 48, 7);
+            let areas = Areas::new(AreasConfig {
+                touch_width: 800,
+                touch_height: 600,
+                orientation: Orientation::Portrait,
+                u: Position { x: -0, y: -10 },
+                v: Position { x: -6, y: -6 },
+                column_range: (-1, 60),
+                row_range: (0, 134),
+                start_midi_note: 48,
+                row_interval: 7,
+            });
             let mut frequencies = NoteEventSource::new(
                 areas,
                 mock_touches(vec![TouchState::Touch(Position { x: 798, y: 595 })]),
@@ -72,7 +83,17 @@ pub mod test {
 
         #[test]
         fn yields_notouch_for_pauses() {
-            let areas = Areas::parallelograms(800, 600, (6, 10), 6, 48, 7);
+            let areas = Areas::new(AreasConfig {
+                touch_width: 800,
+                touch_height: 600,
+                orientation: Orientation::Portrait,
+                u: Position { x: -0, y: -10 },
+                v: Position { x: -6, y: -6 },
+                column_range: (-1, 60),
+                row_range: (0, 134),
+                start_midi_note: 48,
+                row_interval: 7,
+            });
             let mut frequencies =
                 NoteEventSource::new(areas, mock_touches(vec![TouchState::NoTouch]));
             assert_eq!(frequencies.next(), Some(from_single(NoteOff)));
@@ -80,7 +101,17 @@ pub mod test {
 
         #[test]
         fn allows_to_specify_the_starting_note() {
-            let areas = Areas::parallelograms(800, 600, (6, 10), 6, 49, 7);
+            let areas = Areas::new(AreasConfig {
+                touch_width: 800,
+                touch_height: 600,
+                orientation: Orientation::Portrait,
+                u: Position { x: -0, y: -10 },
+                v: Position { x: -6, y: -6 },
+                column_range: (-1, 60),
+                row_range: (0, 134),
+                start_midi_note: 49,
+                row_interval: 7,
+            });
             let mut frequencies = NoteEventSource::new(
                 areas,
                 mock_touches(vec![TouchState::Touch(Position { x: 798, y: 595 })]),

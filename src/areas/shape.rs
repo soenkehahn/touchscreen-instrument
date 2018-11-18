@@ -4,13 +4,6 @@ use evdev::Position;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Shape {
-    #[allow(dead_code)]
-    Rectangle {
-        x: i32,
-        y: i32,
-        width: i32,
-        height: i32,
-    },
     Parallelogram {
         base: Position,
         u: Position,
@@ -21,17 +14,6 @@ pub enum Shape {
 impl Shape {
     pub fn contains(&self, position: Position) -> bool {
         match *self {
-            Shape::Rectangle {
-                x,
-                y,
-                width,
-                height,
-                ..
-            } => {
-                let x_in = position.x >= x && position.x < x + width;
-                let y_in = position.y >= y && position.y < y + height;
-                x_in && y_in
-            }
             Shape::Parallelogram { base, u, v } => {
                 let translated_position = Position {
                     x: position.x - base.x,
@@ -51,19 +33,6 @@ impl Shape {
 
     pub fn to_polygon(&self, x_factor: f32, y_factor: f32) -> (Box<[i16]>, Box<[i16]>) {
         let (mut xs, mut ys): (Box<[i16]>, Box<[i16]>) = match self {
-            Shape::Rectangle {
-                x,
-                y,
-                width,
-                height,
-                ..
-            } => {
-                let x1 = *x as i16;
-                let y1 = *y as i16;
-                let x2 = x1 + *width as i16;
-                let y2 = y1 + *height as i16;
-                (Box::new([x1, x2, x2, x1]), Box::new([y1, y1, y2, y2]))
-            }
             Shape::Parallelogram { base, u, v } => (
                 Box::new([
                     base.x as i16,
@@ -95,42 +64,6 @@ mod test {
 
     mod contains {
         use super::*;
-
-        mod rectangle {
-            use super::*;
-
-            const RECTANGLE: Shape = Shape::Rectangle {
-                x: 0,
-                y: 0,
-                width: 10,
-                height: 10,
-            };
-
-            #[test]
-            fn detects_positions_inside() {
-                assert!(RECTANGLE.contains(Position { x: 5, y: 5 }))
-            }
-
-            #[test]
-            fn returns_false_for_positions_to_the_left() {
-                assert!(!RECTANGLE.contains(Position { x: -5, y: 5 }))
-            }
-
-            #[test]
-            fn returns_false_for_positions_to_the_right() {
-                assert!(!RECTANGLE.contains(Position { x: 15, y: 5 }))
-            }
-
-            #[test]
-            fn returns_false_for_positions_above() {
-                assert!(!RECTANGLE.contains(Position { x: 5, y: 15 }))
-            }
-
-            #[test]
-            fn returns_false_for_positions_below() {
-                assert!(!RECTANGLE.contains(Position { x: 5, y: -5 }))
-            }
-        }
 
         mod parallelogram {
             use super::*;
@@ -224,20 +157,30 @@ mod test {
             }
         }
 
-        mod parallelograms {
-            use areas::Areas;
+        mod new {
+            use super::*;
+            use areas::{Areas, AreasConfig, Orientation};
 
             #[test]
             fn translates_touch_coordinates_to_screen_coordinates() {
-                let screen_polygon = Areas::parallelograms(1000, 1000, (10, 10), 0, 48, 7)
-                    .areas
-                    .get(1)
-                    .unwrap()
-                    .shape
-                    .to_polygon(700.0 / 1000.0, 500.0 / 1000.0);
+                let screen_polygon = Areas::new(AreasConfig {
+                    touch_width: 1000,
+                    touch_height: 1000,
+                    orientation: Orientation::Portrait,
+                    u: Position { x: -0, y: -10 },
+                    v: Position { x: -10, y: 0 },
+                    column_range: (-1, 100),
+                    row_range: (0, 100),
+                    start_midi_note: 48,
+                    row_interval: 7,
+                }).areas
+                .get(1)
+                .unwrap()
+                .shape
+                .to_polygon(700.0 / 1000.0, 500.0 / 1000.0);
                 let expected: (Box<[i16]>, Box<[i16]>) = (
-                    Box::new([700, 693, 693, 700]),
-                    Box::new([500, 500, 495, 495]),
+                    Box::new([700, 700, 693, 693]),
+                    Box::new([500, 495, 495, 500]),
                 );
                 assert_eq!(screen_polygon, expected);
             }
