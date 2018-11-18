@@ -1,8 +1,8 @@
-use areas::{Areas, Orientation, ParallelogramConfig};
+use areas::{Areas, AreasConfig, Orientation};
 use evdev::Position;
 
 pub fn parallelograms(touch_width: i32, touch_height: i32) -> Areas {
-    Areas::new(ParallelogramConfig {
+    Areas::new(AreasConfig {
         touch_width,
         touch_height,
         orientation: Orientation::Portrait,
@@ -22,7 +22,7 @@ pub fn grid(
     number_of_rows: i32,
     start_midi_note: i32,
 ) -> Areas {
-    Areas::new(ParallelogramConfig {
+    Areas::new(AreasConfig {
         touch_width,
         touch_height,
         orientation: Orientation::Landscape,

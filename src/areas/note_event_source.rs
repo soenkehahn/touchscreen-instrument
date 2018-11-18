@@ -56,11 +56,11 @@ pub mod test {
 
     mod note_event_source {
         use super::*;
-        use areas::{Orientation, ParallelogramConfig};
+        use areas::{AreasConfig, Orientation};
 
         #[test]
         fn yields_frequencies() {
-            let areas = Areas::new(ParallelogramConfig {
+            let areas = Areas::new(AreasConfig {
                 touch_width: 800,
                 touch_height: 600,
                 orientation: Orientation::Portrait,
@@ -83,7 +83,7 @@ pub mod test {
 
         #[test]
         fn yields_notouch_for_pauses() {
-            let areas = Areas::new(ParallelogramConfig {
+            let areas = Areas::new(AreasConfig {
                 touch_width: 800,
                 touch_height: 600,
                 orientation: Orientation::Portrait,
@@ -101,7 +101,7 @@ pub mod test {
 
         #[test]
         fn allows_to_specify_the_starting_note() {
-            let areas = Areas::new(ParallelogramConfig {
+            let areas = Areas::new(AreasConfig {
                 touch_width: 800,
                 touch_height: 600,
                 orientation: Orientation::Portrait,
