@@ -135,7 +135,7 @@ fn get_areas(layout_type: &LayoutType) -> Areas {
 
 fn get_note_event_source(
     cli_args: &cli::Args,
-    quitter: Quitter,
+    quitter: &Quitter,
 ) -> Result<NoteEventSource, ErrorString> {
     let touches: Box<Iterator<Item = Slots<TouchState<Position>>>> = if cli_args.dev_mode {
         Box::new(utils::blocking())
@@ -174,7 +174,7 @@ fn mk_wave_form(cli_args: &cli::Args) -> WaveForm {
 fn run() -> Result<(), ErrorString> {
     let cli_args = &cli::parse(get_binary_name()?, std::env::args())?;
     let quitter = Quitter::new();
-    let note_event_source = get_note_event_source(cli_args, quitter.clone())?;
+    let note_event_source = get_note_event_source(cli_args, &quitter)?;
     let player = get_player(cli_args)?;
     Guitarix::run(quitter)?;
     player.consume(note_event_source);

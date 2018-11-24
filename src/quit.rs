@@ -39,7 +39,7 @@ impl Quitter {
         internal.handlers.push(Box::new(handler));
     }
 
-    pub fn quit(self) {
+    pub fn quit(&self) {
         let mut internal = self.lock();
         for mut handler in internal.handlers.iter_mut() {
             handler();
