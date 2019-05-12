@@ -123,15 +123,13 @@ fn get_areas(layout_type: LayoutType) -> Areas {
 }
 
 fn get_note_event_source(cli_args: &cli::Args) -> Result<NoteEventSource, ErrorString> {
-    let touches: Box<dyn Iterator<Item = Slots<TouchState<Position>>>> = if cli_args.dev_mode {
-        Box::new(utils::blocking())
-    } else {
-        Box::new(PositionSource::new(
-            "/dev/input/by-id/usb-ILITEK_Multi-Touch-V5100-event-if00",
-        )?)
-    };
     let areas = get_areas(cli_args.layout_type);
     areas.clone().spawn_ui(cli_args);
+    let touches = if cli_args.dev_mode {
+        PositionSource::blocking()
+    } else {
+        PositionSource::new("/dev/input/by-id/usb-ILITEK_Multi-Touch-V5100-event-if00")?
+    };
     Ok(NoteEventSource::new(areas, touches))
 }
 
