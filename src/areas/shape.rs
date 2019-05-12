@@ -49,10 +49,10 @@ impl Shape {
             ),
         };
         for x in xs.iter_mut() {
-            *x = (*x as f32 * x_factor) as i16;
+            *x = (f32::from(*x) * x_factor) as i16;
         }
         for y in ys.iter_mut() {
-            *y = (*y as f32 * y_factor) as i16;
+            *y = (f32::from(*y) * y_factor) as i16;
         }
         (xs, ys)
     }

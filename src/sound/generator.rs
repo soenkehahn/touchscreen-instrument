@@ -146,7 +146,9 @@ impl Generator {
             },
             _ => None,
         };
-        next.map(|n| self.oscillator_state = n);
+        if let Some(n) = next {
+            self.oscillator_state = n;
+        }
     }
 
     fn step(&mut self, sample_rate: i32) {

@@ -65,7 +65,7 @@ impl AudioPlayer {
             .async_client
             .as_client()
             .port_by_name(name)
-            .ok_or(format!("Couldn't find audio port {}", name))?;
+            .ok_or_else(|| format!("Couldn't find audio port {}", name))?;
         self.async_client
             .as_client()
             .connect_ports(source_port, &destination_port)?;
@@ -107,7 +107,7 @@ impl AudioProcessHandler {
         match self.receiver.recv() {
             None => {}
             Some(slots) => {
-                for (event, generator) in slots.into_iter().zip(self.generators.iter_mut()) {
+                for (event, generator) in slots.iter().zip(self.generators.iter_mut()) {
                     match event {
                         NoteEvent::NoteOff => {
                             generator.note_off();
