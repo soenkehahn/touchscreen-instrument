@@ -1,3 +1,4 @@
+use crate::utils;
 use crate::AddMessage;
 use crate::ErrorString;
 use ::evdev_rs::enums::{EventCode, EventType::*, EV_ABS, EV_SYN::*};
@@ -164,6 +165,10 @@ impl PositionSource {
         Ok(PositionSource::new_from_iterator(SynChunkSource::new(
             InputEventSource::new(file)?,
         )))
+    }
+
+    pub fn blocking() -> PositionSource {
+        PositionSource::new_from_iterator(SynChunkSource::new(utils::blocking()))
     }
 }
 
