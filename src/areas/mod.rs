@@ -180,7 +180,8 @@ mod test {
                     row_range: (0, 134),
                     start_midi_note: 36,
                     row_interval: 7,
-                }).areas;
+                })
+                .areas;
                 assert_eq!(
                     areas[1].shape,
                     Shape::Parallelogram {
@@ -203,7 +204,8 @@ mod test {
                     row_range: (0, 134),
                     start_midi_note: 36,
                     row_interval: 7,
-                }).areas;
+                })
+                .areas;
                 assert_eq!(
                     areas[2..4]
                         .into_iter()
@@ -236,7 +238,8 @@ mod test {
                     row_range: (0, 134),
                     start_midi_note: 36,
                     row_interval: 7,
-                }).areas;
+                })
+                .areas;
                 assert_eq!(
                     areas[61].shape,
                     Shape::Parallelogram {
@@ -259,7 +262,8 @@ mod test {
                     row_range: (0, 134),
                     start_midi_note: 36,
                     row_interval: 7,
-                }).areas;
+                })
+                .areas;
                 assert_eq!(
                     areas[0..3]
                         .into_iter()
@@ -281,7 +285,8 @@ mod test {
                     row_range: (0, 134),
                     start_midi_note: 36,
                     row_interval: 7,
-                }).areas;
+                })
+                .areas;
                 assert_eq!(
                     areas[62..64]
                         .into_iter()
@@ -314,7 +319,8 @@ mod test {
                     row_range: (0, 134),
                     start_midi_note: 36,
                     row_interval: 7,
-                }).areas;
+                })
+                .areas;
                 assert_eq!(
                     areas[62..65]
                         .into_iter()
@@ -336,7 +342,8 @@ mod test {
                     row_range: (0, 134),
                     start_midi_note: 36,
                     row_interval: 4,
-                }).areas;
+                })
+                .areas;
                 assert_eq!(
                     areas[62..65]
                         .into_iter()
@@ -358,7 +365,8 @@ mod test {
                     row_range: (0, 134),
                     start_midi_note: 48,
                     row_interval: 7,
-                }).areas;
+                })
+                .areas;
                 assert_eq!(
                     areas[0..3]
                         .into_iter()
@@ -380,7 +388,8 @@ mod test {
                     row_range: (0, 134),
                     start_midi_note: 36,
                     row_interval: 4,
-                }).areas;
+                })
+                .areas;
                 assert_eq!(
                     areas[1].shape,
                     Shape::Parallelogram {
@@ -411,7 +420,8 @@ mod test {
                     row_range: (0, 80),
                     start_midi_note: 36,
                     row_interval: 4,
-                }).areas;
+                })
+                .areas;
                 assert_eq!(
                     areas[1].shape,
                     Shape::Parallelogram {
@@ -442,7 +452,8 @@ mod test {
                     row_range: (0, 134),
                     start_midi_note: 36,
                     row_interval: 7,
-                }).areas;
+                })
+                .areas;
                 assert_eq!(
                     areas[1].shape,
                     Shape::Parallelogram {

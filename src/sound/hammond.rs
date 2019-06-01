@@ -17,7 +17,8 @@ fn internal(harmonics: Vec<f32>) -> WaveForm {
         .map(|(index, volume)| Harmonic {
             harmonic: (index + 1) as f32,
             volume,
-        }).collect();
+        })
+        .collect();
     WaveForm::new(move |phase| {
         let mut result = 0.0;
         for Harmonic { harmonic, volume } in with_harmonics.iter() {
