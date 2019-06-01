@@ -17,7 +17,7 @@ jobs:
       - run:
           name: install dependencies
           command: |
-            apt-get update &&
+            apt-get update
             apt-get install --yes libsdl2-dev libsdl2-gfx-dev libjack-jackd2-dev
       - run:
           name: tests
