@@ -4,9 +4,6 @@ extern crate clap;
 extern crate jack;
 extern crate nix;
 
-#[cfg(test)]
-#[macro_use]
-extern crate lazy_static;
 #[macro_use]
 extern crate custom_derive;
 #[macro_use]
@@ -15,16 +12,12 @@ extern crate enum_derive;
 mod areas;
 mod cli;
 mod evdev;
-mod guitarix;
-mod quit;
 mod sound;
 mod utils;
 
 use areas::layouts::{grid, grid2, parallelograms};
 use areas::{note_event_source::NoteEventSource, Areas};
 use evdev::*;
-use guitarix::Guitarix;
-use quit::Quitter;
 use sound::audio_player::AudioPlayer;
 use sound::generator;
 use sound::hammond::mk_hammond;
@@ -133,10 +126,7 @@ fn get_areas(layout_type: &LayoutType) -> Areas {
     }
 }
 
-fn get_note_event_source(
-    cli_args: &cli::Args,
-    quitter: &Quitter,
-) -> Result<NoteEventSource, ErrorString> {
+fn get_note_event_source(cli_args: &cli::Args) -> Result<NoteEventSource, ErrorString> {
     let touches: Box<Iterator<Item = Slots<TouchState<Position>>>> = if cli_args.dev_mode {
         Box::new(utils::blocking())
     } else {
@@ -145,7 +135,7 @@ fn get_note_event_source(
         )?)
     };
     let areas = get_areas(&cli_args.layout_type);
-    areas.clone().spawn_ui(cli_args, quitter);
+    areas.clone().spawn_ui(cli_args);
     Ok(NoteEventSource::new(areas, touches))
 }
 
@@ -173,10 +163,8 @@ fn mk_wave_form(cli_args: &cli::Args) -> WaveForm {
 
 fn run() -> Result<(), ErrorString> {
     let cli_args = &cli::parse(get_binary_name()?, std::env::args())?;
-    let quitter = Quitter::new();
-    let note_event_source = get_note_event_source(cli_args, &quitter)?;
+    let note_event_source = get_note_event_source(cli_args)?;
     let player = get_player(cli_args)?;
-    Guitarix::run(quitter)?;
     player.consume(note_event_source);
     Ok(())
 }
