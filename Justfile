@@ -1,13 +1,16 @@
 dev:
   cargo test --all --color=always -- --test-threads=1 --quiet
 
-ci: test build fmt doc
+ci: test build clippy fmt doc
 
 test:
   cargo test --all --color=always --features ci -- --test-threads=1 --quiet
 
 build:
   cargo build --features=ci
+
+clippy:
+  cargo clippy
 
 fmt:
   cargo fmt -- --check
