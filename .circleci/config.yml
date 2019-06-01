@@ -7,6 +7,8 @@ jobs:
 
     steps:
       - checkout
+      - restore_cache:
+          key: '{{ checksum "Cargo.lock" }}'
       - run:
           name: check formatting
           command: |
@@ -23,3 +25,8 @@ jobs:
       - run:
           name: build
           command: cargo build --features=ci
+      - save_cache:
+          key: '{{ checksum "Cargo.lock" }}'
+          paths:
+            - /usr/local/cargo/registry
+            - target
