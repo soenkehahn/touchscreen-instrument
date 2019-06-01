@@ -173,7 +173,8 @@ mod test {
                     row_range: (0, 100),
                     start_midi_note: 48,
                     row_interval: 7,
-                }).areas
+                })
+                .areas
                 .get(1)
                 .unwrap()
                 .shape

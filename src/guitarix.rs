@@ -56,7 +56,8 @@ impl Guitarix {
             "--disable-save-on-exit",
             "--load-file",
             config_file.path().to_str().unwrap(),
-        ].into_iter()
+        ]
+        .into_iter()
         .map(|x| x.to_string())
         .collect()
     }
@@ -90,7 +91,7 @@ mod test {
         use std::sync::Mutex;
 
         lazy_static! {
-            static ref working_directory_lock: Mutex<()> = Mutex::new(());
+            static ref WORKING_DIRECTORY_LOCK: Mutex<()> = Mutex::new(());
         }
 
         fn read_file(file: PathBuf) -> String {
@@ -103,7 +104,7 @@ mod test {
 
         #[test]
         fn returns_the_default_config() {
-            let _lock = working_directory_lock.lock().unwrap();
+            let _lock = WORKING_DIRECTORY_LOCK.lock().unwrap();
             let expected = read_file(Path::new("./guitarix-config.json").to_path_buf());
             let file = ConfigFile::new().unwrap();
             let config = read_file(file.path());
@@ -112,7 +113,7 @@ mod test {
 
         #[test]
         fn works_outside_of_the_git_repo() {
-            let _lock = working_directory_lock.lock().unwrap();
+            let _lock = WORKING_DIRECTORY_LOCK.lock().unwrap();
             let outer_working_directory = current_dir().unwrap();
             let expected = read_file(Path::new("./guitarix-config.json").to_path_buf());
             let temp_dir = TempDir::new("touchscreen-test").expect("TempDir::new");
