@@ -1,3 +1,4 @@
+#![allow(clippy::needless_range_loop)]
 extern crate jack;
 
 use super::Player;
@@ -56,7 +57,7 @@ impl ProcessHandler for MidiProcessHandler {
     fn process(&mut self, _client: &Client, scope: &ProcessScope) -> Control {
         let mut writer = self.port.writer(scope);
         for note_event in self.receiver.try_iter() {
-            self.midi_converter.to_midi(note_event, |raw_midi| {
+            self.midi_converter.connect(note_event, |raw_midi| {
                 let result = writer.write(&raw_midi);
                 match result {
                     Ok(()) => {}
@@ -79,7 +80,7 @@ impl MidiConverter {
         }
     }
 
-    fn to_midi<F>(&mut self, slots: Slots<NoteEvent>, mut callback: F)
+    fn connect<F>(&mut self, slots: Slots<NoteEvent>, mut callback: F)
     where
         F: FnMut(RawMidi),
     {
@@ -95,18 +96,18 @@ impl MidiConverter {
             match (self.active_notes[i], slots[i]) {
                 (None, NoteEvent::NoteOn(frequency)) => {
                     let midi_note = frequency_to_midi(frequency);
-                    send_midi(&mut callback, [0b10010000, midi_note, 127]);
+                    send_midi(&mut callback, [0b1001_0000, midi_note, 127]);
                     self.active_notes[i] = Some(midi_note);
                 }
                 (Some(midi_note), NoteEvent::NoteOff) => {
-                    send_midi(&mut callback, [0b10000000, midi_note, 0]);
+                    send_midi(&mut callback, [0b1000_0000, midi_note, 0]);
                     self.active_notes[i] = None;
                 }
                 (Some(old_midi_note), NoteEvent::NoteOn(frequency)) => {
                     let new_midi_note = frequency_to_midi(frequency);
                     if old_midi_note != new_midi_note {
-                        send_midi(&mut callback, [0b10000000, old_midi_note, 0]);
-                        send_midi(&mut callback, [0b10010000, new_midi_note, 127]);
+                        send_midi(&mut callback, [0b1000_0000, old_midi_note, 0]);
+                        send_midi(&mut callback, [0b1001_0000, new_midi_note, 127]);
                         self.active_notes[i] = Some(new_midi_note);
                     }
                 }
@@ -134,7 +135,7 @@ mod test {
             let mut converter = MidiConverter::new();
             let mut result = vec![];
             for note_event in events.into_iter() {
-                converter.to_midi(from_single(note_event), |raw_midi| {
+                converter.connect(from_single(note_event), |raw_midi| {
                     result.push(format!("{:?}", raw_midi.bytes));
                 });
             }
@@ -153,7 +154,7 @@ mod test {
                 for (i, note_event) in note_events.into_iter().enumerate() {
                     slots[i] = note_event;
                 }
-                converter.to_midi(slots, |raw_midi| {
+                converter.connect(slots, |raw_midi| {
                     result.push(format!("{:?}", raw_midi.bytes));
                 });
             }

@@ -65,13 +65,13 @@ impl From<std::io::Error> for ErrorString {
 
 impl From<String> for ErrorString {
     fn from(e: String) -> ErrorString {
-        ErrorString(format!("{}", e))
+        ErrorString(e.to_string())
     }
 }
 
 impl From<&'static str> for ErrorString {
     fn from(e: &str) -> ErrorString {
-        ErrorString(format!("{}", e))
+        ErrorString(e.to_string())
     }
 }
 
@@ -118,7 +118,7 @@ impl Default for LayoutType {
     }
 }
 
-fn get_areas(layout_type: &LayoutType) -> Areas {
+fn get_areas(layout_type: LayoutType) -> Areas {
     match layout_type {
         LayoutType::Parallelograms => parallelograms(TOUCH_WIDTH as i32, TOUCH_HEIGHT as i32),
         LayoutType::Grid => grid(TOUCH_WIDTH as i32, TOUCH_HEIGHT as i32, 16, 11, 36),
@@ -134,23 +134,22 @@ fn get_note_event_source(cli_args: &cli::Args) -> Result<NoteEventSource, ErrorS
             "/dev/input/by-id/usb-ILITEK_Multi-Touch-V5100-event-if00",
         )?)
     };
-    let areas = get_areas(&cli_args.layout_type);
+    let areas = get_areas(cli_args.layout_type);
     areas.clone().spawn_ui(cli_args);
     Ok(NoteEventSource::new(areas, touches))
 }
 
 fn get_player(cli_args: &cli::Args) -> Result<Box<Player>, ErrorString> {
-    match cli_args.midi {
-        false => {
-            let generator_args = generator::Args {
-                amplitude: cli_args.volume,
-                attack: 0.005,
-                release: 0.005,
-                wave_form: mk_wave_form(cli_args),
-            };
-            Ok(Box::new(AudioPlayer::new(generator_args)?))
-        }
-        true => Ok(Box::new(MidiPlayer::new()?)),
+    if cli_args.midi {
+        Ok(Box::new(MidiPlayer::new()?))
+    } else {
+        let generator_args = generator::Args {
+            amplitude: cli_args.volume,
+            attack: 0.005,
+            release: 0.005,
+            wave_form: mk_wave_form(cli_args),
+        };
+        Ok(Box::new(AudioPlayer::new(generator_args)?))
     }
 }
 

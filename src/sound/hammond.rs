@@ -24,7 +24,7 @@ fn internal(harmonics: Vec<f32>) -> WaveForm {
         for Harmonic { harmonic, volume } in with_harmonics.iter() {
             result += (phase * harmonic).sin() * volume;
         }
-        return result;
+        result
     })
 }
 

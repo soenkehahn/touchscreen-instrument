@@ -154,7 +154,7 @@ pub struct PositionSource {
 impl PositionSource {
     fn new_from_iterator(syn_chunk_source: SynChunkSource) -> PositionSource {
         PositionSource {
-            syn_chunk_source: syn_chunk_source,
+            syn_chunk_source,
             slots: [SlotState {
                 position: Position { x: 0, y: 0 },
                 btn_touch: false,

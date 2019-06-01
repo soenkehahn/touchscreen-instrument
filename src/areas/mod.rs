@@ -98,11 +98,7 @@ impl Areas {
     }
 
     pub fn frequency(&self, position: Position) -> NoteEvent {
-        let touched: Option<&Area> = self
-            .areas
-            .iter()
-            .filter(|area| area.shape.contains(position))
-            .next();
+        let touched: Option<&Area> = self.areas.iter().find(|area| area.shape.contains(position));
         match touched {
             None => NoteEvent::NoteOff,
             Some(area) => NoteEvent::NoteOn(midi_to_frequency(area.midi_note)),
