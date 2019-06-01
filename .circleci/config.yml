@@ -10,21 +10,20 @@ jobs:
       - restore_cache:
           key: '{{ checksum "Cargo.lock" }}'
       - run:
-          name: check formatting
-          command: |
-            rustup component add rustfmt
-            cargo fmt -- --check
-      - run:
           name: install dependencies
           command: |
             apt-get update
             apt-get install --yes libsdl2-dev libsdl2-gfx-dev libjack-jackd2-dev
+            rustup component add rustfmt
       - run:
-          name: tests
-          command: cargo test --features=ci
+          name: install just
+          command: |
+            curl -LSfs https://japaric.github.io/trust/install.sh | \
+              sh -s -- --git casey/just --target x86_64-unknown-linux-musl \
+              --to /usr/local/bin
       - run:
-          name: build
-          command: cargo build --features=ci
+          name: run tests
+          command: just ci
       - save_cache:
           key: '{{ checksum "Cargo.lock" }}'
           paths:
