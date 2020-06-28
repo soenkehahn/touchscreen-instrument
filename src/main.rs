@@ -114,7 +114,7 @@ custom_derive! {
 
 impl Default for LayoutType {
     fn default() -> LayoutType {
-        LayoutType::Parallelograms
+        LayoutType::Grid2
     }
 }
 
