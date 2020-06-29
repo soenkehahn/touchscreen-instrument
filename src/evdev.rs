@@ -1,13 +1,12 @@
 extern crate evdev_rs;
 
 use evdev::evdev_rs::enums::{EventCode, EventType::*, EV_ABS, EV_SYN::*};
-use evdev::evdev_rs::{Device, GrabMode, InputEvent, ReadStatus, BLOCKING, NORMAL};
+use evdev::evdev_rs::{Device, GrabMode, InputEvent, ReadFlag, ReadStatus};
 use std::fs::File;
 use AddMessage;
 use ErrorString;
 
 pub struct InputEventSource {
-    _file: File,
     device: Device,
 }
 
@@ -16,13 +15,10 @@ impl InputEventSource {
         let file = File::open(path).add_message(format!("file not found: {}", path))?;
         let mut device = Device::new().ok_or("evdev: can't initialize device")?;
         device
-            .set_fd(&file)
+            .set_fd(file)
             .add_message(format!("set_fd failed on {}", path))?;
         device.grab(GrabMode::Grab)?;
-        Ok(InputEventSource {
-            _file: file,
-            device,
-        })
+        Ok(InputEventSource { device })
     }
 }
 
@@ -30,7 +26,10 @@ impl Iterator for InputEventSource {
     type Item = InputEvent;
 
     fn next(&mut self) -> Option<InputEvent> {
-        match self.device.next_event(NORMAL | BLOCKING) {
+        match self
+            .device
+            .next_event(ReadFlag::NORMAL | ReadFlag::BLOCKING)
+        {
             Err(e) => {
                 eprintln!("error: next: {:?}", e);
                 self.next()

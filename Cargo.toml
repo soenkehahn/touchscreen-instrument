@@ -6,7 +6,7 @@ license = "GPL-3.0-or-later"
 
 [dependencies]
 jack = "*"
-evdev-rs = { git = "https://github.com/ndesh26/evdev-rs", rev = "c271060" }
+evdev-rs = "0.4.0"
 sdl2 = { version = "*", features = ["gfx"] }
 palette = "*"
 clap = "*"
