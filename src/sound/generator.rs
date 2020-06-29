@@ -213,7 +213,7 @@ mod test {
                     release: 0.0,
                     wave_form: WaveForm::new(|_| 0.0),
                 };
-                for slot_args in args.unfold_generator_args().into_iter() {
+                for slot_args in args.unfold_generator_args().iter() {
                     assert_eq!(slot_args.amplitude, 0.1);
                 }
             }

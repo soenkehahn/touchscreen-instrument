@@ -45,7 +45,7 @@ impl Iterator for InputEventSource {
 }
 
 pub struct SynChunkSource {
-    input_event_source: Box<Iterator<Item = InputEvent>>,
+    input_event_source: Box<dyn Iterator<Item = InputEvent>>,
 }
 
 impl SynChunkSource {

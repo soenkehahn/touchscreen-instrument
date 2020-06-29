@@ -307,7 +307,7 @@ mod test {
                 let mut slots: Slots<NoteEvent> = [NoteOff; 10];
                 slots[slots.len() - 1] = NoteOn(midi_to_frequency(60));
                 expect_raw_midi_poly(
-                    vec![slots.into_iter().map(|x| x.clone()).collect()],
+                    vec![slots.iter().map(|x| x.clone()).collect()],
                     vec![make_midi(&[0b10010000, 60, 127])],
                 );
             }

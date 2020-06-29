@@ -65,7 +65,7 @@ impl From<std::io::Error> for ErrorString {
 
 impl From<String> for ErrorString {
     fn from(e: String) -> ErrorString {
-        ErrorString(e.to_string())
+        ErrorString(e)
     }
 }
 
@@ -127,7 +127,7 @@ fn get_areas(layout_type: LayoutType) -> Areas {
 }
 
 fn get_note_event_source(cli_args: &cli::Args) -> Result<NoteEventSource, ErrorString> {
-    let touches: Box<Iterator<Item = Slots<TouchState<Position>>>> = if cli_args.dev_mode {
+    let touches: Box<dyn Iterator<Item = Slots<TouchState<Position>>>> = if cli_args.dev_mode {
         Box::new(utils::blocking())
     } else {
         Box::new(PositionSource::new(
@@ -139,7 +139,7 @@ fn get_note_event_source(cli_args: &cli::Args) -> Result<NoteEventSource, ErrorS
     Ok(NoteEventSource::new(areas, touches))
 }
 
-fn get_player(cli_args: &cli::Args) -> Result<Box<Player>, ErrorString> {
+fn get_player(cli_args: &cli::Args) -> Result<Box<dyn Player>, ErrorString> {
     if cli_args.midi {
         Ok(Box::new(MidiPlayer::new()?))
     } else {

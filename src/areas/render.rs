@@ -72,7 +72,7 @@ impl Ui {
         let mut ui = Ui {
             canvas,
             event_pump,
-            areas: areas.clone(),
+            areas,
         };
         ui.draw()?;
         Ok(ui)

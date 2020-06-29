@@ -4,7 +4,7 @@ use sound::NoteEvent;
 
 pub struct NoteEventSource {
     areas: Areas,
-    position_source: Box<Iterator<Item = Slots<TouchState<Position>>>>,
+    position_source: Box<dyn Iterator<Item = Slots<TouchState<Position>>>>,
 }
 
 impl NoteEventSource {

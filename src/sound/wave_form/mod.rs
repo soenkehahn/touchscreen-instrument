@@ -4,7 +4,7 @@ use std::fmt::Debug;
 
 #[derive(Clone)]
 pub struct WaveForm {
-    inner: Box<RunAndClone + Send>,
+    inner: Box<dyn RunAndClone + Send>,
 }
 
 impl Debug for WaveForm {
@@ -31,11 +31,11 @@ impl WaveForm {
 trait RunAndClone {
     fn run(&self, phase: f32) -> f32;
 
-    fn my_clone(&self) -> Box<RunAndClone + Send>;
+    fn my_clone(&self) -> Box<dyn RunAndClone + Send>;
 }
 
-impl Clone for Box<RunAndClone + Send> {
-    fn clone(&self) -> Box<RunAndClone + Send> {
+impl Clone for Box<dyn RunAndClone + Send> {
+    fn clone(&self) -> Box<dyn RunAndClone + Send> {
         self.my_clone()
     }
 }
@@ -48,7 +48,7 @@ where
         self(phase)
     }
 
-    fn my_clone(&self) -> Box<RunAndClone + Send> {
+    fn my_clone(&self) -> Box<dyn RunAndClone + Send> {
         Box::new((*self).clone())
     }
 }
