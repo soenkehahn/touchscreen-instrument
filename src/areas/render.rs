@@ -8,7 +8,7 @@ use self::sdl2::render::Canvas;
 use self::sdl2::video::Window;
 use self::sdl2::EventPump;
 use self::sdl2::VideoSubsystem;
-use areas::{Area, Areas};
+use areas::Areas;
 use cli;
 use get_binary_name;
 use ErrorString;
@@ -31,9 +31,7 @@ impl Areas {
 struct Ui {
     canvas: Canvas<Window>,
     event_pump: EventPump,
-    areas: Vec<Area>,
-    x_factor: f32,
-    y_factor: f32,
+    areas: Areas,
 }
 
 impl Ui {
@@ -55,13 +53,17 @@ impl Ui {
         let sdl_context = sdl2::init()?;
         let video_subsystem = sdl_context.video()?;
         let screen_rect = Ui::get_screen_rect(&video_subsystem)?;
-        let window_size = if cli_args.dev_mode {
+        let initial_window_size = if cli_args.dev_mode {
             (800, 600)
         } else {
             (screen_rect.width(), screen_rect.height())
         };
         let window = video_subsystem
-            .window(&get_binary_name()?, window_size.0, window_size.1)
+            .window(
+                &get_binary_name()?,
+                initial_window_size.0,
+                initial_window_size.1,
+            )
             .position(screen_rect.x(), screen_rect.y())
             .borderless()
             .build()?;
@@ -70,9 +72,7 @@ impl Ui {
         let mut ui = Ui {
             canvas,
             event_pump,
-            areas: areas.areas.clone(),
-            x_factor: window_size.0 as f32 / areas.touch_width as f32,
-            y_factor: window_size.1 as f32 / areas.touch_height as f32,
+            areas: areas.clone(),
         };
         ui.draw()?;
         Ok(ui)
@@ -99,11 +99,19 @@ impl Ui {
         ::std::process::exit(0);
     }
 
+    fn get_window_factors(&self) -> (f32, f32) {
+        let window_size = self.canvas.window().size();
+        let x_factor = window_size.0 as f32 / self.areas.touch_width as f32;
+        let y_factor = window_size.1 as f32 / self.areas.touch_height as f32;
+        (x_factor, y_factor)
+    }
+
     fn draw(&mut self) -> Result<(), ErrorString> {
         self.canvas.set_draw_color(Color::RGB(0, 0, 0));
         self.canvas.clear();
-        for area in &self.areas {
-            let (xs, ys) = &area.shape.to_polygon(self.x_factor, self.y_factor);
+        let (x_factor, y_factor) = self.get_window_factors();
+        for area in &self.areas.areas {
+            let (xs, ys) = &area.shape.to_polygon(x_factor, y_factor);
             let color = area.color;
             self.canvas.filled_polygon(&xs, &ys, color)?;
         }
