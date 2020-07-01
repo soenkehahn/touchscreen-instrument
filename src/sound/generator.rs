@@ -1,6 +1,6 @@
-use evdev::{slot_map, Slots};
-use sound::wave_form::WaveForm;
-use sound::TAU;
+use crate::evdev::{slot_map, Slots};
+use crate::sound::wave_form::WaveForm;
+use crate::sound::TAU;
 
 #[derive(Clone)]
 pub struct Args {

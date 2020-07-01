@@ -1,9 +1,5 @@
 #![cfg_attr(feature = "ci", deny(warnings))]
 
-extern crate clap;
-extern crate jack;
-extern crate nix;
-
 #[macro_use]
 extern crate custom_derive;
 #[macro_use]

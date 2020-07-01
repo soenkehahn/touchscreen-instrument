@@ -6,7 +6,7 @@ pub mod midi;
 pub mod midi_player;
 pub mod wave_form;
 
-use areas::note_event_source::NoteEventSource;
+use crate::areas::note_event_source::NoteEventSource;
 
 const TAU: f32 = ::std::f32::consts::PI * 2.0;
 

@@ -1,5 +1,5 @@
-use areas::{Areas, AreasConfig, Orientation};
-use evdev::Position;
+use crate::areas::{Areas, AreasConfig, Orientation};
+use crate::evdev::Position;
 
 pub fn parallelograms(touch_width: i32, touch_height: i32) -> Areas {
     Areas::new(AreasConfig {
@@ -51,8 +51,8 @@ mod test {
 
     mod grid {
         use super::*;
-        use areas::shape::Shape;
-        use areas::Area;
+        use crate::areas::shape::Shape;
+        use crate::areas::Area;
 
         #[test]
         fn has_the_base_note_in_the_lower_right_corner() {

@@ -1,6 +1,4 @@
-extern crate sdl2;
-
-use evdev::Position;
+use crate::evdev::Position;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Shape {
@@ -159,7 +157,7 @@ mod test {
 
         mod new {
             use super::*;
-            use areas::{Areas, AreasConfig, Orientation};
+            use crate::areas::{Areas, AreasConfig, Orientation};
 
             #[test]
             fn translates_touch_coordinates_to_screen_coordinates() {

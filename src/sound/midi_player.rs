@@ -1,15 +1,13 @@
 #![allow(clippy::needless_range_loop)]
-extern crate jack;
-extern crate skipchannel;
 
-use self::skipchannel::*;
 use super::Player;
-use areas::note_event_source::NoteEventSource;
-use evdev::Slots;
+use crate::areas::note_event_source::NoteEventSource;
+use crate::evdev::Slots;
+use crate::sound::midi::frequency_to_midi;
+use crate::sound::NoteEvent;
+use crate::{get_binary_name, ErrorString};
 use jack::*;
-use sound::midi::frequency_to_midi;
-use sound::NoteEvent;
-use {get_binary_name, ErrorString};
+use skipchannel::*;
 
 pub struct MidiPlayer {
     _active_client: AsyncClient<(), MidiProcessHandler>,
@@ -121,10 +119,10 @@ mod test {
     use super::*;
 
     mod midi_converter {
-        use self::NoteEvent::*;
         use super::*;
-        use areas::note_event_source::test::from_single;
-        use sound::midi::midi_to_frequency;
+        use crate::areas::note_event_source::test::from_single;
+        use crate::sound::midi::midi_to_frequency;
+        use NoteEvent::*;
 
         fn make_midi(bytes: &'static [u8]) -> RawMidi<'static> {
             RawMidi { time: 0, bytes }

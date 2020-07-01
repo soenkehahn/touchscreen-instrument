@@ -1,10 +1,8 @@
-extern crate evdev_rs;
-
-use evdev::evdev_rs::enums::{EventCode, EventType::*, EV_ABS, EV_SYN::*};
-use evdev::evdev_rs::{Device, GrabMode, InputEvent, ReadFlag, ReadStatus};
-use std::fs::File;
-use AddMessage;
-use ErrorString;
+use crate::AddMessage;
+use crate::ErrorString;
+use ::evdev_rs::enums::{EventCode, EventType::*, EV_ABS, EV_SYN::*};
+use ::evdev_rs::{Device, GrabMode, InputEvent, ReadFlag, ReadStatus};
+use ::std::fs::File;
 
 pub struct InputEventSource {
     device: Device,
@@ -220,8 +218,8 @@ impl Iterator for PositionSource {
 mod test {
     use super::TouchState::*;
     use super::*;
-    use evdev::evdev_rs::enums::{EventCode, EventType, EV_ABS::*};
-    use evdev::evdev_rs::TimeVal;
+    use ::evdev_rs::enums::{EventCode, EventType, EV_ABS::*};
+    use ::evdev_rs::TimeVal;
 
     struct Mock;
 

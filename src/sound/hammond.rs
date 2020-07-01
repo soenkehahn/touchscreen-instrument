@@ -1,4 +1,4 @@
-use sound::wave_form::WaveForm;
+use crate::sound::wave_form::WaveForm;
 
 pub fn mk_hammond(harmonics: Vec<f32>) -> WaveForm {
     internal(harmonics).memoize(44100)

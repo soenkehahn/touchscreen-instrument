@@ -1,6 +1,4 @@
-extern crate chrono;
-
-use self::chrono::prelude::*;
+use chrono::prelude::*;
 use jack::*;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::Arc;

@@ -1,17 +1,15 @@
-extern crate sdl2;
-
-use self::sdl2::event::Event;
-use self::sdl2::gfx::primitives::DrawRenderer;
-use self::sdl2::keyboard::Keycode;
-use self::sdl2::pixels::Color;
-use self::sdl2::render::Canvas;
-use self::sdl2::video::Window;
-use self::sdl2::EventPump;
-use self::sdl2::VideoSubsystem;
-use areas::Areas;
-use cli;
-use get_binary_name;
-use ErrorString;
+use crate::areas::Areas;
+use crate::cli;
+use crate::get_binary_name;
+use crate::ErrorString;
+use ::sdl2::event::Event;
+use ::sdl2::gfx::primitives::DrawRenderer;
+use ::sdl2::keyboard::Keycode;
+use ::sdl2::pixels::Color;
+use ::sdl2::render::Canvas;
+use ::sdl2::video::Window;
+use ::sdl2::EventPump;
+use ::sdl2::VideoSubsystem;
 
 impl Areas {
     pub fn spawn_ui(self, cli_args: &cli::Args) {
@@ -120,14 +118,14 @@ impl Ui {
     }
 }
 
-impl From<self::sdl2::video::WindowBuildError> for ErrorString {
-    fn from(e: self::sdl2::video::WindowBuildError) -> ErrorString {
+impl From<sdl2::video::WindowBuildError> for ErrorString {
+    fn from(e: sdl2::video::WindowBuildError) -> ErrorString {
         ErrorString(format!("{}", e))
     }
 }
 
-impl From<self::sdl2::IntegerOrSdlError> for ErrorString {
-    fn from(e: self::sdl2::IntegerOrSdlError) -> ErrorString {
+impl From<sdl2::IntegerOrSdlError> for ErrorString {
+    fn from(e: sdl2::IntegerOrSdlError) -> ErrorString {
         ErrorString(format!("{}", e))
     }
 }

@@ -1,6 +1,6 @@
-use areas::Areas;
-use evdev::{slot_map, Position, Slots, TouchState};
-use sound::NoteEvent;
+use crate::areas::Areas;
+use crate::evdev::{slot_map, Position, Slots, TouchState};
+use crate::sound::NoteEvent;
 
 pub struct NoteEventSource {
     areas: Areas,
@@ -36,7 +36,7 @@ impl Iterator for NoteEventSource {
 pub mod test {
     use super::NoteEvent::*;
     use super::*;
-    use sound::midi::midi_to_frequency;
+    use crate::sound::midi::midi_to_frequency;
 
     impl<T> Default for TouchState<T> {
         fn default() -> TouchState<T> {
@@ -56,7 +56,7 @@ pub mod test {
 
     mod note_event_source {
         use super::*;
-        use areas::{AreasConfig, Orientation};
+        use crate::areas::{AreasConfig, Orientation};
 
         #[test]
         fn yields_frequencies() {

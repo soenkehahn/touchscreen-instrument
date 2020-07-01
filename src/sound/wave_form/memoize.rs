@@ -1,6 +1,6 @@
 #![allow(clippy::needless_range_loop)]
-use sound::wave_form::WaveForm;
-use sound::TAU;
+use crate::sound::wave_form::WaveForm;
+use crate::sound::TAU;
 
 impl WaveForm {
     pub fn memoize(self, size: usize) -> WaveForm {

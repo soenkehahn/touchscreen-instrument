@@ -1,16 +1,13 @@
-extern crate palette;
-extern crate sdl2;
-
 pub mod layouts;
 pub mod note_event_source;
 pub mod render;
 pub mod shape;
 
-use self::sdl2::pixels::Color;
-use self::shape::Shape;
-use evdev::Position;
-use sound::midi::midi_to_frequency;
-use sound::NoteEvent;
+use crate::evdev::Position;
+use crate::sound::midi::midi_to_frequency;
+use crate::sound::NoteEvent;
+use sdl2::pixels::Color;
+use shape::Shape;
 
 #[derive(Clone, Debug, PartialEq)]
 struct Area {
@@ -106,9 +103,9 @@ impl Areas {
     }
 
     fn make_color(midi_note: i32) -> Color {
-        use self::palette::rgb::Rgb;
-        use self::palette::rgb::Srgb;
-        use self::palette::Hsv;
+        use palette::rgb::Rgb;
+        use palette::rgb::Srgb;
+        use palette::Hsv;
 
         let hue_number = (midi_note * 7) % 12;
 
@@ -117,7 +114,7 @@ impl Areas {
         Areas::convert_color(c)
     }
 
-    fn convert_color(color: palette::rgb::Rgb<self::palette::encoding::srgb::Srgb, u8>) -> Color {
+    fn convert_color(color: palette::rgb::Rgb<palette::encoding::srgb::Srgb, u8>) -> Color {
         Color::RGB(color.red, color.green, color.blue)
     }
 }
@@ -144,8 +141,8 @@ mod test {
 
             #[test]
             fn cycles_through_twelve_colors_by_hue_in_cycle_of_fifth() {
-                use self::palette::Hsv;
-                use self::palette::Srgb;
+                use palette::Hsv;
+                use palette::Srgb;
 
                 let mut color = Hsv::from(Srgb::new(0.0, 0.0, 1.0));
                 color.hue = color.hue + 360.0 / 12.0;

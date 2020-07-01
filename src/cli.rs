@@ -1,9 +1,7 @@
-extern crate clap;
-
-use self::clap::{App, Arg};
+use crate::ErrorString;
+use crate::LayoutType;
+use clap::{App, Arg};
 use std::ffi::OsString;
-use ErrorString;
-use LayoutType;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Args {

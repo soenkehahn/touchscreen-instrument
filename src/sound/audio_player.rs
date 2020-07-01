@@ -1,19 +1,16 @@
-extern crate jack;
-extern crate skipchannel;
-
-use self::skipchannel::*;
 use super::generator;
 use super::generator::Generator;
 use super::logger::Logger;
 use super::Player;
-use areas::note_event_source::NoteEventSource;
-use evdev::{slot_map, Slots};
-use get_binary_name;
+use crate::areas::note_event_source::NoteEventSource;
+use crate::evdev::{slot_map, Slots};
+use crate::get_binary_name;
+use crate::sound::NoteEvent;
+use crate::ErrorString;
 use jack::*;
-use sound::NoteEvent;
+use skipchannel::*;
 use std::process::Command;
 use std::*;
-use ErrorString;
 
 pub struct AudioPlayer {
     async_client: AsyncClient<Logger, AudioProcessHandler>,
