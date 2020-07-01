@@ -1,13 +1,14 @@
 #![allow(clippy::needless_range_loop)]
 extern crate jack;
+extern crate skipchannel;
 
+use self::skipchannel::*;
 use super::Player;
 use areas::note_event_source::NoteEventSource;
 use evdev::Slots;
 use jack::*;
 use sound::midi::frequency_to_midi;
 use sound::NoteEvent;
-use std::sync::mpsc::{channel, Receiver, Sender};
 use {get_binary_name, ErrorString};
 
 pub struct MidiPlayer {
@@ -17,7 +18,7 @@ pub struct MidiPlayer {
 
 impl MidiPlayer {
     pub fn new() -> Result<MidiPlayer, ErrorString> {
-        let (sender, receiver) = channel();
+        let (sender, receiver) = skipchannel();
         let (client, _status) =
             jack::Client::new(&get_binary_name()?, jack::ClientOptions::NO_START_SERVER)?;
         let port = client.register_port("output", MidiOut)?;
@@ -39,10 +40,7 @@ impl MidiPlayer {
 impl Player for MidiPlayer {
     fn consume(&self, note_event_source: NoteEventSource) {
         for slots in note_event_source {
-            match self.sender.send(slots) {
-                Ok(()) => {}
-                Err(e) => eprintln!("MidiPlayer.consume: error: {:?}", e),
-            }
+            self.sender.send(slots)
         }
     }
 }
@@ -56,14 +54,15 @@ struct MidiProcessHandler {
 impl ProcessHandler for MidiProcessHandler {
     fn process(&mut self, _client: &Client, scope: &ProcessScope) -> Control {
         let mut writer = self.port.writer(scope);
-        for note_event in self.receiver.try_iter() {
-            self.midi_converter.connect(note_event, |raw_midi| {
+        match self.receiver.recv() {
+            None => {}
+            Some(note_event) => self.midi_converter.connect(note_event, |raw_midi| {
                 let result = writer.write(&raw_midi);
                 match result {
                     Ok(()) => {}
                     Err(e) => eprintln!("MidiProcessHandler.process: error: {:?}", e),
                 }
-            });
+            }),
         }
         Control::Continue
     }

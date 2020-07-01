@@ -134,12 +134,12 @@ mod test {
 
             #[test]
             fn returns_blue_for_the_middle_c() {
-                assert_eq!(Areas::make_color(60), Color::RGB(0, 0, 254));
+                assert_eq!(Areas::make_color(60), Color::RGB(0, 0, 255));
             }
 
             #[test]
             fn returns_blue_one_octave_higher() {
-                assert_eq!(Areas::make_color(72), Color::RGB(0, 0, 254));
+                assert_eq!(Areas::make_color(72), Color::RGB(0, 0, 255));
             }
 
             #[test]
