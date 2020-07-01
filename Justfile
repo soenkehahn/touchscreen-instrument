@@ -18,6 +18,9 @@ fmt:
 doc:
   cargo doc
 
+install:
+  cargo install --path . --force --locked
+
 raspberry_debug: raspberry_build raspberry_debug_run
 
 raspberry_build:

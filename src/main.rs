@@ -75,8 +75,8 @@ impl From<&'static str> for ErrorString {
     }
 }
 
-impl From<nix::Errno> for ErrorString {
-    fn from(e: nix::Errno) -> ErrorString {
+impl From<nix::errno::Errno> for ErrorString {
+    fn from(e: nix::errno::Errno) -> ErrorString {
         ErrorString(format!("{}", e))
     }
 }
