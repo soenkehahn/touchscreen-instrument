@@ -16,12 +16,10 @@ use areas::{note_event_source::NoteEventSource, Areas};
 use evdev::*;
 use sound::audio_player::AudioPlayer;
 use sound::generator;
-use sound::hammond::mk_hammond;
 use sound::midi_player::MidiPlayer;
 use sound::wave_form::WaveForm;
 use sound::Player;
 use std::clone::Clone;
-use std::f32::consts::PI;
 use std::fmt::Debug;
 use std::process::exit;
 
@@ -141,16 +139,9 @@ fn get_player(cli_args: &cli::Args) -> Result<Box<dyn Player>, ErrorString> {
             amplitude: cli_args.volume,
             attack: 0.005,
             release: 0.005,
-            wave_form: mk_wave_form(cli_args),
+            wave_form: WaveForm::new(&cli_args.wave_form_config),
         };
         Ok(Box::new(AudioPlayer::new(generator_args)?))
-    }
-}
-
-fn mk_wave_form(cli_args: &cli::Args) -> WaveForm {
-    match cli_args.sound {
-        cli::Sound::Rectangle => WaveForm::new(|phase| if phase < PI { -1.0 } else { 1.0 }),
-        cli::Sound::Harmonics(ref harmonics) => mk_hammond(harmonics.clone()),
     }
 }
 

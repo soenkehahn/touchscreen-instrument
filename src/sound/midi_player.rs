@@ -2,9 +2,9 @@
 
 use super::Player;
 use crate::areas::note_event_source::NoteEventSource;
-use crate::evdev::Slots;
 use crate::sound::midi::frequency_to_midi;
 use crate::sound::NoteEvent;
+use crate::utils::Slots;
 use crate::{get_binary_name, ErrorString};
 use jack::*;
 use skipchannel::*;

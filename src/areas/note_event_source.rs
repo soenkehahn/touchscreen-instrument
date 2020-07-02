@@ -1,6 +1,7 @@
 use crate::areas::Areas;
-use crate::evdev::{slot_map, Position, Slots, TouchState};
+use crate::evdev::{Position, TouchState};
 use crate::sound::NoteEvent;
+use crate::utils::{slot_map, Slots};
 
 pub struct NoteEventSource {
     areas: Areas,

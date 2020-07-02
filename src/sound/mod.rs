@@ -3,6 +3,7 @@ pub mod generator;
 pub mod hammond;
 pub mod logger;
 pub mod midi;
+pub mod midi_controller;
 pub mod midi_player;
 pub mod wave_form;
 
