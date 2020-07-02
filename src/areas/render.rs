@@ -63,7 +63,7 @@ impl Ui {
                 initial_window_size.1,
             )
             .position(screen_rect.x(), screen_rect.y())
-            .borderless()
+            .resizable()
             .build()?;
         let canvas = window.into_canvas().build()?;
         let event_pump = sdl_context.event_pump()?;
