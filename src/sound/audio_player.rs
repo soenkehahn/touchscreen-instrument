@@ -3,9 +3,10 @@ use super::generator::Generator;
 use super::logger::Logger;
 use super::Player;
 use crate::areas::note_event_source::NoteEventSource;
-use crate::evdev::{slot_map, Slots};
 use crate::get_binary_name;
+use crate::sound::midi_controller::MidiController;
 use crate::sound::NoteEvent;
+use crate::utils::{slot_map, Slots};
 use crate::ErrorString;
 use jack::*;
 use skipchannel::*;
@@ -21,23 +22,25 @@ impl AudioPlayer {
     pub fn new(generator_args: generator::Args) -> Result<AudioPlayer, ErrorString> {
         let name = get_binary_name()?;
         let (client, _status) = jack::Client::new(&name, jack::ClientOptions::empty())?;
+        let midi_controller = MidiController::new(&client)?;
         let generators = slot_map(generator_args.unfold_generator_args(), |args| {
             Generator::new((*args).clone(), client.sample_rate() as i32)
         });
-        let ports = Stereo {
+        let audio_ports = Stereo {
             left: client.register_port("left-output", AudioOut)?,
             right: client.register_port("right-output", AudioOut)?,
         };
         let port_clones = Stereo {
-            left: ports.left.clone_unowned(),
-            right: ports.right.clone_unowned(),
+            left: audio_ports.left.clone_unowned(),
+            right: audio_ports.right.clone_unowned(),
         };
 
         let logger = Logger::new_and_spawn();
         let (sender, receiver) = skipchannel();
         let process_handler = AudioProcessHandler {
             logger: logger.clone(),
-            ports,
+            audio_ports,
+            midi_controller,
             receiver,
             generators,
         };
@@ -94,13 +97,20 @@ struct Stereo<Port> {
 
 pub struct AudioProcessHandler {
     logger: Logger,
-    ports: Stereo<Port<AudioOut>>,
+    audio_ports: Stereo<Port<AudioOut>>,
+    midi_controller: MidiController,
     receiver: Receiver<Slots<NoteEvent>>,
     generators: Slots<Generator>,
 }
 
 impl AudioProcessHandler {
-    fn handle_events(&mut self) {
+    fn handle_events(&mut self, scope: &ProcessScope) {
+        self.midi_controller
+            .handle_events(&mut self.generators, scope);
+        self.handle_touch_events();
+    }
+
+    fn handle_touch_events(&mut self) {
         match self.receiver.recv() {
             None => {}
             Some(slots) => {
@@ -118,6 +128,15 @@ impl AudioProcessHandler {
         }
     }
 
+    fn fill_buffers(&mut self, client: &Client, scope: &ProcessScope) {
+        let left_buffer: &mut [f32] = self.audio_ports.left.as_mut_slice(scope);
+        AudioProcessHandler::fill_buffer(&self.logger, client, &mut self.generators, left_buffer);
+        self.audio_ports
+            .right
+            .as_mut_slice(scope)
+            .copy_from_slice(left_buffer);
+    }
+
     fn fill_buffer(
         logger: &Logger,
         client: &Client,
@@ -132,20 +151,11 @@ impl AudioProcessHandler {
         }
         logger.check_clipping(buffer);
     }
-
-    fn fill_buffers(&mut self, client: &Client, scope: &ProcessScope) {
-        let left_buffer: &mut [f32] = self.ports.left.as_mut_slice(scope);
-        AudioProcessHandler::fill_buffer(&self.logger, client, &mut self.generators, left_buffer);
-        self.ports
-            .right
-            .as_mut_slice(scope)
-            .copy_from_slice(left_buffer);
-    }
 }
 
 impl ProcessHandler for AudioProcessHandler {
     fn process(&mut self, client: &Client, scope: &ProcessScope) -> Control {
-        self.handle_events();
+        self.handle_events(scope);
         self.fill_buffers(client, scope);
         Control::Continue
     }

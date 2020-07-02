@@ -1,3 +1,4 @@
+use crate::sound::wave_form::WaveFormConfig;
 use crate::ErrorString;
 use crate::LayoutType;
 use clap::{App, Arg};
@@ -8,14 +9,8 @@ pub struct Args {
     pub volume: f32,
     pub layout_type: LayoutType,
     pub midi: bool,
-    pub sound: Sound,
+    pub wave_form_config: WaveFormConfig,
     pub dev_mode: bool,
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub enum Sound {
-    Rectangle,
-    Harmonics(Vec<f32>),
 }
 
 pub fn parse<S, T>(binary_name: String, args: T) -> Result<Args, ErrorString>
@@ -64,7 +59,7 @@ where
     Ok(Args {
         volume: parse_volume(matches.value_of("volume"))?,
         layout_type: parse_layout_type(matches.value_of("layout"))?,
-        sound: parse_sound(matches.value_of("harmonics"))?,
+        wave_form_config: parse_wave_form_config(matches.value_of("harmonics"))?,
         midi: matches.is_present("midi"),
         dev_mode: matches.is_present("dev-mode"),
     })
@@ -93,15 +88,15 @@ fn parse_layout_type(input: Option<&str>) -> Result<LayoutType, ErrorString> {
     }
 }
 
-fn parse_sound(input: Option<&str>) -> Result<Sound, ErrorString> {
+fn parse_wave_form_config(input: Option<&str>) -> Result<WaveFormConfig, ErrorString> {
     match input {
-        None => Ok(Sound::Rectangle),
+        None => Ok(WaveFormConfig::Rectangle),
         Some(harmonics) => {
             let mut vector: Vec<f32> = vec![];
             for harmonic in harmonics.split(',') {
                 vector.push(harmonic.parse()?)
             }
-            Ok(Sound::Harmonics(vector))
+            Ok(WaveFormConfig::Harmonics(vector))
         }
     }
 }
@@ -125,7 +120,7 @@ mod test {
             volume: 1.0,
             layout_type: LayoutType::default(),
             midi: false,
-            sound: Sound::Rectangle,
+            wave_form_config: WaveFormConfig::Rectangle,
             dev_mode: false,
         };
         assert_eq!(args(vec![]), expected)
@@ -154,16 +149,16 @@ mod test {
     #[test]
     fn allows_to_specify_harmonics() {
         assert_eq!(
-            args(vec!["--harmonics", "0.1,0.2"]).sound,
-            Sound::Harmonics(vec![0.1, 0.2])
+            args(vec!["--harmonics", "0.1,0.2"]).wave_form_config,
+            WaveFormConfig::Harmonics(vec![0.1, 0.2])
         );
     }
 
     #[test]
     fn allows_to_specify_harmonics_as_integers() {
         assert_eq!(
-            args(vec!["--harmonics", "1,0,1"]).sound,
-            Sound::Harmonics(vec![1.0, 0.0, 1.0])
+            args(vec!["--harmonics", "1,0,1"]).wave_form_config,
+            WaveFormConfig::Harmonics(vec![1.0, 0.0, 1.0])
         );
     }
 }
