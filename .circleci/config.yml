@@ -3,12 +3,12 @@ version: 2
 jobs:
   build:
     docker:
-      - image: rust:1.34.2-stretch
+      - image: rust:1.44.1-stretch
 
     steps:
       - checkout
       - restore_cache:
-          key: v1-{{ checksum "Cargo.lock" }}
+          key: v2-{{ checksum "Cargo.lock" }}
       - run:
           name: install dependencies
           command: |
@@ -26,7 +26,7 @@ jobs:
           name: run tests
           command: just ci
       - save_cache:
-          key: v1-{{ checksum "Cargo.lock" }}
+          key: v2-{{ checksum "Cargo.lock" }}
           paths:
             - /usr/local/cargo/registry
             - target
