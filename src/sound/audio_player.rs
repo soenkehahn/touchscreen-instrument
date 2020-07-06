@@ -3,6 +3,7 @@ use super::generator::Generator;
 use super::logger::Logger;
 use super::Player;
 use crate::areas::note_event_source::NoteEventSource;
+use crate::cli;
 use crate::get_binary_name;
 use crate::sound::midi_controller::MidiController;
 use crate::sound::NoteEvent;
@@ -18,7 +19,10 @@ pub struct AudioPlayer {
 }
 
 impl AudioPlayer {
-    pub fn new(generator_args: generator::Args) -> Result<AudioPlayer, ErrorString> {
+    pub fn new(
+        cli_args: &cli::Args,
+        generator_args: generator::Args,
+    ) -> Result<AudioPlayer, ErrorString> {
         let name = get_binary_name()?;
         let (client, _status) = jack::Client::new(&name, jack::ClientOptions::empty())?;
         let midi_controller = MidiController::new(&client)?;
@@ -48,7 +52,9 @@ impl AudioPlayer {
             async_client,
             sender,
         };
-        audio_player.connect_to_system_ports(port_clones)?;
+        if cli_args.auto_connect {
+            audio_player.connect_to_system_ports(port_clones)?;
+        }
         Ok(audio_player)
     }
 

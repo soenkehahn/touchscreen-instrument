@@ -11,6 +11,7 @@ pub struct Args {
     pub midi: bool,
     pub wave_form_config: WaveFormConfig,
     pub dev_mode: bool,
+    pub auto_connect: bool,
 }
 
 pub fn parse<S, T>(binary_name: String, args: T) -> Result<Args, ErrorString>
@@ -54,6 +55,13 @@ where
                 .long("dev-mode")
                 .help("disables touch input and audio output (default: false)")
                 .takes_value(false),
+        ).arg(
+            Arg::with_name("auto-connect")
+                .long("auto-connect")
+                .help("whether to connect to jack's system playback sink automatically (default: true)")
+                .takes_value(true)
+                .default_value("true")
+                .possible_values(&["true", "false"]),
         );
     let matches = app.get_matches_from(args);
     Ok(Args {
@@ -62,6 +70,7 @@ where
         wave_form_config: parse_wave_form_config(matches.value_of("harmonics"))?,
         midi: matches.is_present("midi"),
         dev_mode: matches.is_present("dev-mode"),
+        auto_connect: matches.value_of("auto-connect") == Some("true"),
     })
 }
 
@@ -122,6 +131,7 @@ mod test {
             midi: false,
             wave_form_config: WaveFormConfig::Rectangle,
             dev_mode: false,
+            auto_connect: true,
         };
         assert_eq!(args(vec![]), expected)
     }
@@ -160,5 +170,10 @@ mod test {
             args(vec!["--harmonics", "1,0,1"]).wave_form_config,
             WaveFormConfig::Harmonics(vec![1.0, 0.0, 1.0])
         );
+    }
+
+    #[test]
+    fn allows_to_disable_autoconnecting_to_system_playback() {
+        assert_eq!(args(vec!["--auto-connect", "false"]).auto_connect, false);
     }
 }

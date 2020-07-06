@@ -141,7 +141,7 @@ fn get_player(cli_args: &cli::Args) -> Result<Box<dyn Player>, ErrorString> {
             release: 0.005,
             wave_form: WaveForm::new(&cli_args.wave_form_config),
         };
-        Ok(Box::new(AudioPlayer::new(generator_args)?))
+        Ok(Box::new(AudioPlayer::new(&cli_args, generator_args)?))
     }
 }
 
