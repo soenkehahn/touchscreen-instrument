@@ -10,7 +10,6 @@ use crate::utils::{slot_map, Slots};
 use crate::ErrorString;
 use jack::*;
 use skipchannel::*;
-use std::process::Command;
 use std::*;
 
 pub struct AudioPlayer {
@@ -50,7 +49,6 @@ impl AudioPlayer {
             sender,
         };
         audio_player.connect_to_system_ports(port_clones)?;
-        audio_player.set_period(512)?;
         Ok(audio_player)
     }
 
@@ -69,15 +67,6 @@ impl AudioPlayer {
         self.async_client
             .as_client()
             .connect_ports(source_port, &destination_port)?;
-        Ok(())
-    }
-
-    fn set_period(&self, period: i32) -> Result<(), ErrorString> {
-        let output = Command::new("jack_bufsize")
-            .arg(format!("{}", period))
-            .output()?;
-        println!("{}", String::from_utf8_lossy(&output.stdout));
-        println!("{}", String::from_utf8_lossy(&output.stderr));
         Ok(())
     }
 }
