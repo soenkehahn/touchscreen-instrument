@@ -15,8 +15,9 @@ struct HarmonicVolume {
 #[derive(Debug, PartialEq)]
 enum MidiControllerEvent {
     Volume(f32),
-    HarmonicVolume(HarmonicVolume),
     Attack(f32),
+    Release(f32),
+    HarmonicVolume(HarmonicVolume),
 }
 
 impl MidiControllerEvent {
@@ -29,17 +30,22 @@ impl MidiControllerEvent {
             [176, 11, volume] => Some(MidiControllerEvent::Volume(
                 MidiControllerEvent::convert_midi_value(volume),
             )),
+            [176, 14, value] => Some(MidiControllerEvent::Attack(
+                MidiControllerEvent::convert_midi_value(value)
+                    * (generator::MAX_ATTACK - generator::MIN_ATTACK)
+                    + generator::MIN_ATTACK,
+            )),
+            [176, 15, value] => Some(MidiControllerEvent::Release(
+                MidiControllerEvent::convert_midi_value(value)
+                    * (generator::MAX_RELEASE - generator::MIN_RELEASE)
+                    + generator::MIN_RELEASE,
+            )),
             [176, slider @ 3..=10, volume] => {
                 Some(MidiControllerEvent::HarmonicVolume(HarmonicVolume {
                     index: *slider as usize - 3,
                     volume: MidiControllerEvent::convert_midi_value(volume),
                 }))
             }
-            [176, 14, value] => Some(MidiControllerEvent::Attack(
-                MidiControllerEvent::convert_midi_value(value)
-                    * (generator::MAX_ATTACK - generator::MIN_ATTACK)
-                    + generator::MIN_ATTACK,
-            )),
             _ => None,
         }
     }
@@ -60,6 +66,23 @@ mod from_raw_midi_to_midi_controller_event {
                 Some(MidiControllerEvent::Volume(64.0 / 127.0)),
             ),
             ([176, 11, 128], Some(MidiControllerEvent::Volume(1.0))),
+            // envelope values
+            (
+                [176, 14, 0],
+                Some(MidiControllerEvent::Attack(generator::MIN_ATTACK)),
+            ),
+            (
+                [176, 14, 127],
+                Some(MidiControllerEvent::Attack(generator::MAX_ATTACK)),
+            ),
+            (
+                [176, 15, 0],
+                Some(MidiControllerEvent::Release(generator::MIN_RELEASE)),
+            ),
+            (
+                [176, 15, 127],
+                Some(MidiControllerEvent::Release(generator::MAX_RELEASE)),
+            ),
             // first harmonic
             (
                 [176, 3, 0],
@@ -104,15 +127,6 @@ mod from_raw_midi_to_midi_controller_event {
                     index: 7,
                     volume: 64.0 / 127.0,
                 })),
-            ),
-            // envelope values
-            (
-                [176, 14, 0],
-                Some(MidiControllerEvent::Attack(generator::MIN_ATTACK)),
-            ),
-            (
-                [176, 14, 127],
-                Some(MidiControllerEvent::Attack(generator::MAX_ATTACK)),
             ),
             // unmapped events
             ([176, 1, 0], None),
@@ -185,6 +199,7 @@ impl EventHandler {
         match event {
             MidiControllerEvent::Volume(volume) => generators.midi_controller_volume = volume,
             MidiControllerEvent::Attack(attack) => generators.envelope.attack = attack,
+            MidiControllerEvent::Release(release) => generators.envelope.release = release,
             MidiControllerEvent::HarmonicVolume(values) => self.hammond_generator.enqueue(values),
         }
     }
@@ -260,6 +275,17 @@ mod test {
             let mut generators = sine_generators();
             EventHandler::new().handle_events(&mut generators, events.into_iter());
             assert_eq!(generators.envelope.attack, generator::MAX_ATTACK);
+        }
+
+        #[test]
+        fn adjusts_envelope_release_value() {
+            let events = vec![RawMidi {
+                time: 0,
+                bytes: &[176, 15, 127],
+            }];
+            let mut generators = sine_generators();
+            EventHandler::new().handle_events(&mut generators, events.into_iter());
+            assert_eq!(generators.envelope.release, generator::MAX_RELEASE);
         }
 
         #[test]

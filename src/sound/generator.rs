@@ -6,7 +6,7 @@ use crate::utils::Slots;
 
 pub struct Envelope {
     pub attack: f32,
-    release: f32,
+    pub release: f32,
 }
 
 pub struct Generators {
@@ -21,6 +21,7 @@ pub const MIN_ATTACK: f32 = 0.005;
 pub const MAX_ATTACK: f32 = 0.3;
 
 pub const MIN_RELEASE: f32 = 0.005;
+pub const MAX_RELEASE: f32 = 1.0;
 
 impl Generators {
     pub fn new(cli_args: &cli::Args) -> Generators {
