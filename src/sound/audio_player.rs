@@ -1,4 +1,3 @@
-use super::generator;
 use super::generator::Generators;
 use super::logger::Logger;
 use super::Player;
@@ -19,14 +18,11 @@ pub struct AudioPlayer {
 }
 
 impl AudioPlayer {
-    pub fn new(
-        cli_args: &cli::Args,
-        generator_args: generator::Args,
-    ) -> Result<AudioPlayer, ErrorString> {
+    pub fn new(cli_args: &cli::Args) -> Result<AudioPlayer, ErrorString> {
         let name = get_binary_name()?;
         let (client, _status) = jack::Client::new(&name, jack::ClientOptions::empty())?;
         let midi_controller = MidiController::new(&client)?;
-        let generators = Generators::new(client.sample_rate() as i32, generator_args);
+        let generators = Generators::new(client.sample_rate() as i32, cli_args);
         let audio_ports = Stereo {
             left: client.register_port("left-output", AudioOut)?,
             right: client.register_port("right-output", AudioOut)?,

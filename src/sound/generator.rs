@@ -1,14 +1,6 @@
+use crate::cli;
 use crate::sound::wave_form::WaveForm;
 use crate::sound::TAU;
-
-// fixme: remove?
-#[derive(Clone)]
-pub struct Args {
-    pub amplitude: f32,
-    pub attack: f32,
-    pub release: f32,
-    pub wave_form: WaveForm,
-}
 
 pub struct Generators {
     amplitude: f32,
@@ -18,14 +10,13 @@ pub struct Generators {
 }
 
 impl Generators {
-    pub fn new(sample_rate: i32, mut args: Args) -> Generators {
+    pub fn new(sample_rate: i32, cli_args: &cli::Args) -> Generators {
         let slots = 10;
-        args.amplitude /= slots as f32;
         Generators {
-            amplitude: args.amplitude,
+            amplitude: cli_args.volume / slots as f32,
             midi_controller_volume: 1.0,
-            wave_form: args.wave_form,
-            slots: vec![Generator::new(sample_rate, args.attack, args.release); slots],
+            wave_form: WaveForm::new(&cli_args.wave_form_config),
+            slots: vec![Generator::new(sample_rate, 0.005, 0.005); slots],
         }
     }
 

@@ -15,9 +15,7 @@ use areas::layouts::{grid, grid2, parallelograms};
 use areas::{note_event_source::NoteEventSource, Areas};
 use evdev::*;
 use sound::audio_player::AudioPlayer;
-use sound::generator;
 use sound::midi_player::MidiPlayer;
-use sound::wave_form::WaveForm;
 use sound::Player;
 use std::clone::Clone;
 use std::fmt::Debug;
@@ -135,13 +133,7 @@ fn get_player(cli_args: &cli::Args) -> Result<Box<dyn Player>, ErrorString> {
     if cli_args.midi {
         Ok(Box::new(MidiPlayer::new()?))
     } else {
-        let generator_args = generator::Args {
-            amplitude: cli_args.volume,
-            attack: 0.005,
-            release: 0.005,
-            wave_form: WaveForm::new(&cli_args.wave_form_config),
-        };
-        Ok(Box::new(AudioPlayer::new(&cli_args, generator_args)?))
+        Ok(Box::new(AudioPlayer::new(&cli_args)?))
     }
 }
 
