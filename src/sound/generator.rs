@@ -302,332 +302,339 @@ pub mod test {
                 assert_close(voice.get_phase(), 0.0);
             }
         }
-    }
 
-    mod generators {
-        use super::*;
-        use crate::utils::Slots;
-
-        fn buffer() -> [f32; 10] {
-            [0.0; 10]
-        }
-
-        #[test]
-        fn new_creates_as_many_voices_as_there_are_slots() {
-            let generators = Generators::new(&cli::test::args(vec![]));
-            let slots: Slots<()> = [(); 10];
-            assert_eq!(generators.voices.len(), slots.len());
-        }
-
-        #[test]
-        fn starts_at_zero() {
-            let mut generators = monophonic_sine_generators();
-            let buffer = &mut buffer();
-            generators.generate(SAMPLE_RATE, buffer);
-            assert_eq!(buffer[0], (TAU / SAMPLE_RATE as f32).sin());
-        }
-
-        #[test]
-        fn generates_sine_waves() {
-            let mut voice = monophonic_sine_generators();
-            let mut buffer = buffer();
-            voice.generate(SAMPLE_RATE, &mut buffer);
-            assert_eq!(buffer[0], (TAU / SAMPLE_RATE as f32).sin());
-            assert_eq!(buffer[1], (2.0 * TAU / SAMPLE_RATE as f32).sin());
-        }
-
-        #[test]
-        fn starts_with_phase_zero_after_pauses() {
-            let mut generators = monophonic_sine_generators();
-            generators.voices[0].note_on(1.0);
-            generators.generate(SAMPLE_RATE, &mut buffer());
-            generators.voices[0].note_off();
-            generators.generate(SAMPLE_RATE, &mut buffer());
-            generators.voices[0].note_on(1.0);
-            let mut buffer = buffer();
-            generators.generate(SAMPLE_RATE, &mut buffer);
-            assert_eq!(buffer[0], (TAU / SAMPLE_RATE as f32).sin());
-        }
-
-        #[test]
-        fn doesnt_reset_the_phase_when_changing_the_frequency_without_pause() {
-            let mut generators = monophonic_sine_generators();
-            generators.voices[0].note_on(1.0);
-            generators.generate(SAMPLE_RATE, &mut buffer());
-            generators.voices[0].note_on(1.1);
-            let mut buffer = buffer();
-            generators.generate(SAMPLE_RATE, &mut buffer);
-            assert!(buffer[0] != 0.0, "{} should not equal {}", buffer[0], 0.0);
-        }
-
-        #[test]
-        fn works_for_different_frequencies() {
-            let mut generators = monophonic_sine_generators();
-            generators.voices[0].note_on(300.0);
-            let mut buffer = buffer();
-            generators.generate(SAMPLE_RATE, &mut buffer);
-            assert_eq!(buffer[0], (300.0 * TAU / SAMPLE_RATE as f32).sin());
-            assert_eq!(buffer[1], (2.0 * 300.0 * TAU / SAMPLE_RATE as f32).sin());
-            assert_eq!(buffer[8], (9.0 * 300.0 * TAU / SAMPLE_RATE as f32).sin());
-        }
-
-        #[test]
-        fn allows_to_change_the_frequency_later() {
-            let mut generators = monophonic_sine_generators();
-            generators.voices[0].note_on(300.0);
-            generators.generate(SAMPLE_RATE, &mut buffer());
-            generators.voices[0].note_on(500.0);
-            let mut buffer = buffer();
-            generators.generate(SAMPLE_RATE, &mut buffer);
-            assert_eq!(
-                buffer[0],
-                ((10.0 * 300.0 + 500.0) * TAU / SAMPLE_RATE as f32).sin()
-            );
-            assert_eq!(
-                buffer[1],
-                ((10.0 * 300.0 + 2.0 * 500.0) * TAU / SAMPLE_RATE as f32).sin()
-            );
-        }
-
-        #[test]
-        fn is_initially_muted() {
-            let mut generators = Generators {
-                amplitude: 1.0,
-                midi_controller_volume: 1.0,
-                envelope: Envelope {
-                    attack: 0.0,
-                    release: 0.0,
-                },
-                wave_form: WaveForm::from_function(|x| x.sin(), 10000),
-                voices: vec![VoiceState::new()],
-            };
-            let mut buffer = buffer();
-            generators.generate(SAMPLE_RATE, &mut buffer);
-            assert_eq!(buffer[1], 0.0);
-            assert_eq!(buffer[2], 0.0);
-        }
-
-        #[test]
-        fn can_be_muted() {
-            let mut generators = monophonic_sine_generators();
-            generators.voices[0].note_on(1.0);
-            generators.generate(SAMPLE_RATE, &mut buffer());
-            generators.voices[0].note_off();
-            let mut buffer = buffer();
-            generators.generate(SAMPLE_RATE, &mut buffer);
-            assert_eq!(buffer[1], 0.0);
-            assert_eq!(buffer[2], 0.0);
-        }
-
-        #[test]
-        fn allows_to_specify_the_wave_form() {
-            let mut generators = Generators {
-                amplitude: 1.0,
-                midi_controller_volume: 1.0,
-                envelope: Envelope {
-                    attack: 0.0,
-                    release: 0.0,
-                },
-                wave_form: WaveForm::from_function(|phase| phase * 5.0, 10000),
-                voices: vec![VoiceState::new()],
-            };
-            generators.voices[0].note_on(1.0);
-            let mut buffer = buffer();
-            generators.generate(SAMPLE_RATE, &mut buffer);
-            assert_close(buffer[0], 5.0 * TAU / SAMPLE_RATE as f32);
-            assert_close(buffer[1], 2.0 * 5.0 * TAU / SAMPLE_RATE as f32);
-        }
-
-        #[test]
-        fn allows_to_scale_the_amplitude() {
-            let mut generators = Generators {
-                amplitude: 0.25,
-                midi_controller_volume: 1.0,
-                envelope: Envelope {
-                    attack: 0.0,
-                    release: 0.0,
-                },
-                wave_form: WaveForm::from_function(|_phase| 0.4, 10000),
-                voices: vec![VoiceState::new()],
-            };
-            generators.voices[0].note_on(1.0);
-            let mut buffer = buffer();
-            generators.generate(SAMPLE_RATE, &mut buffer);
-            assert_eq!(buffer[0], 0.1);
-        }
-
-        #[test]
-        fn allows_to_adjust_the_controller_volume_later() {
-            let mut generators = Generators {
-                amplitude: 1.0,
-                midi_controller_volume: 1.0,
-                envelope: Envelope {
-                    attack: 0.0,
-                    release: 0.0,
-                },
-                wave_form: WaveForm::from_function(|_phase| 0.4, 10000),
-                voices: vec![VoiceState::new()],
-            };
-            generators.voices[0].note_on(1.0);
-            generators.generate(SAMPLE_RATE, &mut buffer());
-            generators.midi_controller_volume = 0.5;
-            let mut buffer = buffer();
-            generators.generate(SAMPLE_RATE, &mut buffer);
-            assert_eq!(buffer[0], 0.2);
-        }
-
-        mod adsr {
+        mod generators {
             use super::*;
+            use crate::utils::Slots;
 
-            fn assert_elements_close(a: [f32; 10], b: [f32; 10]) {
-                let epsilon = 0.000001;
-                let mut close = true;
-                for (x, y) in a.iter().zip(b.iter()) {
-                    if (x - y).abs() > epsilon {
-                        println!("{} != {}", x, y);
-                        close = false;
-                    }
-                }
-                assert!(close, "not close enough: {:?} and {:?}", a, b);
+            fn buffer() -> [f32; 10] {
+                [0.0; 10]
             }
 
             #[test]
-            fn allows_to_specify_an_attack_time() {
-                let mut generators = Generators {
-                    amplitude: 1.0,
-                    midi_controller_volume: 1.0,
-                    envelope: Envelope {
-                        attack: 0.5,
-                        release: 0.0,
-                    },
-                    wave_form: WaveForm::from_function(|_phase| 0.5, 10000),
-                    voices: vec![VoiceState::new()],
-                };
-                generators.voices[0].note_on(1.0);
-                let mut buffer = buffer();
-                generators.generate(10, &mut buffer);
-                assert_elements_close(buffer, [0.1, 0.2, 0.3, 0.4, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5]);
+            fn new_creates_as_many_voices_as_there_are_slots() {
+                let generators = Generators::new(&cli::test::args(vec![]));
+                let slots: Slots<()> = [(); 10];
+                assert_eq!(generators.voices.len(), slots.len());
             }
 
             #[test]
-            fn does_not_reenter_an_attack_phase_for_subsequent_note_ons_when_playing() {
-                let mut generators = Generators {
-                    amplitude: 1.0,
-                    midi_controller_volume: 1.0,
-                    envelope: Envelope {
-                        attack: 0.5,
-                        release: 0.0,
-                    },
-                    wave_form: WaveForm::from_function(|_phase| 0.5, 10000),
-                    voices: vec![VoiceState::new()],
-                };
-                generators.voices[0].note_on(1.0);
-                generators.generate(10, &mut buffer());
-                generators.voices[0].note_on(1.0);
-                let mut second_buffer = buffer();
-                generators.generate(10, &mut second_buffer);
-                assert_elements_close(second_buffer, [0.5; 10]);
-            }
-
-            #[test]
-            fn does_not_restart_an_attack_phase_for_subsequent_note_ons_while_in_attack_phase() {
-                let mut generators = Generators {
-                    amplitude: 1.0,
-                    midi_controller_volume: 1.0,
-                    envelope: Envelope {
-                        attack: 2.0,
-                        release: 0.0,
-                    },
-                    wave_form: WaveForm::from_function(|_phase| 1.0, 10000),
-                    voices: vec![VoiceState::new()],
-                };
-                generators.voices[0].note_on(1.0);
-                generators.generate(10, &mut buffer());
-                generators.voices[0].note_on(1.0);
-                let mut second_buffer = buffer();
-                generators.generate(10, &mut second_buffer);
-                let mut expected = buffer();
-                for i in 0..10 {
-                    expected[i] = 0.5 + (i as f32 + 1.0) * 0.05;
-                }
-                assert_elements_close(second_buffer, expected);
-            }
-
-            #[test]
-            fn allows_to_specify_a_release_time() {
-                let mut generators = Generators {
-                    amplitude: 1.0,
-                    midi_controller_volume: 1.0,
-                    envelope: Envelope {
-                        attack: 0.0,
-                        release: 0.5,
-                    },
-                    wave_form: WaveForm::from_function(|_phase| 0.5, 10000),
-                    voices: vec![VoiceState::new()],
-                };
-                generators.voices[0].note_on(1.0);
-                generators.generate(10, &mut buffer());
-                generators.voices[0].note_off();
-                let mut buffer = buffer();
-                generators.generate(10, &mut buffer);
-                assert_elements_close(buffer, [0.4, 0.3, 0.2, 0.1, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]);
-            }
-        }
-
-        mod polyphony {
-            use super::*;
-
-            #[test]
-            fn does_not_overwrite_the_buffer_when_muted() {
+            fn starts_at_zero() {
                 let mut generators = monophonic_sine_generators();
+                let buffer = &mut buffer();
+                generators.generate(SAMPLE_RATE, buffer);
+                assert_eq!(buffer[0], (TAU / SAMPLE_RATE as f32).sin());
+            }
+
+            #[test]
+            fn generates_sine_waves() {
+                let mut voice = monophonic_sine_generators();
+                let mut buffer = buffer();
+                voice.generate(SAMPLE_RATE, &mut buffer);
+                assert_eq!(buffer[0], (TAU / SAMPLE_RATE as f32).sin());
+                assert_eq!(buffer[1], (2.0 * TAU / SAMPLE_RATE as f32).sin());
+            }
+
+            #[test]
+            fn starts_with_phase_zero_after_pauses() {
+                let mut generators = monophonic_sine_generators();
+                generators.voices[0].note_on(1.0);
+                generators.generate(SAMPLE_RATE, &mut buffer());
                 generators.voices[0].note_off();
+                generators.generate(SAMPLE_RATE, &mut buffer());
+                generators.voices[0].note_on(1.0);
                 let mut buffer = buffer();
-                buffer[5] = 23.0;
                 generators.generate(SAMPLE_RATE, &mut buffer);
-                assert_eq!(buffer[5], 23.0);
+                assert_eq!(buffer[0], (TAU / SAMPLE_RATE as f32).sin());
             }
 
             #[test]
-            fn adds_its_values_to_the_given_buffer() {
-                let mut generators = Generators {
-                    amplitude: 0.5,
-                    midi_controller_volume: 1.0,
-                    envelope: Envelope {
-                        attack: 0.0,
-                        release: 0.0,
-                    },
-                    wave_form: WaveForm::from_function(|_phase| 0.5, 10000),
-                    voices: vec![VoiceState::new()],
-                };
-                generators.voices[0].note_on(440.0);
+            fn doesnt_reset_the_phase_when_changing_the_frequency_without_pause() {
+                let mut generators = monophonic_sine_generators();
+                generators.voices[0].note_on(1.0);
+                generators.generate(SAMPLE_RATE, &mut buffer());
+                generators.voices[0].note_on(1.1);
                 let mut buffer = buffer();
-                buffer[0] = 0.1;
-                generators.generate(10, &mut buffer);
-                assert_eq!(buffer[0], 0.1 + 0.5 * 0.5);
+                generators.generate(SAMPLE_RATE, &mut buffer);
+                assert!(buffer[0] != 0.0, "{} should not equal {}", buffer[0], 0.0);
             }
 
             #[test]
-            fn adds_its_values_to_the_given_buffer_during_release() {
-                let sample_rate = 10;
+            fn works_for_different_frequencies() {
+                let mut generators = monophonic_sine_generators();
+                generators.voices[0].note_on(300.0);
+                let mut buffer = buffer();
+                generators.generate(SAMPLE_RATE, &mut buffer);
+                assert_eq!(buffer[0], (300.0 * TAU / SAMPLE_RATE as f32).sin());
+                assert_eq!(buffer[1], (2.0 * 300.0 * TAU / SAMPLE_RATE as f32).sin());
+                assert_eq!(buffer[8], (9.0 * 300.0 * TAU / SAMPLE_RATE as f32).sin());
+            }
+
+            #[test]
+            fn allows_to_change_the_frequency_later() {
+                let mut generators = monophonic_sine_generators();
+                generators.voices[0].note_on(300.0);
+                generators.generate(SAMPLE_RATE, &mut buffer());
+                generators.voices[0].note_on(500.0);
+                let mut buffer = buffer();
+                generators.generate(SAMPLE_RATE, &mut buffer);
+                assert_eq!(
+                    buffer[0],
+                    ((10.0 * 300.0 + 500.0) * TAU / SAMPLE_RATE as f32).sin()
+                );
+                assert_eq!(
+                    buffer[1],
+                    ((10.0 * 300.0 + 2.0 * 500.0) * TAU / SAMPLE_RATE as f32).sin()
+                );
+            }
+
+            #[test]
+            fn is_initially_muted() {
                 let mut generators = Generators {
                     amplitude: 1.0,
                     midi_controller_volume: 1.0,
                     envelope: Envelope {
                         attack: 0.0,
-                        release: 1.0,
+                        release: 0.0,
                     },
-                    wave_form: WaveForm::from_function(|_phase| 0.5, 10000),
+                    wave_form: WaveForm::from_function(|x| x.sin(), 10000),
                     voices: vec![VoiceState::new()],
                 };
                 let mut buffer = buffer();
-                generators.voices[0].note_on(440.0);
-                generators.generate(sample_rate, &mut buffer);
+                generators.generate(SAMPLE_RATE, &mut buffer);
+                assert_eq!(buffer[1], 0.0);
+                assert_eq!(buffer[2], 0.0);
+            }
+
+            #[test]
+            fn can_be_muted() {
+                let mut generators = monophonic_sine_generators();
+                generators.voices[0].note_on(1.0);
+                generators.generate(SAMPLE_RATE, &mut buffer());
                 generators.voices[0].note_off();
-                buffer[0] = 0.1;
-                buffer[1] = 0.1;
-                generators.generate(sample_rate, &mut buffer);
-                assert_eq!(buffer[0], 0.1 + 0.5 * 0.9);
-                assert_close(buffer[1], 0.1 + 0.5 * 0.8);
+                let mut buffer = buffer();
+                generators.generate(SAMPLE_RATE, &mut buffer);
+                assert_eq!(buffer[1], 0.0);
+                assert_eq!(buffer[2], 0.0);
+            }
+
+            #[test]
+            fn allows_to_specify_the_wave_form() {
+                let mut generators = Generators {
+                    amplitude: 1.0,
+                    midi_controller_volume: 1.0,
+                    envelope: Envelope {
+                        attack: 0.0,
+                        release: 0.0,
+                    },
+                    wave_form: WaveForm::from_function(|phase| phase * 5.0, 10000),
+                    voices: vec![VoiceState::new()],
+                };
+                generators.voices[0].note_on(1.0);
+                let mut buffer = buffer();
+                generators.generate(SAMPLE_RATE, &mut buffer);
+                assert_close(buffer[0], 5.0 * TAU / SAMPLE_RATE as f32);
+                assert_close(buffer[1], 2.0 * 5.0 * TAU / SAMPLE_RATE as f32);
+            }
+
+            #[test]
+            fn allows_to_scale_the_amplitude() {
+                let mut generators = Generators {
+                    amplitude: 0.25,
+                    midi_controller_volume: 1.0,
+                    envelope: Envelope {
+                        attack: 0.0,
+                        release: 0.0,
+                    },
+                    wave_form: WaveForm::from_function(|_phase| 0.4, 10000),
+                    voices: vec![VoiceState::new()],
+                };
+                generators.voices[0].note_on(1.0);
+                let mut buffer = buffer();
+                generators.generate(SAMPLE_RATE, &mut buffer);
+                assert_eq!(buffer[0], 0.1);
+            }
+
+            #[test]
+            fn allows_to_adjust_the_controller_volume_later() {
+                let mut generators = Generators {
+                    amplitude: 1.0,
+                    midi_controller_volume: 1.0,
+                    envelope: Envelope {
+                        attack: 0.0,
+                        release: 0.0,
+                    },
+                    wave_form: WaveForm::from_function(|_phase| 0.4, 10000),
+                    voices: vec![VoiceState::new()],
+                };
+                generators.voices[0].note_on(1.0);
+                generators.generate(SAMPLE_RATE, &mut buffer());
+                generators.midi_controller_volume = 0.5;
+                let mut buffer = buffer();
+                generators.generate(SAMPLE_RATE, &mut buffer);
+                assert_eq!(buffer[0], 0.2);
+            }
+
+            mod adsr {
+                use super::*;
+
+                fn assert_elements_close(a: [f32; 10], b: [f32; 10]) {
+                    let epsilon = 0.000001;
+                    let mut close = true;
+                    for (x, y) in a.iter().zip(b.iter()) {
+                        if (x - y).abs() > epsilon {
+                            println!("{} != {}", x, y);
+                            close = false;
+                        }
+                    }
+                    assert!(close, "not close enough: {:?} and {:?}", a, b);
+                }
+
+                #[test]
+                fn allows_to_specify_an_attack_time() {
+                    let mut generators = Generators {
+                        amplitude: 1.0,
+                        midi_controller_volume: 1.0,
+                        envelope: Envelope {
+                            attack: 0.5,
+                            release: 0.0,
+                        },
+                        wave_form: WaveForm::from_function(|_phase| 0.5, 10000),
+                        voices: vec![VoiceState::new()],
+                    };
+                    generators.voices[0].note_on(1.0);
+                    let mut buffer = buffer();
+                    generators.generate(10, &mut buffer);
+                    assert_elements_close(
+                        buffer,
+                        [0.1, 0.2, 0.3, 0.4, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5],
+                    );
+                }
+
+                #[test]
+                fn does_not_reenter_an_attack_phase_for_subsequent_note_ons_when_playing() {
+                    let mut generators = Generators {
+                        amplitude: 1.0,
+                        midi_controller_volume: 1.0,
+                        envelope: Envelope {
+                            attack: 0.5,
+                            release: 0.0,
+                        },
+                        wave_form: WaveForm::from_function(|_phase| 0.5, 10000),
+                        voices: vec![VoiceState::new()],
+                    };
+                    generators.voices[0].note_on(1.0);
+                    generators.generate(10, &mut buffer());
+                    generators.voices[0].note_on(1.0);
+                    let mut second_buffer = buffer();
+                    generators.generate(10, &mut second_buffer);
+                    assert_elements_close(second_buffer, [0.5; 10]);
+                }
+
+                #[test]
+                fn does_not_restart_an_attack_phase_for_subsequent_note_ons_while_in_attack_phase()
+                {
+                    let mut generators = Generators {
+                        amplitude: 1.0,
+                        midi_controller_volume: 1.0,
+                        envelope: Envelope {
+                            attack: 2.0,
+                            release: 0.0,
+                        },
+                        wave_form: WaveForm::from_function(|_phase| 1.0, 10000),
+                        voices: vec![VoiceState::new()],
+                    };
+                    generators.voices[0].note_on(1.0);
+                    generators.generate(10, &mut buffer());
+                    generators.voices[0].note_on(1.0);
+                    let mut second_buffer = buffer();
+                    generators.generate(10, &mut second_buffer);
+                    let mut expected = buffer();
+                    for i in 0..10 {
+                        expected[i] = 0.5 + (i as f32 + 1.0) * 0.05;
+                    }
+                    assert_elements_close(second_buffer, expected);
+                }
+
+                #[test]
+                fn allows_to_specify_a_release_time() {
+                    let mut generators = Generators {
+                        amplitude: 1.0,
+                        midi_controller_volume: 1.0,
+                        envelope: Envelope {
+                            attack: 0.0,
+                            release: 0.5,
+                        },
+                        wave_form: WaveForm::from_function(|_phase| 0.5, 10000),
+                        voices: vec![VoiceState::new()],
+                    };
+                    generators.voices[0].note_on(1.0);
+                    generators.generate(10, &mut buffer());
+                    generators.voices[0].note_off();
+                    let mut buffer = buffer();
+                    generators.generate(10, &mut buffer);
+                    assert_elements_close(
+                        buffer,
+                        [0.4, 0.3, 0.2, 0.1, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                    );
+                }
+            }
+
+            mod polyphony {
+                use super::*;
+
+                #[test]
+                fn does_not_overwrite_the_buffer_when_muted() {
+                    let mut generators = monophonic_sine_generators();
+                    generators.voices[0].note_off();
+                    let mut buffer = buffer();
+                    buffer[5] = 23.0;
+                    generators.generate(SAMPLE_RATE, &mut buffer);
+                    assert_eq!(buffer[5], 23.0);
+                }
+
+                #[test]
+                fn adds_its_values_to_the_given_buffer() {
+                    let mut generators = Generators {
+                        amplitude: 0.5,
+                        midi_controller_volume: 1.0,
+                        envelope: Envelope {
+                            attack: 0.0,
+                            release: 0.0,
+                        },
+                        wave_form: WaveForm::from_function(|_phase| 0.5, 10000),
+                        voices: vec![VoiceState::new()],
+                    };
+                    generators.voices[0].note_on(440.0);
+                    let mut buffer = buffer();
+                    buffer[0] = 0.1;
+                    generators.generate(10, &mut buffer);
+                    assert_eq!(buffer[0], 0.1 + 0.5 * 0.5);
+                }
+
+                #[test]
+                fn adds_its_values_to_the_given_buffer_during_release() {
+                    let sample_rate = 10;
+                    let mut generators = Generators {
+                        amplitude: 1.0,
+                        midi_controller_volume: 1.0,
+                        envelope: Envelope {
+                            attack: 0.0,
+                            release: 1.0,
+                        },
+                        wave_form: WaveForm::from_function(|_phase| 0.5, 10000),
+                        voices: vec![VoiceState::new()],
+                    };
+                    let mut buffer = buffer();
+                    generators.voices[0].note_on(440.0);
+                    generators.generate(sample_rate, &mut buffer);
+                    generators.voices[0].note_off();
+                    buffer[0] = 0.1;
+                    buffer[1] = 0.1;
+                    generators.generate(sample_rate, &mut buffer);
+                    assert_eq!(buffer[0], 0.1 + 0.5 * 0.9);
+                    assert_close(buffer[1], 0.1 + 0.5 * 0.8);
+                }
             }
         }
     }
