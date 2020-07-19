@@ -103,13 +103,13 @@ impl AudioProcessHandler {
         match self.receiver.recv() {
             None => {}
             Some(slots) => {
-                for (event, generator) in slots.iter().zip(self.generators.slots.iter_mut()) {
+                for (event, voice) in slots.iter().zip(self.generators.voices.iter_mut()) {
                     match event {
                         NoteEvent::NoteOff => {
-                            generator.note_off();
+                            voice.note_off();
                         }
                         NoteEvent::NoteOn(frequency) => {
-                            generator.note_on(*frequency);
+                            voice.note_on(*frequency);
                         }
                     }
                 }
