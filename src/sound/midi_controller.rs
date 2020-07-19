@@ -1,8 +1,7 @@
-use crate::sound::generator::Generator;
+use crate::sound::generator::Generators;
 use crate::sound::hammond::mk_hammond;
 use crate::sound::wave_form::WaveForm;
 use crate::utils::thread_worker::ThreadWorker;
-use crate::utils::{new_slots, Slots};
 use crate::ErrorString;
 use jack::*;
 
@@ -129,14 +128,14 @@ impl MidiController {
         })
     }
 
-    pub fn handle_events(&self, generators: &mut Slots<Generator>, scope: &ProcessScope) {
+    pub fn handle_events(&self, generators: &mut Generators, scope: &ProcessScope) {
         self.event_handler
             .handle_events(generators, self.port.iter(scope));
     }
 }
 
 struct EventHandler {
-    hammond_generator: ThreadWorker<HarmonicVolume, Box<Slots<WaveForm>>>,
+    hammond_generator: ThreadWorker<HarmonicVolume, WaveForm>,
 }
 
 impl EventHandler {
@@ -145,13 +144,12 @@ impl EventHandler {
         EventHandler {
             hammond_generator: ThreadWorker::new(move |harmonic_volume| {
                 harmonics_state.set_harmonic_volume(harmonic_volume);
-                let wave_form = harmonics_state.mk_wave_form();
-                Box::new(new_slots(|| wave_form.clone()))
+                harmonics_state.mk_wave_form()
             }),
         }
     }
 
-    fn handle_events<'a, Iter>(&self, generators: &mut Slots<Generator>, raw_events: Iter)
+    fn handle_events<'a, Iter>(&self, generators: &mut Generators, raw_events: Iter)
     where
         Iter: Iterator<Item = RawMidi<'a>>,
     {
@@ -165,27 +163,18 @@ impl EventHandler {
 
     fn handle_midi_controller_event(
         &self,
-        generators: &mut Slots<Generator>,
+        generators: &mut Generators,
         event: MidiControllerEvent,
     ) {
         match event {
-            MidiControllerEvent::Volume(volume) => {
-                for generator in generators.iter_mut() {
-                    generator.midi_controller_volume = volume
-                }
-            }
-            MidiControllerEvent::HarmonicVolume(values) => {
-                self.hammond_generator.enqueue(values);
-            }
+            MidiControllerEvent::Volume(volume) => generators.midi_controller_volume = volume,
+            MidiControllerEvent::HarmonicVolume(values) => self.hammond_generator.enqueue(values),
         }
     }
 
-    fn poll_hammond_generator(&self, generators: &mut Slots<Generator>) {
-        if let Some(new_wave_forms) = self.hammond_generator.poll() {
-            let boxed_slice: Box<[WaveForm]> = new_wave_forms;
-            for (i, new_wave_form) in boxed_slice.into_vec().into_iter().enumerate() {
-                generators[i].wave_form = new_wave_form;
-            }
+    fn poll_hammond_generator(&self, generators: &mut Generators) {
+        if let Some(new_wave_form) = self.hammond_generator.poll() {
+            generators.wave_form = new_wave_form;
         }
     }
 }
@@ -215,7 +204,7 @@ impl HarmonicsState {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::sound::generator::test::sine_generator;
+    use crate::sound::generator::test::sine_generators;
     use crate::utils::thread_worker::test::wait_for;
 
     fn compare_wave_forms(a: &WaveForm, b: &WaveForm) -> Result<(), String> {
@@ -234,24 +223,22 @@ mod test {
         use super::*;
 
         #[test]
-        fn adjusts_all_generators_volumes() {
+        fn adjusts_midi_volume_in_generators() {
             let events = vec![RawMidi {
                 time: 0,
                 bytes: &[176, 11, 64],
             }];
-            let mut generators = new_slots(|| sine_generator());
+            let mut generators = sine_generators();
             let event_handler = EventHandler::new();
             event_handler.handle_events(&mut generators, events.into_iter());
-            for generator in &generators {
-                assert_eq!(generator.midi_controller_volume, 64.0 / 127.0);
-            }
+            assert_eq!(generators.midi_controller_volume, 64.0 / 127.0);
         }
 
         #[test]
-        fn adjusts_all_generators_wave_forms() -> Result<(), String> {
+        fn adjusts_wave_form_in_generators() -> Result<(), String> {
             let event_handler = EventHandler::new();
-            let mut generators = new_slots(|| sine_generator());
-            let expected = mk_hammond(vec![42.0 / 127.0], generators[0].wave_form.table.len());
+            let mut generators = sine_generators();
+            let expected = mk_hammond(vec![42.0 / 127.0], generators.wave_form.table.len());
             let events = vec![RawMidi {
                 time: 0,
                 bytes: &[176, 3, 42],
@@ -259,12 +246,9 @@ mod test {
             event_handler.handle_events(&mut generators, events.into_iter());
             wait_for(|| {
                 event_handler.handle_events(&mut generators, vec![].into_iter());
-                compare_wave_forms(&generators[0].wave_form, &expected)?;
+                compare_wave_forms(&generators.wave_form, &expected)?;
                 Ok(())
             })?;
-            for generator in &generators {
-                compare_wave_forms(&generator.wave_form, &expected)?;
-            }
             Ok(())
         }
     }
@@ -274,13 +258,11 @@ mod test {
 
         #[test]
         fn adjusts_the_midi_controller_volume() {
-            let mut generators = new_slots(|| sine_generator());
+            let mut generators = sine_generators();
             let event_handler = EventHandler::new();
             event_handler
                 .handle_midi_controller_event(&mut generators, MidiControllerEvent::Volume(0.7));
-            for generator in generators.iter() {
-                assert_eq!(generator.midi_controller_volume, 0.7);
-            }
+            assert_eq!(generators.midi_controller_volume, 0.7);
         }
     }
 

@@ -1,5 +1,4 @@
-use super::generator;
-use super::generator::Generator;
+use super::generator::Generators;
 use super::logger::Logger;
 use super::Player;
 use crate::areas::note_event_source::NoteEventSource;
@@ -7,7 +6,7 @@ use crate::cli;
 use crate::get_binary_name;
 use crate::sound::midi_controller::MidiController;
 use crate::sound::NoteEvent;
-use crate::utils::{slot_map, Slots};
+use crate::utils::Slots;
 use crate::ErrorString;
 use jack::*;
 use skipchannel::*;
@@ -19,16 +18,11 @@ pub struct AudioPlayer {
 }
 
 impl AudioPlayer {
-    pub fn new(
-        cli_args: &cli::Args,
-        generator_args: generator::Args,
-    ) -> Result<AudioPlayer, ErrorString> {
+    pub fn new(cli_args: &cli::Args) -> Result<AudioPlayer, ErrorString> {
         let name = get_binary_name()?;
         let (client, _status) = jack::Client::new(&name, jack::ClientOptions::empty())?;
         let midi_controller = MidiController::new(&client)?;
-        let generators = slot_map(generator_args.unfold_generator_args(), |args| {
-            Generator::new((*args).clone(), client.sample_rate() as i32)
-        });
+        let generators = Generators::new(client.sample_rate() as i32, cli_args);
         let audio_ports = Stereo {
             left: client.register_port("left-output", AudioOut)?,
             right: client.register_port("right-output", AudioOut)?,
@@ -95,7 +89,7 @@ pub struct AudioProcessHandler {
     audio_ports: Stereo<Port<AudioOut>>,
     midi_controller: MidiController,
     receiver: Receiver<Slots<NoteEvent>>,
-    generators: Slots<Generator>,
+    generators: Generators,
 }
 
 impl AudioProcessHandler {
@@ -109,7 +103,7 @@ impl AudioProcessHandler {
         match self.receiver.recv() {
             None => {}
             Some(slots) => {
-                for (event, generator) in slots.iter().zip(self.generators.iter_mut()) {
+                for (event, generator) in slots.iter().zip(self.generators.slots.iter_mut()) {
                     match event {
                         NoteEvent::NoteOff => {
                             generator.note_off();
@@ -135,15 +129,13 @@ impl AudioProcessHandler {
     fn fill_buffer(
         logger: &Logger,
         client: &Client,
-        generators: &mut Slots<Generator>,
+        generators: &mut Generators,
         buffer: &mut [f32],
     ) {
         for sample in buffer.iter_mut() {
             *sample = 0.0;
         }
-        for generator in generators.iter_mut() {
-            generator.generate(client.sample_rate() as i32, buffer);
-        }
+        generators.generate(client.sample_rate() as i32, buffer);
         logger.check_clipping(buffer);
     }
 }
