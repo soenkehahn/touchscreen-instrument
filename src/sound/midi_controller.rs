@@ -225,7 +225,7 @@ mod test {
         use super::*;
 
         #[test]
-        fn adjusts_midi_volumes_in_generators() {
+        fn adjusts_midi_volume_in_generators() {
             let events = vec![RawMidi {
                 time: 0,
                 bytes: &[176, 11, 64],
@@ -237,7 +237,7 @@ mod test {
         }
 
         #[test]
-        fn adjusts_all_generators_wave_forms() -> Result<(), String> {
+        fn adjusts_wave_form_in_generators() -> Result<(), String> {
             let event_handler = EventHandler::new();
             let mut generators = sine_generators();
             let expected = mk_hammond(vec![42.0 / 127.0], generators.wave_form.table.len());
