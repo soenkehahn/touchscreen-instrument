@@ -96,24 +96,13 @@ impl AudioProcessHandler {
     fn handle_events(&mut self, scope: &ProcessScope) {
         self.midi_controller
             .handle_events(&mut self.generators, scope);
-        self.handle_touch_events();
+        self.handle_note_events();
     }
 
-    fn handle_touch_events(&mut self) {
+    fn handle_note_events(&mut self) {
         match self.receiver.recv() {
             None => {}
-            Some(slots) => {
-                for (event, voice) in slots.iter().zip(self.generators.voices.iter_mut()) {
-                    match event {
-                        NoteEvent::NoteOff => {
-                            voice.note_off();
-                        }
-                        NoteEvent::NoteOn(frequency) => {
-                            voice.note_on(*frequency);
-                        }
-                    }
-                }
-            }
+            Some(slots) => Generators::handle_note_events(&mut self.generators, slots),
         }
     }
 
