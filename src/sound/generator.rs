@@ -201,15 +201,6 @@ pub mod test {
 
     const SAMPLE_RATE: i32 = 44100;
 
-    pub fn monophonic_sine_generators() -> Generators {
-        Generators {
-            amplitude: 1.0,
-            midi_controller_volume: 1.0,
-            wave_form: WaveForm::from_function(|x| x.sin(), SAMPLE_RATE as usize),
-            slots: vec![sine_generator()],
-        }
-    }
-
     pub fn sine_generators() -> Generators {
         Generators {
             amplitude: 1.0,
@@ -219,7 +210,16 @@ pub mod test {
         }
     }
 
-    pub fn sine_generator() -> Generator {
+    fn monophonic_sine_generators() -> Generators {
+        Generators {
+            amplitude: 1.0,
+            midi_controller_volume: 1.0,
+            wave_form: WaveForm::from_function(|x| x.sin(), SAMPLE_RATE as usize),
+            slots: vec![sine_generator()],
+        }
+    }
+
+    fn sine_generator() -> Generator {
         let mut generator = Generator::new(SAMPLE_RATE, 0.0, 0.0);
         generator.note_on(1.0);
         generator
