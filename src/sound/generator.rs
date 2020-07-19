@@ -11,14 +11,14 @@ pub struct Generators {
 }
 
 impl Generators {
-    pub fn new(sample_rate: i32, cli_args: &cli::Args) -> Generators {
+    pub fn new(cli_args: &cli::Args) -> Generators {
         let unit_slots: Slots<()> = [(); 10];
         let slots = unit_slots.len();
         Generators {
             amplitude: cli_args.volume / slots as f32,
             midi_controller_volume: 1.0,
             wave_form: WaveForm::new(&cli_args.wave_form_config),
-            slots: vec![Generator::new(sample_rate, 0.005, 0.005); slots],
+            slots: vec![Generator::new(0.005, 0.005); slots],
         }
     }
 
@@ -51,16 +51,17 @@ impl Generators {
 
 #[derive(Debug, Clone)]
 pub struct Generator {
-    attack_per_sample: f32,
-    release_per_sample: f32,
+    // fixme: move to Generators
+    attack: f32,
+    release: f32,
     oscillator_state: VoiceState,
 }
 
 impl Generator {
-    pub fn new(sample_rate: i32, attack: f32, release: f32) -> Generator {
+    pub fn new(attack: f32, release: f32) -> Generator {
         Generator {
-            attack_per_sample: 1.0 / (sample_rate as f32 * attack),
-            release_per_sample: 1.0 / (sample_rate as f32 * release),
+            attack,
+            release,
             oscillator_state: VoiceState::Muted,
         }
     }
@@ -131,7 +132,8 @@ impl Generator {
         };
     }
 
-    fn step_envelope(&mut self) {
+    // fixme: usize?
+    fn step_envelope(&mut self, sample_rate: i32) {
         let next = match self.oscillator_state {
             VoiceState::Playing {
                 frequency,
@@ -141,7 +143,7 @@ impl Generator {
                 EnvelopePhase::Attacking {
                     ref mut attack_amplitude,
                 } => {
-                    *attack_amplitude += self.attack_per_sample;
+                    *attack_amplitude += 1.0 / (sample_rate as f32 * self.attack);
                     if *attack_amplitude >= 1.0 {
                         Some(VoiceState::Playing {
                             frequency,
@@ -157,7 +159,7 @@ impl Generator {
                     ref mut release_amplitude,
                     ..
                 } => {
-                    *release_amplitude -= self.release_per_sample;
+                    *release_amplitude -= 1.0 / (sample_rate as f32 * self.release);
                     if *release_amplitude <= 0.0 {
                         Some(VoiceState::Muted)
                     } else {
@@ -174,7 +176,7 @@ impl Generator {
 
     fn step(&mut self, sample_rate: i32) {
         self.crank_phase(sample_rate);
-        self.step_envelope();
+        self.step_envelope(sample_rate);
     }
 }
 
@@ -220,7 +222,7 @@ pub mod test {
     }
 
     fn sine_generator() -> Generator {
-        let mut generator = Generator::new(SAMPLE_RATE, 0.0, 0.0);
+        let mut generator = Generator::new(0.0, 0.0);
         generator.note_on(1.0);
         generator
     }
@@ -291,7 +293,7 @@ pub mod test {
 
             #[test]
             fn new_creates_as_many_voices_as_there_are_slots() {
-                let generators = Generators::new(SAMPLE_RATE, &cli::test::args(vec![]));
+                let generators = Generators::new(&cli::test::args(vec![]));
                 let slots: Slots<()> = [(); 10];
                 assert_eq!(generators.slots.len(), slots.len());
             }
@@ -372,7 +374,7 @@ pub mod test {
                     amplitude: 1.0,
                     midi_controller_volume: 1.0,
                     wave_form: WaveForm::from_function(|x| x.sin(), 10000),
-                    slots: vec![Generator::new(SAMPLE_RATE, 0.0, 0.0)],
+                    slots: vec![Generator::new(0.0, 0.0)],
                 };
                 let mut buffer = buffer();
                 generators.generate(SAMPLE_RATE, &mut buffer);
@@ -398,7 +400,7 @@ pub mod test {
                     amplitude: 1.0,
                     midi_controller_volume: 1.0,
                     wave_form: WaveForm::from_function(|phase| phase * 5.0, 10000),
-                    slots: vec![Generator::new(SAMPLE_RATE, 0.0, 0.0)],
+                    slots: vec![Generator::new(0.0, 0.0)],
                 };
                 generators.slots[0].note_on(1.0);
                 let mut buffer = buffer();
@@ -413,7 +415,7 @@ pub mod test {
                     amplitude: 0.25,
                     midi_controller_volume: 1.0,
                     wave_form: WaveForm::from_function(|_phase| 0.4, 10000),
-                    slots: vec![Generator::new(SAMPLE_RATE, 0.0, 0.0)],
+                    slots: vec![Generator::new(0.0, 0.0)],
                 };
                 generators.slots[0].note_on(1.0);
                 let mut buffer = buffer();
@@ -427,7 +429,7 @@ pub mod test {
                     amplitude: 1.0,
                     midi_controller_volume: 1.0,
                     wave_form: WaveForm::from_function(|_phase| 0.4, 10000),
-                    slots: vec![Generator::new(SAMPLE_RATE, 0.0, 0.0)],
+                    slots: vec![Generator::new(0.0, 0.0)],
                 };
                 generators.slots[0].note_on(1.0);
                 generators.generate(SAMPLE_RATE, &mut buffer());
@@ -458,7 +460,7 @@ pub mod test {
                         amplitude: 1.0,
                         midi_controller_volume: 1.0,
                         wave_form: WaveForm::from_function(|_phase| 0.5, 10000),
-                        slots: vec![Generator::new(10, 0.5, 0.0)],
+                        slots: vec![Generator::new(0.5, 0.0)],
                     };
                     generators.slots[0].note_on(1.0);
                     let mut buffer = buffer();
@@ -475,7 +477,7 @@ pub mod test {
                         amplitude: 1.0,
                         midi_controller_volume: 1.0,
                         wave_form: WaveForm::from_function(|_phase| 0.5, 10000),
-                        slots: vec![Generator::new(10, 0.5, 0.0)],
+                        slots: vec![Generator::new(0.5, 0.0)],
                     };
                     generators.slots[0].note_on(1.0);
                     generators.generate(10, &mut buffer());
@@ -492,7 +494,7 @@ pub mod test {
                         amplitude: 1.0,
                         midi_controller_volume: 1.0,
                         wave_form: WaveForm::from_function(|_phase| 1.0, 10000),
-                        slots: vec![Generator::new(10, 2.0, 0.0)],
+                        slots: vec![Generator::new(2.0, 0.0)],
                     };
                     generators.slots[0].note_on(1.0);
                     generators.generate(10, &mut buffer());
@@ -512,7 +514,7 @@ pub mod test {
                         amplitude: 1.0,
                         midi_controller_volume: 1.0,
                         wave_form: WaveForm::from_function(|_phase| 0.5, 10000),
-                        slots: vec![Generator::new(10, 0.0, 0.5)],
+                        slots: vec![Generator::new(0.0, 0.5)],
                     };
                     generators.slots[0].note_on(1.0);
                     generators.generate(10, &mut buffer());
@@ -541,17 +543,16 @@ pub mod test {
 
                 #[test]
                 fn adds_its_values_to_the_given_buffer() {
-                    let sample_rate = 10;
                     let mut generators = Generators {
                         amplitude: 0.5,
                         midi_controller_volume: 1.0,
                         wave_form: WaveForm::from_function(|_phase| 0.5, 10000),
-                        slots: vec![Generator::new(sample_rate, 0.0, 0.0)],
+                        slots: vec![Generator::new(0.0, 0.0)],
                     };
                     generators.slots[0].note_on(440.0);
                     let mut buffer = buffer();
                     buffer[0] = 0.1;
-                    generators.generate(sample_rate, &mut buffer);
+                    generators.generate(10, &mut buffer);
                     assert_eq!(buffer[0], 0.1 + 0.5 * 0.5);
                 }
 
@@ -562,7 +563,7 @@ pub mod test {
                         amplitude: 1.0,
                         midi_controller_volume: 1.0,
                         wave_form: WaveForm::from_function(|_phase| 0.5, 10000),
-                        slots: vec![Generator::new(sample_rate, 0.0, 1.0)],
+                        slots: vec![Generator::new(0.0, 1.0)],
                     };
                     let mut buffer = buffer();
                     generators.slots[0].note_on(440.0);
