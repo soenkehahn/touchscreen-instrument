@@ -1,6 +1,7 @@
 use crate::cli;
 use crate::sound::wave_form::WaveForm;
 use crate::sound::TAU;
+use crate::utils::Slots;
 
 pub struct Generators {
     amplitude: f32,
@@ -11,7 +12,8 @@ pub struct Generators {
 
 impl Generators {
     pub fn new(sample_rate: i32, cli_args: &cli::Args) -> Generators {
-        let slots = 10;
+        let unit_slots: Slots<()> = [(); 10];
+        let slots = unit_slots.len();
         Generators {
             amplitude: cli_args.volume / slots as f32,
             midi_controller_volume: 1.0,
@@ -281,9 +283,17 @@ pub mod test {
 
         mod generators {
             use super::*;
+            use crate::utils::Slots;
 
             fn buffer() -> [f32; 10] {
                 [0.0; 10]
+            }
+
+            #[test]
+            fn new_creates_as_many_voices_as_there_are_slots() {
+                let generators = Generators::new(SAMPLE_RATE, &cli::test::args(vec![]));
+                let slots: Slots<()> = [(); 10];
+                assert_eq!(generators.slots.len(), slots.len());
             }
 
             #[test]

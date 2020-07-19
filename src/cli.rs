@@ -111,10 +111,10 @@ fn parse_wave_form_config(input: Option<&str>) -> Result<WaveFormConfig, ErrorSt
 }
 
 #[cfg(test)]
-mod test {
+pub mod test {
     use super::*;
 
-    fn args(extra_args: Vec<&str>) -> Args {
+    pub fn args(extra_args: Vec<&str>) -> Args {
         let with_binary = {
             let mut result = vec!["test-binary-name"];
             result.append(&mut extra_args.clone());
