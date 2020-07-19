@@ -135,7 +135,7 @@ impl AudioProcessHandler {
         for sample in buffer.iter_mut() {
             *sample = 0.0;
         }
-        generators.generate(client.sample_rate() as i32, buffer);
+        generators.generate(client.sample_rate(), buffer);
         logger.check_clipping(buffer);
     }
 }

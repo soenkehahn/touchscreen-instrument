@@ -22,7 +22,7 @@ impl Generators {
         }
     }
 
-    pub fn generate(&mut self, sample_rate: i32, buffer: &mut [f32]) {
+    pub fn generate(&mut self, sample_rate: usize, buffer: &mut [f32]) {
         for generator in self.slots.iter_mut() {
             for sample in buffer.iter_mut() {
                 generator.step(sample_rate);
@@ -118,7 +118,7 @@ impl Generator {
         }
     }
 
-    fn crank_phase(&mut self, sample_rate: i32) {
+    fn crank_phase(&mut self, sample_rate: usize) {
         match self.oscillator_state {
             VoiceState::Playing {
                 frequency,
@@ -133,7 +133,7 @@ impl Generator {
     }
 
     // fixme: usize?
-    fn step_envelope(&mut self, sample_rate: i32) {
+    fn step_envelope(&mut self, sample_rate: usize) {
         let next = match self.oscillator_state {
             VoiceState::Playing {
                 frequency,
@@ -174,7 +174,7 @@ impl Generator {
         }
     }
 
-    fn step(&mut self, sample_rate: i32) {
+    fn step(&mut self, sample_rate: usize) {
         self.crank_phase(sample_rate);
         self.step_envelope(sample_rate);
     }
@@ -201,13 +201,13 @@ pub enum EnvelopePhase {
 pub mod test {
     use super::*;
 
-    const SAMPLE_RATE: i32 = 44100;
+    const SAMPLE_RATE: usize = 44100;
 
     pub fn sine_generators() -> Generators {
         Generators {
             amplitude: 1.0,
             midi_controller_volume: 1.0,
-            wave_form: WaveForm::from_function(|x| x.sin(), SAMPLE_RATE as usize),
+            wave_form: WaveForm::from_function(|x| x.sin(), SAMPLE_RATE),
             slots: vec![sine_generator(); 10],
         }
     }
@@ -216,7 +216,7 @@ pub mod test {
         Generators {
             amplitude: 1.0,
             midi_controller_volume: 1.0,
-            wave_form: WaveForm::from_function(|x| x.sin(), SAMPLE_RATE as usize),
+            wave_form: WaveForm::from_function(|x| x.sin(), SAMPLE_RATE),
             slots: vec![sine_generator()],
         }
     }
