@@ -22,7 +22,7 @@ impl AudioPlayer {
         let name = get_binary_name()?;
         let (client, _status) = jack::Client::new(&name, jack::ClientOptions::empty())?;
         let midi_controller = MidiController::new(&client)?;
-        let generators = Generators::new(client.sample_rate() as i32, cli_args);
+        let generators = Generators::new(cli_args);
         let audio_ports = Stereo {
             left: client.register_port("left-output", AudioOut)?,
             right: client.register_port("right-output", AudioOut)?,
@@ -103,13 +103,13 @@ impl AudioProcessHandler {
         match self.receiver.recv() {
             None => {}
             Some(slots) => {
-                for (event, generator) in slots.iter().zip(self.generators.slots.iter_mut()) {
+                for (event, voice) in slots.iter().zip(self.generators.voices.iter_mut()) {
                     match event {
                         NoteEvent::NoteOff => {
-                            generator.note_off();
+                            voice.note_off();
                         }
                         NoteEvent::NoteOn(frequency) => {
-                            generator.note_on(*frequency);
+                            voice.note_on(*frequency);
                         }
                     }
                 }
@@ -135,7 +135,7 @@ impl AudioProcessHandler {
         for sample in buffer.iter_mut() {
             *sample = 0.0;
         }
-        generators.generate(client.sample_rate() as i32, buffer);
+        generators.generate(client.sample_rate(), buffer);
         logger.check_clipping(buffer);
     }
 }
