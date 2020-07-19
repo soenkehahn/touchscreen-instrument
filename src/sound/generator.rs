@@ -1,5 +1,6 @@
 use crate::cli;
 use crate::sound::wave_form::WaveForm;
+use crate::sound::NoteEvent;
 use crate::sound::TAU;
 use crate::utils::Slots;
 
@@ -28,7 +29,20 @@ impl Generators {
                 release: 0.005,
             },
             wave_form: WaveForm::new(&cli_args.wave_form_config),
-            voices: vec![VoiceState::new(); slots],
+            voices: vec![VoiceState::default(); slots],
+        }
+    }
+
+    pub fn handle_note_events(&mut self, slots: Slots<NoteEvent>) {
+        for (event, voice) in slots.iter().zip(self.voices.iter_mut()) {
+            match event {
+                NoteEvent::NoteOff => {
+                    voice.note_off();
+                }
+                NoteEvent::NoteOn(frequency) => {
+                    voice.note_on(*frequency);
+                }
+            }
         }
     }
 
@@ -59,14 +73,14 @@ impl Generators {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum EnvelopePhase {
     Attacking { attack_amplitude: f32 },
     FullVolume,
     Releasing { release_amplitude: f32 },
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum VoiceState {
     Playing {
         frequency: f32,
@@ -76,11 +90,13 @@ pub enum VoiceState {
     Muted,
 }
 
-impl VoiceState {
-    pub fn new() -> VoiceState {
+impl Default for VoiceState {
+    fn default() -> VoiceState {
         VoiceState::Muted
     }
+}
 
+impl VoiceState {
     pub fn note_on(&mut self, frequency: f32) {
         *self = match *self {
             VoiceState::Playing {
@@ -209,7 +225,7 @@ pub mod test {
                 release: 0.0,
             },
             wave_form: WaveForm::from_function(|x| x.sin(), SAMPLE_RATE),
-            voices: vec![mk_voice(); 10],
+            voices: vec![VoiceState::default(); 10],
         }
     }
 
@@ -222,14 +238,8 @@ pub mod test {
                 release: 0.0,
             },
             wave_form: WaveForm::from_function(|x| x.sin(), SAMPLE_RATE),
-            voices: vec![mk_voice()],
+            voices: vec![VoiceState::default()],
         }
-    }
-
-    fn mk_voice() -> VoiceState {
-        let mut voice = VoiceState::new();
-        voice.note_on(1.0);
-        voice
     }
 
     fn assert_close(a: f32, b: f32) {
@@ -256,7 +266,8 @@ pub mod test {
 
             #[test]
             fn reaches_2_pi_after_1_second() {
-                let mut voice = mk_voice();
+                let mut voice = VoiceState::default();
+                voice.note_on(1.0);
                 let sample_rate = 100;
                 for _ in 0..(sample_rate - 1) {
                     voice.step(
@@ -275,7 +286,8 @@ pub mod test {
 
             #[test]
             fn increases_the_phase_for_one_sample() {
-                let mut voice = mk_voice();
+                let mut voice = VoiceState::default();
+                voice.note_on(1.0);
                 assert_eq!(voice.get_phase(), 0.0);
                 voice.step(
                     SAMPLE_RATE,
@@ -289,7 +301,8 @@ pub mod test {
 
             #[test]
             fn wraps_around_at_2_pi() {
-                let mut voice = mk_voice();
+                let mut voice = VoiceState::default();
+                voice.note_on(1.0);
                 for _ in 0..SAMPLE_RATE {
                     voice.step(
                         SAMPLE_RATE,
@@ -303,7 +316,51 @@ pub mod test {
             }
         }
 
-        mod generators {
+        mod generators_handle_note_events {
+            use super::*;
+
+            #[test]
+            fn switches_on_the_voice_with_the_same_index_as_the_note_event() {
+                for i in 0..10 {
+                    let mut generators = sine_generators();
+                    let note_events = {
+                        let mut result = [NoteEvent::NoteOff; 10];
+                        result[i] = NoteEvent::NoteOn(42.0);
+                        result
+                    };
+                    generators.handle_note_events(note_events);
+                    let expected = {
+                        let mut result = vec![VoiceState::Muted; 10];
+                        result[i] = VoiceState::Playing {
+                            frequency: 42.0,
+                            phase: 0.0,
+                            envelope_phase: EnvelopePhase::Attacking {
+                                attack_amplitude: 0.0,
+                            },
+                        };
+                        result
+                    };
+                    assert_eq!(generators.voices, expected);
+                }
+            }
+
+            #[test]
+            fn switches_off_voices_on_note_off_events() {
+                for i in 0..10 {
+                    let mut generators = sine_generators();
+                    let mut note_events = [NoteEvent::NoteOff; 10];
+                    note_events[i] = NoteEvent::NoteOn(42.0);
+                    generators.handle_note_events(note_events);
+                    note_events[i] = NoteEvent::NoteOff;
+                    generators.handle_note_events(note_events);
+                    generators.generate(SAMPLE_RATE, &mut [0.0]);
+                    let expected = vec![VoiceState::Muted; 10];
+                    assert_eq!(generators.voices, expected);
+                }
+            }
+        }
+
+        mod generators_generate {
             use super::*;
             use crate::utils::Slots;
 
@@ -321,6 +378,7 @@ pub mod test {
             #[test]
             fn starts_at_zero() {
                 let mut generators = monophonic_sine_generators();
+                generators.voices[0].note_on(1.0);
                 let buffer = &mut buffer();
                 generators.generate(SAMPLE_RATE, buffer);
                 assert_eq!(buffer[0], (TAU / SAMPLE_RATE as f32).sin());
@@ -328,9 +386,10 @@ pub mod test {
 
             #[test]
             fn generates_sine_waves() {
-                let mut voice = monophonic_sine_generators();
+                let mut generators = monophonic_sine_generators();
+                generators.voices[0].note_on(1.0);
                 let mut buffer = buffer();
-                voice.generate(SAMPLE_RATE, &mut buffer);
+                generators.generate(SAMPLE_RATE, &mut buffer);
                 assert_eq!(buffer[0], (TAU / SAMPLE_RATE as f32).sin());
                 assert_eq!(buffer[1], (2.0 * TAU / SAMPLE_RATE as f32).sin());
             }
@@ -398,7 +457,7 @@ pub mod test {
                         release: 0.0,
                     },
                     wave_form: WaveForm::from_function(|x| x.sin(), 10000),
-                    voices: vec![VoiceState::new()],
+                    voices: vec![VoiceState::default()],
                 };
                 let mut buffer = buffer();
                 generators.generate(SAMPLE_RATE, &mut buffer);
@@ -428,7 +487,7 @@ pub mod test {
                         release: 0.0,
                     },
                     wave_form: WaveForm::from_function(|phase| phase * 5.0, 10000),
-                    voices: vec![VoiceState::new()],
+                    voices: vec![VoiceState::default()],
                 };
                 generators.voices[0].note_on(1.0);
                 let mut buffer = buffer();
@@ -447,7 +506,7 @@ pub mod test {
                         release: 0.0,
                     },
                     wave_form: WaveForm::from_function(|_phase| 0.4, 10000),
-                    voices: vec![VoiceState::new()],
+                    voices: vec![VoiceState::default()],
                 };
                 generators.voices[0].note_on(1.0);
                 let mut buffer = buffer();
@@ -465,7 +524,7 @@ pub mod test {
                         release: 0.0,
                     },
                     wave_form: WaveForm::from_function(|_phase| 0.4, 10000),
-                    voices: vec![VoiceState::new()],
+                    voices: vec![VoiceState::default()],
                 };
                 generators.voices[0].note_on(1.0);
                 generators.generate(SAMPLE_RATE, &mut buffer());
@@ -500,7 +559,7 @@ pub mod test {
                             release: 0.0,
                         },
                         wave_form: WaveForm::from_function(|_phase| 0.5, 10000),
-                        voices: vec![VoiceState::new()],
+                        voices: vec![VoiceState::default()],
                     };
                     generators.voices[0].note_on(1.0);
                     let mut buffer = buffer();
@@ -521,7 +580,7 @@ pub mod test {
                             release: 0.0,
                         },
                         wave_form: WaveForm::from_function(|_phase| 0.5, 10000),
-                        voices: vec![VoiceState::new()],
+                        voices: vec![VoiceState::default()],
                     };
                     generators.voices[0].note_on(1.0);
                     generators.generate(10, &mut buffer());
@@ -542,7 +601,7 @@ pub mod test {
                             release: 0.0,
                         },
                         wave_form: WaveForm::from_function(|_phase| 1.0, 10000),
-                        voices: vec![VoiceState::new()],
+                        voices: vec![VoiceState::default()],
                     };
                     generators.voices[0].note_on(1.0);
                     generators.generate(10, &mut buffer());
@@ -566,7 +625,7 @@ pub mod test {
                             release: 0.5,
                         },
                         wave_form: WaveForm::from_function(|_phase| 0.5, 10000),
-                        voices: vec![VoiceState::new()],
+                        voices: vec![VoiceState::default()],
                     };
                     generators.voices[0].note_on(1.0);
                     generators.generate(10, &mut buffer());
@@ -603,7 +662,7 @@ pub mod test {
                             release: 0.0,
                         },
                         wave_form: WaveForm::from_function(|_phase| 0.5, 10000),
-                        voices: vec![VoiceState::new()],
+                        voices: vec![VoiceState::default()],
                     };
                     generators.voices[0].note_on(440.0);
                     let mut buffer = buffer();
@@ -623,7 +682,7 @@ pub mod test {
                             release: 1.0,
                         },
                         wave_form: WaveForm::from_function(|_phase| 0.5, 10000),
-                        voices: vec![VoiceState::new()],
+                        voices: vec![VoiceState::default()],
                     };
                     let mut buffer = buffer();
                     generators.voices[0].note_on(440.0);
