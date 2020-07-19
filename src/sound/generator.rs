@@ -201,7 +201,7 @@ pub mod test {
 
     const SAMPLE_RATE: i32 = 44100;
 
-    pub fn monophon_sine_generators() -> Generators {
+    pub fn monophonic_sine_generators() -> Generators {
         Generators {
             amplitude: 1.0,
             midi_controller_volume: 1.0,
@@ -298,7 +298,7 @@ pub mod test {
 
             #[test]
             fn starts_at_zero() {
-                let mut generators = monophon_sine_generators();
+                let mut generators = monophonic_sine_generators();
                 let buffer = &mut buffer();
                 generators.generate(SAMPLE_RATE, buffer);
                 assert_eq!(buffer[0], (TAU / SAMPLE_RATE as f32).sin());
@@ -306,7 +306,7 @@ pub mod test {
 
             #[test]
             fn generates_sine_waves() {
-                let mut generator = monophon_sine_generators();
+                let mut generator = monophonic_sine_generators();
                 let mut buffer = buffer();
                 generator.generate(SAMPLE_RATE, &mut buffer);
                 assert_eq!(buffer[0], (TAU / SAMPLE_RATE as f32).sin());
@@ -315,7 +315,7 @@ pub mod test {
 
             #[test]
             fn starts_with_phase_zero_after_pauses() {
-                let mut generators = monophon_sine_generators();
+                let mut generators = monophonic_sine_generators();
                 generators.slots[0].note_on(1.0);
                 generators.generate(SAMPLE_RATE, &mut buffer());
                 generators.slots[0].note_off();
@@ -328,7 +328,7 @@ pub mod test {
 
             #[test]
             fn doesnt_reset_the_phase_when_changing_the_frequency_without_pause() {
-                let mut generators = monophon_sine_generators();
+                let mut generators = monophonic_sine_generators();
                 generators.slots[0].note_on(1.0);
                 generators.generate(SAMPLE_RATE, &mut buffer());
                 generators.slots[0].note_on(1.1);
@@ -339,7 +339,7 @@ pub mod test {
 
             #[test]
             fn works_for_different_frequencies() {
-                let mut generators = monophon_sine_generators();
+                let mut generators = monophonic_sine_generators();
                 generators.slots[0].note_on(300.0);
                 let mut buffer = buffer();
                 generators.generate(SAMPLE_RATE, &mut buffer);
@@ -350,7 +350,7 @@ pub mod test {
 
             #[test]
             fn allows_to_change_the_frequency_later() {
-                let mut generators = monophon_sine_generators();
+                let mut generators = monophonic_sine_generators();
                 generators.slots[0].note_on(300.0);
                 generators.generate(SAMPLE_RATE, &mut buffer());
                 generators.slots[0].note_on(500.0);
@@ -382,7 +382,7 @@ pub mod test {
 
             #[test]
             fn can_be_muted() {
-                let mut generators = monophon_sine_generators();
+                let mut generators = monophonic_sine_generators();
                 generators.slots[0].note_on(1.0);
                 generators.generate(SAMPLE_RATE, &mut buffer());
                 generators.slots[0].note_off();
@@ -531,7 +531,7 @@ pub mod test {
 
                 #[test]
                 fn does_not_overwrite_the_buffer_when_muted() {
-                    let mut generators = monophon_sine_generators();
+                    let mut generators = monophonic_sine_generators();
                     generators.slots[0].note_off();
                     let mut buffer = buffer();
                     buffer[5] = 23.0;
