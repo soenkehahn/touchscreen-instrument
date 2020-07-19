@@ -168,9 +168,7 @@ impl EventHandler {
     ) {
         match event {
             MidiControllerEvent::Volume(volume) => generators.midi_controller_volume = volume,
-            MidiControllerEvent::HarmonicVolume(values) => {
-                self.hammond_generator.enqueue(values);
-            }
+            MidiControllerEvent::HarmonicVolume(values) => self.hammond_generator.enqueue(values),
         }
     }
 
