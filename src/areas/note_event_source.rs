@@ -26,8 +26,8 @@ impl Iterator for NoteEventSource {
     fn next(&mut self) -> Option<Self::Item> {
         self.position_source.next().map(|slots| {
             slot_map(slots, |touchstate| match touchstate {
-                TouchState::NoTouch => NoteEvent::NoteOff,
-                TouchState::Touch(position) => self.areas.frequency(*position),
+                TouchState::NoTouch { slot: _ } => NoteEvent::NoteOff,
+                TouchState::Touch { position, slot: _ } => self.areas.frequency(*position),
             })
         })
     }
@@ -40,20 +40,23 @@ pub mod test {
     use crate::evdev::Position;
     use crate::sound::midi::midi_to_frequency;
 
-    impl Default for TouchState {
-        fn default() -> TouchState {
-            TouchState::NoTouch
-        }
-    }
-
-    pub fn from_single<T: Copy + Default>(element: T) -> Slots<T> {
-        let mut slots = [T::default(); 10];
+    pub fn from_single_note_event(element: NoteEvent) -> Slots<NoteEvent> {
+        let mut slots = [NoteEvent::default(); 10];
         slots[0] = element;
         slots
     }
 
-    fn mock_touches<T: Copy + Default>(touches: Vec<T>) -> impl Iterator<Item = Slots<T>> {
-        touches.into_iter().map(from_single)
+    fn mock_touches(touches: Vec<TouchState>) -> impl Iterator<Item = Slots<TouchState>> {
+        touches
+            .into_iter()
+            .map(|element: TouchState| -> Slots<TouchState> {
+                let mut slots = [TouchState::NoTouch { slot: 0 }; 10];
+                for (i, slot) in slots.iter_mut().enumerate() {
+                    *slot = TouchState::NoTouch { slot: i };
+                }
+                slots[0] = element;
+                slots
+            })
     }
 
     mod note_event_source {
@@ -75,11 +78,14 @@ pub mod test {
             });
             let mut frequencies = NoteEventSource::new(
                 areas,
-                mock_touches(vec![TouchState::Touch(Position { x: 798, y: 595 })]),
+                mock_touches(vec![TouchState::Touch {
+                    slot: 0,
+                    position: Position { x: 798, y: 595 },
+                }]),
             );
             assert_eq!(
                 frequencies.next(),
-                Some(from_single(NoteOn(midi_to_frequency(48))))
+                Some(from_single_note_event(NoteOn(midi_to_frequency(48))))
             );
         }
 
@@ -97,8 +103,8 @@ pub mod test {
                 row_interval: 7,
             });
             let mut frequencies =
-                NoteEventSource::new(areas, mock_touches(vec![TouchState::NoTouch]));
-            assert_eq!(frequencies.next(), Some(from_single(NoteOff)));
+                NoteEventSource::new(areas, mock_touches(vec![TouchState::NoTouch { slot: 0 }]));
+            assert_eq!(frequencies.next(), Some(from_single_note_event(NoteOff)));
         }
 
         #[test]
@@ -116,11 +122,14 @@ pub mod test {
             });
             let mut frequencies = NoteEventSource::new(
                 areas,
-                mock_touches(vec![TouchState::Touch(Position { x: 798, y: 595 })]),
+                mock_touches(vec![TouchState::Touch {
+                    slot: 0,
+                    position: Position { x: 798, y: 595 },
+                }]),
             );
             assert_eq!(
                 frequencies.next(),
-                Some(from_single(NoteOn(midi_to_frequency(49))))
+                Some(from_single_note_event(NoteOn(midi_to_frequency(49))))
             );
         }
     }

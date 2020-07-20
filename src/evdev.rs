@@ -155,8 +155,8 @@ impl PositionSource {
 
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub enum TouchState {
-    NoTouch,
-    Touch(Position),
+    NoTouch { slot: usize },
+    Touch { slot: usize, position: Position },
 }
 
 impl Iterator for PositionSource {
@@ -188,10 +188,15 @@ impl Iterator for PositionSource {
                         }
                     }
                 }
-                let mut result = [TouchState::NoTouch; 10];
+                let mut result = [TouchState::NoTouch { slot: 0 }; 10];
                 for (i, slot_result) in result.iter_mut().enumerate() {
                     if self.slots[i].btn_touch {
-                        *slot_result = TouchState::Touch(self.slots[i].position)
+                        *slot_result = TouchState::Touch {
+                            slot: i,
+                            position: self.slots[i].position,
+                        }
+                    } else {
+                        *slot_result = TouchState::NoTouch { slot: i }
                     }
                 }
                 Some(result)
@@ -284,7 +289,7 @@ mod test {
 
             impl PositionSource {
                 pub fn next_slot(&mut self, n: usize) -> Option<TouchState> {
-                    self.next().map(|states| states[n].clone())
+                    self.next().map(|states| states[n])
                 }
             }
 
@@ -299,7 +304,10 @@ mod test {
                 ]);
                 assert_eq!(
                     positions.next_slot(0),
-                    Some(Touch(Position { x: 23, y: 42 }))
+                    Some(Touch {
+                        slot: 0,
+                        position: Position { x: 23, y: 42 }
+                    })
                 );
             }
 
@@ -319,7 +327,10 @@ mod test {
                 positions.next();
                 assert_eq!(
                     positions.next_slot(0),
-                    Some(Touch(Position { x: 51, y: 84 }))
+                    Some(Touch {
+                        slot: 0,
+                        position: Position { x: 51, y: 84 }
+                    })
                 );
             }
 
@@ -338,7 +349,10 @@ mod test {
                 positions.next();
                 assert_eq!(
                     positions.next_slot(0),
-                    Some(Touch(Position { x: 51, y: 42 }))
+                    Some(Touch {
+                        slot: 0,
+                        position: Position { x: 51, y: 42 }
+                    })
                 );
             }
 
@@ -357,7 +371,10 @@ mod test {
                 positions.next();
                 assert_eq!(
                     positions.next_slot(0),
-                    Some(Touch(Position { x: 23, y: 84 }))
+                    Some(Touch {
+                        slot: 0,
+                        position: Position { x: 23, y: 84 }
+                    })
                 );
             }
 
@@ -374,7 +391,7 @@ mod test {
                     Mock::ev(EV_SYN, EventCode::EV_SYN(SYN_REPORT), 0),
                 ]);
                 positions.next();
-                assert_eq!(positions.next_slot(0), Some(NoTouch));
+                assert_eq!(positions.next_slot(0), Some(NoTouch { slot: 0 }));
             }
 
             #[test]
@@ -399,11 +416,17 @@ mod test {
                 positions.next();
                 assert_eq!(
                     positions.next_slot(0),
-                    Some(Touch(Position { x: 23, y: 42 }))
+                    Some(Touch {
+                        slot: 0,
+                        position: Position { x: 23, y: 42 }
+                    })
                 );
                 assert_eq!(
                     positions.next_slot(0),
-                    Some(Touch(Position { x: 51, y: 84 }))
+                    Some(Touch {
+                        slot: 0,
+                        position: Position { x: 51, y: 84 }
+                    })
                 );
             }
 
@@ -433,15 +456,24 @@ mod test {
                 positions.next();
                 assert_eq!(
                     positions.next_slot(0),
-                    Some(Touch(Position { x: 23, y: 42 }))
+                    Some(Touch {
+                        slot: 0,
+                        position: Position { x: 23, y: 42 }
+                    })
                 );
                 assert_eq!(
                     positions.next_slot(0),
-                    Some(Touch(Position { x: 23, y: 42 }))
+                    Some(Touch {
+                        slot: 0,
+                        position: Position { x: 23, y: 42 }
+                    })
                 );
                 assert_eq!(
                     positions.next_slot(0),
-                    Some(Touch(Position { x: 51, y: 84 }))
+                    Some(Touch {
+                        slot: 0,
+                        position: Position { x: 51, y: 84 }
+                    })
                 );
             }
 
@@ -455,7 +487,10 @@ mod test {
                 ]);
                 assert_eq!(
                     positions.next_slot(0),
-                    Some(Touch(Position { x: 23, y: 42 }))
+                    Some(Touch {
+                        slot: 0,
+                        position: Position { x: 23, y: 42 }
+                    })
                 );
             }
 
@@ -476,9 +511,12 @@ mod test {
                 ]);
                 assert_eq!(
                     positions.next_slot(0),
-                    Some(Touch(Position { x: 23, y: 42 }))
+                    Some(Touch {
+                        slot: 0,
+                        position: Position { x: 23, y: 42 }
+                    })
                 );
-                assert_eq!(positions.next_slot(0), Some(NoTouch));
+                assert_eq!(positions.next_slot(0), Some(NoTouch { slot: 0 }));
             }
         }
 
@@ -496,7 +534,10 @@ mod test {
                 ]);
                 assert_eq!(
                     positions.next_slot(1),
-                    Some(Touch(Position { x: 23, y: 42 }))
+                    Some(Touch {
+                        slot: 1,
+                        position: Position { x: 23, y: 42 }
+                    })
                 );
             }
 
@@ -525,19 +566,44 @@ mod test {
                     Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_POSITION_Y), 1084),
                     Mock::ev(EV_SYN, EventCode::EV_SYN(SYN_REPORT), 0),
                 ]);
-                assert_eq!(positions.next_slot(1), Some(NoTouch));
+                assert_eq!(positions.next_slot(1), Some(NoTouch { slot: 1 }));
                 assert_eq!(
                     positions.next_slot(1),
-                    Some(Touch(Position { x: 1023, y: 1042 }))
+                    Some(Touch {
+                        slot: 1,
+                        position: Position { x: 1023, y: 1042 }
+                    })
                 );
                 assert_eq!(
                     positions.next_slot(1),
-                    Some(Touch(Position { x: 1023, y: 1042 }))
+                    Some(Touch {
+                        slot: 1,
+                        position: Position { x: 1023, y: 1042 }
+                    })
                 );
                 assert_eq!(
                     positions.next_slot(1),
-                    Some(Touch(Position { x: 1051, y: 1084 }))
+                    Some(Touch {
+                        slot: 1,
+                        position: Position { x: 1051, y: 1084 }
+                    })
                 );
+            }
+
+            #[test]
+            fn note_off_events_contain_the_slot() {
+                let mut positions = Mock::positions(vec![
+                    Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_SLOT), 1),
+                    Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_TRACKING_ID), 1),
+                    Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_POSITION_X), 23),
+                    Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_POSITION_Y), 42),
+                    Mock::ev(EV_SYN, EventCode::EV_SYN(SYN_REPORT), 0),
+                    //
+                    Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_TRACKING_ID), -1),
+                    Mock::ev(EV_SYN, EventCode::EV_SYN(SYN_REPORT), 0),
+                ]);
+                positions.next();
+                assert_eq!(positions.next_slot(1), Some(NoTouch { slot: 1 }));
             }
 
             #[test]

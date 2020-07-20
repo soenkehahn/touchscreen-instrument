@@ -120,7 +120,7 @@ mod test {
 
     mod midi_converter {
         use super::*;
-        use crate::areas::note_event_source::test::from_single;
+        use crate::areas::note_event_source::test::from_single_note_event;
         use crate::sound::midi::midi_to_frequency;
         use NoteEvent::*;
 
@@ -132,7 +132,7 @@ mod test {
             let mut converter = MidiConverter::new();
             let mut result = vec![];
             for note_event in events.into_iter() {
-                converter.connect(from_single(note_event), |raw_midi| {
+                converter.connect(from_single_note_event(note_event), |raw_midi| {
                     result.push(format!("{:?}", raw_midi.bytes));
                 });
             }
