@@ -5,17 +5,17 @@ use crate::utils::{slot_map, Slots};
 
 pub struct NoteEventSource {
     areas: Areas,
-    position_source: Box<dyn Iterator<Item = Slots<TouchState>>>,
+    touch_state_source: Box<dyn Iterator<Item = Slots<TouchState>>>,
 }
 
 impl NoteEventSource {
     pub fn new(
         areas: Areas,
-        position_source: impl Iterator<Item = Slots<TouchState>> + 'static,
+        touch_state_source: impl Iterator<Item = Slots<TouchState>> + 'static,
     ) -> NoteEventSource {
         NoteEventSource {
             areas,
-            position_source: Box::new(position_source),
+            touch_state_source: Box::new(touch_state_source),
         }
     }
 }
@@ -24,7 +24,7 @@ impl Iterator for NoteEventSource {
     type Item = Slots<NoteEvent>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.position_source.next().map(|slots| {
+        self.touch_state_source.next().map(|slots| {
             slot_map(slots, |touchstate| match touchstate {
                 TouchState::NoTouch { slot: _ } => NoteEvent::NoteOff,
                 TouchState::Touch { position, slot: _ } => self.areas.frequency(*position),
