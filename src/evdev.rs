@@ -154,13 +154,13 @@ impl PositionSource {
 }
 
 #[derive(Debug, PartialEq, Clone, Copy)]
-pub enum TouchState<T> {
+pub enum TouchState {
     NoTouch,
-    Touch(T),
+    Touch(Position),
 }
 
 impl Iterator for PositionSource {
-    type Item = Slots<TouchState<Position>>;
+    type Item = Slots<TouchState>;
 
     fn next(&mut self) -> Option<Self::Item> {
         match self.syn_chunk_source.next() {
@@ -283,7 +283,7 @@ mod test {
             use super::*;
 
             impl PositionSource {
-                pub fn next_slot(&mut self, n: usize) -> Option<TouchState<Position>> {
+                pub fn next_slot(&mut self, n: usize) -> Option<TouchState> {
                     self.next().map(|states| states[n].clone())
                 }
             }
