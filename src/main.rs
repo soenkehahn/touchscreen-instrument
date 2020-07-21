@@ -126,7 +126,7 @@ fn get_note_event_source(cli_args: &cli::Args) -> Result<NoteEventSource, ErrorS
     } else {
         TouchStateSource::new("/dev/input/by-id/usb-ILITEK_Multi-Touch-V5100-event-if00")?
     };
-    Ok(NoteEventSource::new(areas, touches.flatten()))
+    Ok(NoteEventSource::new(areas, touches))
 }
 
 fn get_player(cli_args: &cli::Args) -> Result<Box<dyn Player>, ErrorString> {

@@ -5,6 +5,7 @@ use crate::ErrorString;
 use ::evdev_rs::enums::{EventCode, EventType::*, EV_ABS, EV_SYN::*};
 use ::evdev_rs::{Device, GrabMode, InputEvent, ReadFlag, ReadStatus};
 use ::std::fs::File;
+use ::std::iter::Flatten;
 
 pub struct InputEventSource {
     device: Device,
@@ -123,16 +124,22 @@ struct SlotState {
     btn_touch: bool,
 }
 
+#[derive(Debug, PartialEq, Clone)]
+pub enum TouchState {
+    NoTouch { slot: usize },
+    Touch { slot: usize, position: Position },
+}
+
 #[derive(Debug)]
-pub struct TouchStateSource {
+struct TouchStateChunkSource {
     syn_chunk_source: SynChunkSource,
     slots: Slots<SlotState>,
     active_slot: Option<usize>,
 }
 
-impl TouchStateSource {
-    fn new_from_iterator(syn_chunk_source: SynChunkSource) -> TouchStateSource {
-        TouchStateSource {
+impl TouchStateChunkSource {
+    fn from_syn_chunk_source(syn_chunk_source: SynChunkSource) -> TouchStateChunkSource {
+        TouchStateChunkSource {
             syn_chunk_source,
             slots: [SlotState {
                 position: Position { x: 0, y: 0 },
@@ -141,25 +148,9 @@ impl TouchStateSource {
             active_slot: None,
         }
     }
-
-    pub fn new(file: &str) -> Result<TouchStateSource, ErrorString> {
-        Ok(TouchStateSource::new_from_iterator(SynChunkSource::new(
-            InputEventSource::new(file)?,
-        )))
-    }
-
-    pub fn blocking() -> TouchStateSource {
-        TouchStateSource::new_from_iterator(SynChunkSource::new(utils::blocking()))
-    }
 }
 
-#[derive(Debug, PartialEq, Clone, Copy)]
-pub enum TouchState {
-    NoTouch { slot: usize },
-    Touch { slot: usize, position: Position },
-}
-
-impl Iterator for TouchStateSource {
+impl Iterator for TouchStateChunkSource {
     type Item = Vec<TouchState>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -222,6 +213,32 @@ impl Iterator for TouchStateSource {
     }
 }
 
+pub struct TouchStateSource(Flatten<TouchStateChunkSource>);
+
+impl TouchStateSource {
+    fn from_syn_chunk_source(syn_chunk_source: SynChunkSource) -> TouchStateSource {
+        TouchStateSource(TouchStateChunkSource::from_syn_chunk_source(syn_chunk_source).flatten())
+    }
+
+    pub fn new(file: &str) -> Result<TouchStateSource, ErrorString> {
+        Ok(TouchStateSource::from_syn_chunk_source(
+            SynChunkSource::new(InputEventSource::new(file)?),
+        ))
+    }
+
+    pub fn blocking() -> TouchStateSource {
+        TouchStateSource::from_syn_chunk_source(SynChunkSource::new(utils::blocking()))
+    }
+}
+
+impl Iterator for TouchStateSource {
+    type Item = TouchState;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.0.next()
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::TouchState::*;
@@ -245,7 +262,7 @@ mod test {
         }
 
         fn touch_states(vec: Vec<InputEvent>) -> TouchStateSource {
-            TouchStateSource::new_from_iterator(SynChunkSource::new(vec.into_iter()))
+            TouchStateSource::from_syn_chunk_source(SynChunkSource::new(vec.into_iter()))
         }
     }
 
@@ -306,7 +323,7 @@ mod test {
 
             #[test]
             fn relays_a_position() {
-                let mut touch_states = Mock::touch_states(vec![
+                let touch_states = Mock::touch_states(vec![
                     Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_SLOT), 0),
                     Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_TRACKING_ID), 1),
                     Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_POSITION_X), 23),
@@ -314,17 +331,17 @@ mod test {
                     Mock::ev(EV_SYN, EventCode::EV_SYN(SYN_REPORT), 0),
                 ]);
                 assert_eq!(
-                    touch_states.next(),
-                    Some(vec![Touch {
+                    touch_states.collect::<Vec<TouchState>>(),
+                    vec![Touch {
                         slot: 0,
                         position: Position { x: 23, y: 42 }
-                    }])
+                    }]
                 );
             }
 
             #[test]
             fn relays_following_positions() {
-                let mut touch_states = Mock::touch_states(vec![
+                let touch_states = Mock::touch_states(vec![
                     Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_SLOT), 0),
                     Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_TRACKING_ID), 1),
                     Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_POSITION_X), 23),
@@ -335,19 +352,24 @@ mod test {
                     Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_POSITION_Y), 84),
                     Mock::ev(EV_SYN, EventCode::EV_SYN(SYN_REPORT), 0),
                 ]);
-                touch_states.next();
                 assert_eq!(
-                    touch_states.next(),
-                    Some(vec![Touch {
-                        slot: 0,
-                        position: Position { x: 51, y: 84 }
-                    }])
+                    touch_states.collect::<Vec<TouchState>>(),
+                    vec![
+                        Touch {
+                            slot: 0,
+                            position: Position { x: 23, y: 42 }
+                        },
+                        Touch {
+                            slot: 0,
+                            position: Position { x: 51, y: 84 }
+                        }
+                    ]
                 );
             }
 
             #[test]
             fn handles_syn_chunks_without_y() {
-                let mut touch_states = Mock::touch_states(vec![
+                let touch_states = Mock::touch_states(vec![
                     Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_SLOT), 0),
                     Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_TRACKING_ID), 1),
                     Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_POSITION_X), 23),
@@ -357,19 +379,24 @@ mod test {
                     Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_POSITION_X), 51),
                     Mock::ev(EV_SYN, EventCode::EV_SYN(SYN_REPORT), 0),
                 ]);
-                touch_states.next();
                 assert_eq!(
-                    touch_states.next(),
-                    Some(vec![Touch {
-                        slot: 0,
-                        position: Position { x: 51, y: 42 }
-                    }])
+                    touch_states.collect::<Vec<TouchState>>(),
+                    vec![
+                        Touch {
+                            slot: 0,
+                            position: Position { x: 23, y: 42 },
+                        },
+                        Touch {
+                            slot: 0,
+                            position: Position { x: 51, y: 42 }
+                        },
+                    ]
                 );
             }
 
             #[test]
             fn handles_syn_chunks_without_x() {
-                let mut touch_states = Mock::touch_states(vec![
+                let touch_states = Mock::touch_states(vec![
                     Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_SLOT), 0),
                     Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_TRACKING_ID), 1),
                     Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_POSITION_X), 23),
@@ -379,19 +406,24 @@ mod test {
                     Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_POSITION_Y), 84),
                     Mock::ev(EV_SYN, EventCode::EV_SYN(SYN_REPORT), 0),
                 ]);
-                touch_states.next();
                 assert_eq!(
-                    touch_states.next(),
-                    Some(vec![Touch {
-                        slot: 0,
-                        position: Position { x: 23, y: 84 }
-                    }])
+                    touch_states.collect::<Vec<TouchState>>(),
+                    vec![
+                        Touch {
+                            slot: 0,
+                            position: Position { x: 23, y: 42 },
+                        },
+                        Touch {
+                            slot: 0,
+                            position: Position { x: 23, y: 84 }
+                        },
+                    ]
                 );
             }
 
             #[test]
             fn recognizes_touch_releases() {
-                let mut touch_states = Mock::touch_states(vec![
+                let touch_states = Mock::touch_states(vec![
                     Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_SLOT), 0),
                     Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_TRACKING_ID), 1),
                     Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_POSITION_X), 23),
@@ -401,13 +433,21 @@ mod test {
                     Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_TRACKING_ID), -1),
                     Mock::ev(EV_SYN, EventCode::EV_SYN(SYN_REPORT), 0),
                 ]);
-                touch_states.next();
-                assert_eq!(touch_states.next(), Some(vec![NoTouch { slot: 0 }]));
+                assert_eq!(
+                    touch_states.collect::<Vec<TouchState>>(),
+                    vec![
+                        Touch {
+                            slot: 0,
+                            position: Position { x: 23, y: 42 },
+                        },
+                        NoTouch { slot: 0 },
+                    ]
+                );
             }
 
             #[test]
             fn treats_note_on_events_in_other_slots_correctly() {
-                let mut touch_states = Mock::touch_states(vec![
+                let touch_states = Mock::touch_states(vec![
                     Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_SLOT), 0),
                     Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_TRACKING_ID), 1),
                     Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_POSITION_X), 23),
@@ -425,26 +465,28 @@ mod test {
                     Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_POSITION_Y), 84),
                     Mock::ev(EV_SYN, EventCode::EV_SYN(SYN_REPORT), 0),
                 ]);
-                touch_states.next();
                 assert_eq!(
-                    touch_states.next(),
-                    Some(vec![Touch {
-                        slot: 1,
-                        position: Position { x: 1000, y: 1000 }
-                    }])
-                );
-                assert_eq!(
-                    touch_states.next(),
-                    Some(vec![Touch {
-                        slot: 0,
-                        position: Position { x: 51, y: 84 }
-                    }])
+                    touch_states.collect::<Vec<TouchState>>(),
+                    vec![
+                        Touch {
+                            slot: 0,
+                            position: Position { x: 23, y: 42 }
+                        },
+                        Touch {
+                            slot: 1,
+                            position: Position { x: 1000, y: 1000 }
+                        },
+                        Touch {
+                            slot: 0,
+                            position: Position { x: 51, y: 84 }
+                        },
+                    ]
                 );
             }
 
             #[test]
             fn treats_note_off_events_in_other_slots_correctly() {
-                let mut touch_states = Mock::touch_states(vec![
+                let touch_states = Mock::touch_states(vec![
                     Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_SLOT), 0),
                     Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_TRACKING_ID), 1),
                     Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_POSITION_X), 23),
@@ -465,38 +507,40 @@ mod test {
                     Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_POSITION_Y), 84),
                     Mock::ev(EV_SYN, EventCode::EV_SYN(SYN_REPORT), 0),
                 ]);
-                touch_states.next();
                 assert_eq!(
-                    touch_states.next(),
-                    Some(vec![Touch {
-                        slot: 1,
-                        position: Position { x: 1000, y: 1000 }
-                    }])
-                );
-                assert_eq!(touch_states.next(), Some(vec![NoTouch { slot: 1 }]));
-                assert_eq!(
-                    touch_states.next(),
-                    Some(vec![Touch {
-                        slot: 0,
-                        position: Position { x: 51, y: 84 }
-                    }])
+                    touch_states.collect::<Vec<TouchState>>(),
+                    vec![
+                        Touch {
+                            slot: 0,
+                            position: Position { x: 23, y: 42 }
+                        },
+                        Touch {
+                            slot: 1,
+                            position: Position { x: 1000, y: 1000 }
+                        },
+                        NoTouch { slot: 1 },
+                        Touch {
+                            slot: 0,
+                            position: Position { x: 51, y: 84 }
+                        },
+                    ]
                 );
             }
 
             #[test]
             fn assumes_no_active_slot_at_startup() {
-                let mut touch_states = Mock::touch_states(vec![
+                let touch_states = Mock::touch_states(vec![
                     Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_TRACKING_ID), 1),
                     Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_POSITION_X), 23),
                     Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_POSITION_Y), 42),
                     Mock::ev(EV_SYN, EventCode::EV_SYN(SYN_REPORT), 0),
                 ]);
-                assert_eq!(touch_states.next(), Some(vec![]));
+                assert_eq!(touch_states.collect::<Vec<TouchState>>(), vec![]);
             }
 
             #[test]
             fn tracks_slot_changes_and_touch_releases_in_the_same_syn_chunk_correctly() {
-                let mut touch_states = Mock::touch_states(vec![
+                let touch_states = Mock::touch_states(vec![
                     Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_SLOT), 0),
                     Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_TRACKING_ID), 1),
                     Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_POSITION_X), 23),
@@ -511,21 +555,18 @@ mod test {
                     Mock::ev(EV_SYN, EventCode::EV_SYN(SYN_REPORT), 0),
                 ]);
                 assert_eq!(
-                    touch_states.next(),
-                    Some(vec![Touch {
-                        slot: 0,
-                        position: Position { x: 23, y: 42 }
-                    }])
-                );
-                assert_eq!(
-                    touch_states.next(),
-                    Some(vec![
+                    touch_states.collect::<Vec<TouchState>>(),
+                    vec![
+                        Touch {
+                            slot: 0,
+                            position: Position { x: 23, y: 42 }
+                        },
                         NoTouch { slot: 0 },
                         Touch {
                             slot: 1,
                             position: Position { x: 1000, y: 1000 }
-                        }
-                    ])
+                        },
+                    ]
                 );
             }
         }
@@ -535,7 +576,7 @@ mod test {
 
             #[test]
             fn relays_a_position_for_other_slots() {
-                let mut touch_states = Mock::touch_states(vec![
+                let touch_states = Mock::touch_states(vec![
                     Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_SLOT), 1),
                     Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_TRACKING_ID), 1),
                     Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_POSITION_X), 23),
@@ -543,17 +584,17 @@ mod test {
                     Mock::ev(EV_SYN, EventCode::EV_SYN(SYN_REPORT), 0),
                 ]);
                 assert_eq!(
-                    touch_states.next(),
-                    Some(vec![Touch {
+                    touch_states.collect::<Vec<TouchState>>(),
+                    vec![Touch {
                         slot: 1,
                         position: Position { x: 23, y: 42 }
-                    }])
+                    }]
                 );
             }
 
             #[test]
             fn note_off_events_contain_the_slot() {
-                let mut touch_states = Mock::touch_states(vec![
+                let touch_states = Mock::touch_states(vec![
                     Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_SLOT), 1),
                     Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_TRACKING_ID), 1),
                     Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_POSITION_X), 23),
@@ -563,18 +604,26 @@ mod test {
                     Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_TRACKING_ID), -1),
                     Mock::ev(EV_SYN, EventCode::EV_SYN(SYN_REPORT), 0),
                 ]);
-                touch_states.next();
-                assert_eq!(touch_states.next(), Some(vec![NoTouch { slot: 1 }]));
+                assert_eq!(
+                    touch_states.collect::<Vec<TouchState>>(),
+                    vec![
+                        Touch {
+                            slot: 1,
+                            position: Position { x: 23, y: 42 },
+                        },
+                        NoTouch { slot: 1 }
+                    ]
+                );
             }
 
             #[test]
             fn handles_out_of_bound_slots_gracefully() {
-                let mut touch_states = Mock::touch_states(vec![
+                let touch_states = Mock::touch_states(vec![
                     Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_SLOT), 1000),
                     Mock::ev(EV_ABS, EventCode::EV_ABS(ABS_MT_TRACKING_ID), 1),
                     Mock::ev(EV_SYN, EventCode::EV_SYN(SYN_REPORT), 0),
                 ]);
-                assert_eq!(touch_states.next(), Some(vec![]));
+                assert_eq!(touch_states.collect::<Vec<TouchState>>(), vec![]);
             }
         }
     }
