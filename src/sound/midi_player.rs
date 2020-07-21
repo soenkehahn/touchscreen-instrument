@@ -100,7 +100,7 @@ impl MidiConverter {
                 send_midi(&mut callback, [0b1000_0000, midi_note, 0]);
                 self.active_notes[slot] = None;
             }
-            (Some(old_midi_note), NoteEvent::NoteOn { frequency, slot: _ }) => {
+            (Some(old_midi_note), NoteEvent::NoteOn { frequency, .. }) => {
                 let new_midi_note = frequency_to_midi(frequency);
                 if old_midi_note != new_midi_note {
                     send_midi(&mut callback, [0b1000_0000, old_midi_note, 0]);
