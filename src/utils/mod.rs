@@ -21,9 +21,19 @@ impl<T> Iterator for Blocking<T> {
 
 pub type Slots<T> = [T; 10];
 
-pub fn slot_map<F, T, U>(input: Slots<T>, f: F) -> Slots<U>
+#[cfg(test)]
+pub fn mk_slots<T, F: FnMut(usize) -> T>(mut f: F) -> Slots<T> {
+    let mut indices = [0; 10];
+    for (i, slot) in indices.iter_mut().enumerate() {
+        *slot = i;
+    }
+    slot_map(indices, |i| f(*i))
+}
+
+#[cfg(test)]
+pub fn slot_map<F, T, U>(input: Slots<T>, mut f: F) -> Slots<U>
 where
-    F: Fn(&T) -> U,
+    F: FnMut(&T) -> U,
 {
     [
         f(&input[0]),

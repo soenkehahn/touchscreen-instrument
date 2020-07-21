@@ -33,15 +33,13 @@ impl Generators {
         }
     }
 
-    pub fn handle_note_events(&mut self, slots: Slots<NoteEvent>) {
-        for (event, voice) in slots.iter().zip(self.voices.iter_mut()) {
-            match event {
-                NoteEvent::NoteOff => {
-                    voice.note_off();
-                }
-                NoteEvent::NoteOn(frequency) => {
-                    voice.note_on(*frequency);
-                }
+    pub fn handle_note_event(&mut self, event: &NoteEvent) {
+        match event {
+            NoteEvent::NoteOff { slot } => {
+                self.voices[*slot].note_off();
+            }
+            NoteEvent::NoteOn { frequency, slot } => {
+                self.voices[*slot].note_on(*frequency);
             }
         }
     }
@@ -320,15 +318,13 @@ pub mod test {
             use super::*;
 
             #[test]
-            fn switches_on_the_voice_with_the_same_index_as_the_note_event() {
+            fn switches_on_the_voice_with_the_same_slot_index_as_the_note_event() {
                 for i in 0..10 {
                     let mut generators = sine_generators();
-                    let note_events = {
-                        let mut result = [NoteEvent::NoteOff; 10];
-                        result[i] = NoteEvent::NoteOn(42.0);
-                        result
-                    };
-                    generators.handle_note_events(note_events);
+                    generators.handle_note_event(&NoteEvent::NoteOn {
+                        slot: i,
+                        frequency: 42.0,
+                    });
                     let expected = {
                         let mut result = vec![VoiceState::Muted; 10];
                         result[i] = VoiceState::Playing {
@@ -348,11 +344,11 @@ pub mod test {
             fn switches_off_voices_on_note_off_events() {
                 for i in 0..10 {
                     let mut generators = sine_generators();
-                    let mut note_events = [NoteEvent::NoteOff; 10];
-                    note_events[i] = NoteEvent::NoteOn(42.0);
-                    generators.handle_note_events(note_events);
-                    note_events[i] = NoteEvent::NoteOff;
-                    generators.handle_note_events(note_events);
+                    generators.handle_note_event(&NoteEvent::NoteOn {
+                        slot: i,
+                        frequency: 42.0,
+                    });
+                    generators.handle_note_event(&NoteEvent::NoteOff { slot: i });
                     generators.generate(SAMPLE_RATE, &mut [0.0]);
                     let expected = vec![VoiceState::Muted; 10];
                     assert_eq!(generators.voices, expected);
