@@ -1,12 +1,10 @@
 use super::generator::Generators;
 use super::logger::Logger;
 use super::Player;
-use crate::areas::note_event_source::NoteEventSource;
 use crate::cli;
 use crate::get_binary_name;
 use crate::sound::midi_controller::MidiController;
-use crate::sound::NoteEvent;
-use crate::utils::Slots;
+use crate::sound::{NoteEvent, NoteEventSource};
 use crate::ErrorString;
 use jack::*;
 use skipchannel::*;
@@ -14,7 +12,7 @@ use std::*;
 
 pub struct AudioPlayer {
     async_client: AsyncClient<Logger, AudioProcessHandler>,
-    sender: Sender<Slots<NoteEvent>>,
+    sender: Sender<NoteEvent>,
 }
 
 impl AudioPlayer {
@@ -73,8 +71,8 @@ impl AudioPlayer {
 
 impl Player for AudioPlayer {
     fn consume(&self, note_event_source: NoteEventSource) {
-        for slots in note_event_source {
-            self.sender.send(slots);
+        for event in note_event_source {
+            self.sender.send(event);
         }
     }
 }
@@ -88,7 +86,7 @@ pub struct AudioProcessHandler {
     logger: Logger,
     audio_ports: Stereo<Port<AudioOut>>,
     midi_controller: MidiController,
-    receiver: Receiver<Slots<NoteEvent>>,
+    receiver: Receiver<NoteEvent>,
     generators: Generators,
 }
 
@@ -100,9 +98,8 @@ impl AudioProcessHandler {
     }
 
     fn handle_note_events(&mut self) {
-        match self.receiver.recv() {
-            None => {}
-            Some(slots) => Generators::handle_note_events(&mut self.generators, slots),
+        if let Some(event) = self.receiver.recv() {
+            Generators::handle_note_event(&mut self.generators, event);
         }
     }
 

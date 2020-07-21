@@ -20,21 +20,3 @@ impl<T> Iterator for Blocking<T> {
 }
 
 pub type Slots<T> = [T; 10];
-
-pub fn slot_map<F, T, U>(input: Slots<T>, f: F) -> Slots<U>
-where
-    F: Fn(&T) -> U,
-{
-    [
-        f(&input[0]),
-        f(&input[1]),
-        f(&input[2]),
-        f(&input[3]),
-        f(&input[4]),
-        f(&input[5]),
-        f(&input[6]),
-        f(&input[7]),
-        f(&input[8]),
-        f(&input[9]),
-    ]
-}
