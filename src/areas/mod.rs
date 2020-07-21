@@ -5,7 +5,6 @@ pub mod shape;
 
 use crate::evdev::Position;
 use crate::sound::midi::midi_to_frequency;
-use crate::sound::NoteEvent;
 use sdl2::pixels::Color;
 use shape::Shape;
 
@@ -94,12 +93,11 @@ impl Areas {
         }
     }
 
-    pub fn frequency(&self, position: Position) -> NoteEvent {
-        let touched: Option<&Area> = self.areas.iter().find(|area| area.shape.contains(position));
-        match touched {
-            None => NoteEvent::NoteOff,
-            Some(area) => NoteEvent::NoteOn(midi_to_frequency(area.midi_note)),
-        }
+    pub fn frequency(&self, position: Position) -> Option<f32> {
+        self.areas
+            .iter()
+            .find(|area| area.shape.contains(position))
+            .map(|area| midi_to_frequency(area.midi_note))
     }
 
     fn make_color(midi_note: i32) -> Color {

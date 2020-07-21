@@ -27,7 +27,10 @@ impl Iterator for NoteEventSource {
         self.position_source.next().map(|slots| {
             slot_map(slots, |touchstate| match touchstate {
                 TouchState::NoTouch => NoteEvent::NoteOff,
-                TouchState::Touch(position) => self.areas.frequency(*position),
+                TouchState::Touch(position) => match self.areas.frequency(*position) {
+                    Some(frequency) => NoteEvent::NoteOn(frequency),
+                    None => NoteEvent::NoteOff,
+                },
             })
         })
     }
