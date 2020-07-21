@@ -1,37 +1,35 @@
 use crate::areas::Areas;
-use crate::evdev::TouchState;
+use crate::evdev::{Position, TouchState};
 use crate::sound::NoteEvent;
+use crate::utils::{slot_map, Slots};
 
 pub struct NoteEventSource {
     areas: Areas,
-    touch_state_source: Box<dyn Iterator<Item = TouchState>>,
+    position_source: Box<dyn Iterator<Item = Slots<TouchState<Position>>>>,
 }
 
 impl NoteEventSource {
     pub fn new(
         areas: Areas,
-        touch_state_source: impl Iterator<Item = TouchState> + 'static,
+        position_source: impl Iterator<Item = Slots<TouchState<Position>>> + 'static,
     ) -> NoteEventSource {
         NoteEventSource {
             areas,
-            touch_state_source: Box::new(touch_state_source),
+            position_source: Box::new(position_source),
         }
     }
 }
 
 impl Iterator for NoteEventSource {
-    type Item = NoteEvent;
+    type Item = Slots<NoteEvent>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.touch_state_source
-            .next()
-            .map(|touchstate| match touchstate {
-                TouchState::NoTouch { slot } => NoteEvent::NoteOff { slot },
-                TouchState::Touch { position, slot } => match self.areas.frequency(position) {
-                    Some(frequency) => NoteEvent::NoteOn { slot, frequency },
-                    None => NoteEvent::NoteOff { slot },
-                },
+        self.position_source.next().map(|slots| {
+            slot_map(slots, |touchstate| match touchstate {
+                TouchState::NoTouch => NoteEvent::NoteOff,
+                TouchState::Touch(position) => self.areas.frequency(*position),
             })
+        })
     }
 }
 
@@ -39,8 +37,23 @@ impl Iterator for NoteEventSource {
 pub mod test {
     use super::NoteEvent::*;
     use super::*;
-    use crate::evdev::Position;
     use crate::sound::midi::midi_to_frequency;
+
+    impl<T> Default for TouchState<T> {
+        fn default() -> TouchState<T> {
+            TouchState::NoTouch
+        }
+    }
+
+    pub fn from_single<T: Copy + Default>(element: T) -> Slots<T> {
+        let mut slots = [T::default(); 10];
+        slots[0] = element;
+        slots
+    }
+
+    fn mock_touches<T: Copy + Default>(touches: Vec<T>) -> impl Iterator<Item = Slots<T>> {
+        touches.into_iter().map(from_single)
+    }
 
     mod note_event_source {
         use super::*;
@@ -61,18 +74,11 @@ pub mod test {
             });
             let mut frequencies = NoteEventSource::new(
                 areas,
-                vec![TouchState::Touch {
-                    slot: 0,
-                    position: Position { x: 798, y: 595 },
-                }]
-                .into_iter(),
+                mock_touches(vec![TouchState::Touch(Position { x: 798, y: 595 })]),
             );
             assert_eq!(
                 frequencies.next(),
-                Some(NoteOn {
-                    slot: 0,
-                    frequency: midi_to_frequency(48)
-                })
+                Some(from_single(NoteOn(midi_to_frequency(48))))
             );
         }
 
@@ -90,8 +96,8 @@ pub mod test {
                 row_interval: 7,
             });
             let mut frequencies =
-                NoteEventSource::new(areas, vec![TouchState::NoTouch { slot: 0 }].into_iter());
-            assert_eq!(frequencies.next(), Some(NoteOff { slot: 0 }));
+                NoteEventSource::new(areas, mock_touches(vec![TouchState::NoTouch]));
+            assert_eq!(frequencies.next(), Some(from_single(NoteOff)));
         }
 
         #[test]
@@ -109,18 +115,11 @@ pub mod test {
             });
             let mut frequencies = NoteEventSource::new(
                 areas,
-                vec![TouchState::Touch {
-                    slot: 0,
-                    position: Position { x: 798, y: 595 },
-                }]
-                .into_iter(),
+                mock_touches(vec![TouchState::Touch(Position { x: 798, y: 595 })]),
             );
             assert_eq!(
                 frequencies.next(),
-                Some(NoteOn {
-                    slot: 0,
-                    frequency: midi_to_frequency(49)
-                })
+                Some(from_single(NoteOn(midi_to_frequency(49))))
             );
         }
     }

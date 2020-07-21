@@ -17,15 +17,12 @@ pub trait Player {
 
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub enum NoteEvent {
-    NoteOff { slot: usize },
-    NoteOn { slot: usize, frequency: f32 },
+    NoteOff,
+    NoteOn(f32),
 }
 
-impl NoteEvent {
-    fn get_slot(&self) -> usize {
-        match self {
-            NoteEvent::NoteOff { slot } => *slot,
-            NoteEvent::NoteOn { slot, .. } => *slot,
-        }
+impl Default for NoteEvent {
+    fn default() -> NoteEvent {
+        NoteEvent::NoteOff
     }
 }

@@ -122,9 +122,9 @@ fn get_note_event_source(cli_args: &cli::Args) -> Result<NoteEventSource, ErrorS
     let areas = get_areas(cli_args.layout_type);
     areas.clone().spawn_ui(cli_args);
     let touches = if cli_args.dev_mode {
-        TouchStateSource::blocking()
+        PositionSource::blocking()
     } else {
-        TouchStateSource::new("/dev/input/by-id/usb-ILITEK_Multi-Touch-V5100-event-if00")?
+        PositionSource::new("/dev/input/by-id/usb-ILITEK_Multi-Touch-V5100-event-if00")?
     };
     Ok(NoteEventSource::new(areas, touches))
 }
