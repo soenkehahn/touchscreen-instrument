@@ -11,7 +11,7 @@ use skipchannel::*;
 
 pub struct MidiPlayer {
     _active_client: AsyncClient<(), MidiProcessHandler>,
-    sender: Sender<Slots<NoteEvent>>,
+    sender: Sender<NoteEvent>,
 }
 
 impl MidiPlayer {
@@ -45,7 +45,7 @@ impl Player for MidiPlayer {
 
 struct MidiProcessHandler {
     port: Port<MidiOut>,
-    receiver: Receiver<Slots<NoteEvent>>,
+    receiver: Receiver<NoteEvent>,
     midi_converter: MidiConverter,
 }
 
@@ -77,7 +77,7 @@ impl MidiConverter {
         }
     }
 
-    fn connect<F>(&mut self, slots: Slots<NoteEvent>, mut callback: F)
+    fn connect<F>(&mut self, event: NoteEvent, mut callback: F)
     where
         F: FnMut(RawMidi),
     {
@@ -89,27 +89,26 @@ impl MidiConverter {
             });
         };
 
-        for i in 0..10 {
-            match (self.active_notes[i], slots[i]) {
-                (None, NoteEvent::NoteOn(frequency)) => {
-                    let midi_note = frequency_to_midi(frequency);
-                    send_midi(&mut callback, [0b1001_0000, midi_note, 127]);
-                    self.active_notes[i] = Some(midi_note);
-                }
-                (Some(midi_note), NoteEvent::NoteOff) => {
-                    send_midi(&mut callback, [0b1000_0000, midi_note, 0]);
-                    self.active_notes[i] = None;
-                }
-                (Some(old_midi_note), NoteEvent::NoteOn(frequency)) => {
-                    let new_midi_note = frequency_to_midi(frequency);
-                    if old_midi_note != new_midi_note {
-                        send_midi(&mut callback, [0b1000_0000, old_midi_note, 0]);
-                        send_midi(&mut callback, [0b1001_0000, new_midi_note, 127]);
-                        self.active_notes[i] = Some(new_midi_note);
-                    }
-                }
-                (None, NoteEvent::NoteOff) => {}
+        let slot = event.get_slot();
+        match (self.active_notes[slot], event) {
+            (None, NoteEvent::NoteOn { frequency, .. }) => {
+                let midi_note = frequency_to_midi(frequency);
+                send_midi(&mut callback, [0b1001_0000, midi_note, 127]);
+                self.active_notes[slot] = Some(midi_note);
             }
+            (Some(midi_note), NoteEvent::NoteOff { .. }) => {
+                send_midi(&mut callback, [0b1000_0000, midi_note, 0]);
+                self.active_notes[slot] = None;
+            }
+            (Some(old_midi_note), NoteEvent::NoteOn { frequency, .. }) => {
+                let new_midi_note = frequency_to_midi(frequency);
+                if old_midi_note != new_midi_note {
+                    send_midi(&mut callback, [0b1000_0000, old_midi_note, 0]);
+                    send_midi(&mut callback, [0b1001_0000, new_midi_note, 127]);
+                    self.active_notes[slot] = Some(new_midi_note);
+                }
+            }
+            (None, NoteEvent::NoteOff { .. }) => {}
         }
     }
 }
@@ -120,7 +119,6 @@ mod test {
 
     mod midi_converter {
         use super::*;
-        use crate::areas::note_event_source::test::from_single;
         use crate::sound::midi::midi_to_frequency;
         use NoteEvent::*;
 
@@ -132,26 +130,7 @@ mod test {
             let mut converter = MidiConverter::new();
             let mut result = vec![];
             for note_event in events.into_iter() {
-                converter.connect(from_single(note_event), |raw_midi| {
-                    result.push(format!("{:?}", raw_midi.bytes));
-                });
-            }
-            let expected_as_strings: Vec<String> = expecteds
-                .into_iter()
-                .map(|x| format!("{:?}", x.bytes))
-                .collect();
-            assert_eq!(result, expected_as_strings);
-        }
-
-        fn expect_raw_midi_poly(events: Vec<Vec<NoteEvent>>, expecteds: Vec<RawMidi>) {
-            let mut converter = MidiConverter::new();
-            let mut result = vec![];
-            for note_events in events.into_iter() {
-                let mut slots = [NoteOff; 10];
-                for (i, note_event) in note_events.into_iter().enumerate() {
-                    slots[i] = note_event;
-                }
-                converter.connect(slots, |raw_midi| {
+                converter.connect(note_event, |raw_midi| {
                     result.push(format!("{:?}", raw_midi.bytes));
                 });
             }
@@ -167,13 +146,22 @@ mod test {
 
             #[test]
             fn converts_note_on_events() {
-                expect_raw_midi(vec![NoteOn(440.0)], vec![make_midi(&[0b10010000, 69, 127])]);
+                expect_raw_midi(
+                    vec![NoteOn {
+                        slot: 0,
+                        frequency: 440.0,
+                    }],
+                    vec![make_midi(&[0b10010000, 69, 127])],
+                );
             }
 
             #[test]
             fn converts_other_notes_correctly() {
                 expect_raw_midi(
-                    vec![NoteOn(midi_to_frequency(60))],
+                    vec![NoteOn {
+                        slot: 0,
+                        frequency: midi_to_frequency(60),
+                    }],
                     vec![make_midi(&[0b10010000, 60, 127])],
                 );
             }
@@ -181,7 +169,13 @@ mod test {
             #[test]
             fn converts_note_off_events_correctly() {
                 expect_raw_midi(
-                    vec![NoteOn(midi_to_frequency(57)), NoteOff],
+                    vec![
+                        NoteOn {
+                            slot: 0,
+                            frequency: midi_to_frequency(57),
+                        },
+                        NoteOff { slot: 0 },
+                    ],
                     vec![
                         make_midi(&[0b10010000, 57, 127]),
                         make_midi(&[0b10000000, 57, 0]),
@@ -192,7 +186,14 @@ mod test {
             #[test]
             fn two_consecutive_note_off_events_trigger_only_one_note_off() {
                 expect_raw_midi(
-                    vec![NoteOn(midi_to_frequency(57)), NoteOff, NoteOff],
+                    vec![
+                        NoteOn {
+                            slot: 0,
+                            frequency: midi_to_frequency(57),
+                        },
+                        NoteOff { slot: 0 },
+                        NoteOff { slot: 0 },
+                    ],
                     vec![
                         make_midi(&[0b10010000, 57, 127]),
                         make_midi(&[0b10000000, 57, 0]),
@@ -203,7 +204,16 @@ mod test {
             #[test]
             fn two_consecutive_note_on_events_trigger_a_note_off_in_between() {
                 expect_raw_midi(
-                    vec![NoteOn(midi_to_frequency(57)), NoteOn(midi_to_frequency(60))],
+                    vec![
+                        NoteOn {
+                            slot: 0,
+                            frequency: midi_to_frequency(57),
+                        },
+                        NoteOn {
+                            slot: 0,
+                            frequency: midi_to_frequency(60),
+                        },
+                    ],
                     vec![
                         make_midi(&[0b10010000, 57, 127]),
                         make_midi(&[0b10000000, 57, 0]),
@@ -215,7 +225,16 @@ mod test {
             #[test]
             fn two_consecutive_note_on_events_of_the_same_pitch_trigger_only_one_event() {
                 expect_raw_midi(
-                    vec![NoteOn(midi_to_frequency(60)), NoteOn(midi_to_frequency(60))],
+                    vec![
+                        NoteOn {
+                            slot: 0,
+                            frequency: midi_to_frequency(60),
+                        },
+                        NoteOn {
+                            slot: 0,
+                            frequency: midi_to_frequency(60),
+                        },
+                    ],
                     vec![make_midi(&[0b10010000, 60, 127])],
                 );
             }
@@ -224,9 +243,15 @@ mod test {
             fn two_consecutive_note_on_events_leave_the_converter_in_a_valid_state() {
                 expect_raw_midi(
                     vec![
-                        NoteOn(midi_to_frequency(57)),
-                        NoteOn(midi_to_frequency(60)),
-                        NoteOff,
+                        NoteOn {
+                            slot: 0,
+                            frequency: midi_to_frequency(57),
+                        },
+                        NoteOn {
+                            slot: 0,
+                            frequency: midi_to_frequency(60),
+                        },
+                        NoteOff { slot: 0 },
                     ],
                     vec![
                         make_midi(&[0b10010000, 57, 127]),
@@ -243,10 +268,21 @@ mod test {
 
             #[test]
             fn allows_to_play_two_notes_simultaneously() {
-                expect_raw_midi_poly(
+                expect_raw_midi(
                     vec![
-                        vec![NoteOn(midi_to_frequency(60)), NoteOff],
-                        vec![NoteOn(midi_to_frequency(60)), NoteOn(midi_to_frequency(62))],
+                        NoteOn {
+                            slot: 0,
+                            frequency: midi_to_frequency(60),
+                        },
+                        NoteOff { slot: 1 },
+                        NoteOn {
+                            slot: 0,
+                            frequency: midi_to_frequency(60),
+                        },
+                        NoteOn {
+                            slot: 1,
+                            frequency: midi_to_frequency(62),
+                        },
                     ],
                     vec![
                         make_midi(&[0b10010000, 60, 127]),
@@ -257,12 +293,28 @@ mod test {
 
             #[test]
             fn handles_overlapping_legato_melodies_correctly() {
-                expect_raw_midi_poly(
+                expect_raw_midi(
                     vec![
-                        vec![NoteOn(midi_to_frequency(60)), NoteOff],
-                        vec![NoteOn(midi_to_frequency(60)), NoteOn(midi_to_frequency(62))],
-                        vec![NoteOff, NoteOn(midi_to_frequency(62))],
-                        vec![NoteOff, NoteOff],
+                        NoteOn {
+                            slot: 0,
+                            frequency: midi_to_frequency(60),
+                        },
+                        NoteOff { slot: 1 },
+                        NoteOn {
+                            slot: 0,
+                            frequency: midi_to_frequency(60),
+                        },
+                        NoteOn {
+                            slot: 1,
+                            frequency: midi_to_frequency(62),
+                        },
+                        NoteOff { slot: 0 },
+                        NoteOn {
+                            slot: 1,
+                            frequency: midi_to_frequency(62),
+                        },
+                        NoteOff { slot: 0 },
+                        NoteOff { slot: 1 },
                     ],
                     vec![
                         make_midi(&[0b10010000, 60, 127]),
@@ -275,12 +327,28 @@ mod test {
 
             #[test]
             fn handles_note_offs_for_temporary_additional_notes_correctly() {
-                expect_raw_midi_poly(
+                expect_raw_midi(
                     vec![
-                        vec![NoteOn(midi_to_frequency(60)), NoteOff],
-                        vec![NoteOn(midi_to_frequency(60)), NoteOn(midi_to_frequency(62))],
-                        vec![NoteOn(midi_to_frequency(60)), NoteOff],
-                        vec![NoteOff, NoteOff],
+                        NoteOn {
+                            slot: 0,
+                            frequency: midi_to_frequency(60),
+                        },
+                        NoteOff { slot: 1 },
+                        NoteOn {
+                            slot: 0,
+                            frequency: midi_to_frequency(60),
+                        },
+                        NoteOn {
+                            slot: 1,
+                            frequency: midi_to_frequency(62),
+                        },
+                        NoteOn {
+                            slot: 0,
+                            frequency: midi_to_frequency(60),
+                        },
+                        NoteOff { slot: 1 },
+                        NoteOff { slot: 0 },
+                        NoteOff { slot: 1 },
                     ],
                     vec![
                         make_midi(&[0b10010000, 60, 127]),
@@ -293,20 +361,26 @@ mod test {
 
             #[test]
             fn does_not_rely_on_the_first_slot_being_used() {
-                expect_raw_midi_poly(
-                    vec![vec![NoteOff, NoteOn(midi_to_frequency(60))]],
+                expect_raw_midi(
+                    vec![
+                        NoteOff { slot: 0 },
+                        NoteOn {
+                            slot: 1,
+                            frequency: midi_to_frequency(60),
+                        },
+                    ],
                     vec![make_midi(&[0b10010000, 60, 127])],
                 );
             }
 
             #[test]
             fn uses_the_last_slot() {
-                let mut slots: Slots<NoteEvent> = [NoteOff; 10];
-                slots[slots.len() - 1] = NoteOn(midi_to_frequency(60));
-                expect_raw_midi_poly(
-                    vec![slots.to_vec()],
-                    vec![make_midi(&[0b10010000, 60, 127])],
-                );
+                let unit_slots: Slots<()> = [(); 10];
+                let slots = vec![NoteOn {
+                    slot: unit_slots.len() - 1,
+                    frequency: midi_to_frequency(60),
+                }];
+                expect_raw_midi(slots, vec![make_midi(&[0b10010000, 60, 127])]);
             }
         }
     }
