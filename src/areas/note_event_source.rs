@@ -1,17 +1,17 @@
 use crate::areas::Areas;
-use crate::evdev::{Position, TouchState};
+use crate::evdev::TouchState;
 use crate::sound::NoteEvent;
 use crate::utils::{slot_map, Slots};
 
 pub struct NoteEventSource {
     areas: Areas,
-    position_source: Box<dyn Iterator<Item = Slots<TouchState<Position>>>>,
+    position_source: Box<dyn Iterator<Item = Slots<TouchState>>>,
 }
 
 impl NoteEventSource {
     pub fn new(
         areas: Areas,
-        position_source: impl Iterator<Item = Slots<TouchState<Position>>> + 'static,
+        position_source: impl Iterator<Item = Slots<TouchState>> + 'static,
     ) -> NoteEventSource {
         NoteEventSource {
             areas,
@@ -37,10 +37,11 @@ impl Iterator for NoteEventSource {
 pub mod test {
     use super::NoteEvent::*;
     use super::*;
+    use crate::evdev::Position;
     use crate::sound::midi::midi_to_frequency;
 
-    impl<T> Default for TouchState<T> {
-        fn default() -> TouchState<T> {
+    impl Default for TouchState {
+        fn default() -> TouchState {
             TouchState::NoTouch
         }
     }
