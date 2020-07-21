@@ -116,7 +116,6 @@ impl MidiConverter {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::utils::mk_slots;
 
     mod midi_converter {
         use super::*;
@@ -376,15 +375,12 @@ mod test {
 
             #[test]
             fn uses_the_last_slot() {
-                let mut slots: Slots<NoteEvent> = mk_slots(|slot| NoteOff { slot });
-                slots[slots.len() - 1] = NoteOn {
-                    slot: slots.len() - 1,
+                let unit_slots: Slots<()> = [(); 10];
+                let slots = vec![NoteOn {
+                    slot: unit_slots.len() - 1,
                     frequency: midi_to_frequency(60),
-                };
-                expect_raw_midi(
-                    slots.iter().map(|x| x.clone()).collect(),
-                    vec![make_midi(&[0b10010000, 60, 127])],
-                );
+                }];
+                expect_raw_midi(slots, vec![make_midi(&[0b10010000, 60, 127])]);
             }
         }
     }
