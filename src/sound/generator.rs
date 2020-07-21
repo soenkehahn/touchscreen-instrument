@@ -318,7 +318,7 @@ pub mod test {
             use super::*;
 
             #[test]
-            fn switches_on_the_voice_with_the_same_slot_index_as_the_note_event() {
+            fn switches_on_the_voice_with_the_same_index_as_the_note_event() {
                 for i in 0..10 {
                     let mut generators = sine_generators();
                     generators.handle_note_event(NoteEvent::NoteOn {
@@ -341,7 +341,7 @@ pub mod test {
             }
 
             #[test]
-            fn switches_off_voices_on_note_off_events() {
+            fn switches_off_the_correct_voice() {
                 for i in 0..10 {
                     let mut generators = sine_generators();
                     generators.handle_note_event(NoteEvent::NoteOn {
@@ -530,7 +530,7 @@ pub mod test {
                 assert_eq!(buffer[0], 0.2);
             }
 
-            mod adsr {
+            mod envelope {
                 use super::*;
 
                 fn assert_elements_close(a: [f32; 10], b: [f32; 10]) {

@@ -26,8 +26,8 @@ impl Iterator for NoteEventSource {
         self.touch_state_source
             .next()
             .map(|touchstate| match touchstate {
-                TouchState::NoTouch { slot } => NoteEvent::NoteOff { slot },
-                TouchState::Touch { position, slot } => match self.areas.frequency(position) {
+                TouchState::NoTouch { slot, .. } => NoteEvent::NoteOff { slot },
+                TouchState::Touch { position, slot, .. } => match self.areas.frequency(position) {
                     Some(frequency) => NoteEvent::NoteOn { slot, frequency },
                     None => NoteEvent::NoteOff { slot },
                 },
@@ -63,6 +63,7 @@ pub mod test {
                 areas,
                 vec![TouchState::Touch {
                     slot: 0,
+                    tracking_id: 0,
                     position: Position { x: 798, y: 595 },
                 }]
                 .into_iter(),
@@ -89,8 +90,14 @@ pub mod test {
                 start_midi_note: 48,
                 row_interval: 7,
             });
-            let mut frequencies =
-                NoteEventSource::new(areas, vec![TouchState::NoTouch { slot: 0 }].into_iter());
+            let mut frequencies = NoteEventSource::new(
+                areas,
+                vec![TouchState::NoTouch {
+                    slot: 0,
+                    tracking_id: 0,
+                }]
+                .into_iter(),
+            );
             assert_eq!(frequencies.next(), Some(NoteOff { slot: 0 }));
         }
 
@@ -111,6 +118,7 @@ pub mod test {
                 areas,
                 vec![TouchState::Touch {
                     slot: 0,
+                    tracking_id: 0,
                     position: Position { x: 798, y: 595 },
                 }]
                 .into_iter(),
