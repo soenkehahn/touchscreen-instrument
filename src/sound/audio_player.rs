@@ -98,11 +98,8 @@ impl AudioProcessHandler {
     }
 
     fn handle_note_events(&mut self) {
-        match self.receiver.recv() {
-            None => {}
-            Some(event) => {
-                Generators::handle_note_event(&mut self.generators, &event);
-            }
+        if let Some(event) = self.receiver.recv() {
+            Generators::handle_note_event(&mut self.generators, &event);
         }
     }
 
