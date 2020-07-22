@@ -608,10 +608,13 @@ pub mod test {
                     generators.voices[0].note_on(1.0);
                     let mut second_buffer = buffer();
                     generators.generate(10, &mut second_buffer);
-                    let mut expected = buffer();
-                    for i in 0..10 {
-                        expected[i] = 0.5 + (i as f32 + 1.0) * 0.05;
-                    }
+                    let expected = {
+                        let mut result = buffer();
+                        for (i, cell) in result.iter_mut().enumerate() {
+                            *cell = 0.5 + (i as f32 + 1.0) * 0.05;
+                        }
+                        result
+                    };
                     assert_elements_close(second_buffer, expected);
                 }
 

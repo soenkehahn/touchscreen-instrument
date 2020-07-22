@@ -83,9 +83,9 @@ mod test {
         #[test]
         fn renders_the_bottom_row() {
             let areas = grid(800, 600, 80, 60, 0).areas;
-            for i in 0..80 {
+            for (i, area) in areas.iter().take(80).enumerate() {
                 assert_eq!(
-                    areas[i].shape,
+                    area.shape,
                     Shape::Parallelogram {
                         base: Position {
                             x: 10 * i as i32,
@@ -103,8 +103,8 @@ mod test {
         #[test]
         fn bottom_row_are_semitones() {
             let areas = grid(800, 600, 80, 60, 0).areas;
-            for i in 0..80 {
-                assert_eq!(areas[i].midi_note, i as i32)
+            for (i, area) in areas.iter().take(80).enumerate() {
+                assert_eq!(area.midi_note, i as i32)
             }
         }
 

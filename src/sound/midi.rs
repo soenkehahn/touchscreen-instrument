@@ -39,7 +39,7 @@ mod test {
 
         #[test]
         fn converts_the_middle_c_correctly() {
-            assert_eq!(frequency_to_midi(261.625565), 60);
+            assert_eq!(frequency_to_midi(261.62555), 60);
         }
 
         #[test]

@@ -81,7 +81,7 @@ pub mod test {
         while milli_seconds_left > 0 && result.is_err() {
             result = f();
             sleep(Duration::from_millis(10));
-            milli_seconds_left = milli_seconds_left - 10;
+            milli_seconds_left -= 10;
         }
         result
     }
@@ -91,7 +91,7 @@ pub mod test {
         let thread_worker: ThreadWorker<i32, i32> = ThreadWorker::new(|x| x * 2);
         thread_worker.enqueue(42);
         let result = wait_for(|| match thread_worker.poll() {
-            None => Err(format!("poll: no result received")),
+            None => Err("poll: no result received".to_string()),
             Some(x) => Ok(x),
         })?;
         assert_eq!(result, 84);
@@ -104,7 +104,7 @@ pub mod test {
             ThreadWorker::new(|()| std::thread::current().id());
         thread_worker.enqueue(());
         let result = wait_for(|| match thread_worker.poll() {
-            None => Err(format!("poll: no result received")),
+            None => Err("poll: no result received".to_string()),
             Some(x) => Ok(x),
         })?;
         assert_ne!(result, std::thread::current().id());

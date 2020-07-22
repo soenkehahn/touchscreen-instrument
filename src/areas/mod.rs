@@ -143,12 +143,12 @@ mod test {
                 use palette::Srgb;
 
                 let mut color = Hsv::from(Srgb::new(0.0, 0.0, 1.0));
-                color.hue = color.hue + 360.0 / 12.0;
+                color.hue += 360.0 / 12.0;
                 assert_eq!(
                     Areas::make_color(7),
                     Areas::convert_color(Srgb::from(color).into_format())
                 );
-                color.hue = color.hue + 360.0 / 12.0;
+                color.hue += 360.0 / 12.0;
                 assert_eq!(
                     Areas::make_color(62),
                     Areas::convert_color(Srgb::from(color).into_format())
@@ -199,7 +199,7 @@ mod test {
                 .areas;
                 assert_eq!(
                     areas[2..4]
-                        .into_iter()
+                        .iter()
                         .map(|x| &x.shape)
                         .collect::<Vec<&Shape>>(),
                     vec![
@@ -257,7 +257,7 @@ mod test {
                 .areas;
                 assert_eq!(
                     areas[0..3]
-                        .into_iter()
+                        .iter()
                         .map(|x| &x.midi_note)
                         .collect::<Vec<&i32>>(),
                     vec![&35, &36, &37]
@@ -280,7 +280,7 @@ mod test {
                 .areas;
                 assert_eq!(
                     areas[62..64]
-                        .into_iter()
+                        .iter()
                         .map(|x| &x.shape)
                         .collect::<Vec<&Shape>>(),
                     vec![
@@ -314,7 +314,7 @@ mod test {
                 .areas;
                 assert_eq!(
                     areas[62..65]
-                        .into_iter()
+                        .iter()
                         .map(|x| &x.midi_note)
                         .collect::<Vec<&i32>>(),
                     vec![&43, &44, &45]
@@ -337,7 +337,7 @@ mod test {
                 .areas;
                 assert_eq!(
                     areas[62..65]
-                        .into_iter()
+                        .iter()
                         .map(|x| &x.midi_note)
                         .collect::<Vec<&i32>>(),
                     vec![&40, &41, &42]
@@ -360,7 +360,7 @@ mod test {
                 .areas;
                 assert_eq!(
                     areas[0..3]
-                        .into_iter()
+                        .iter()
                         .map(|x| &x.midi_note)
                         .collect::<Vec<&i32>>(),
                     vec![&47, &48, &49]
