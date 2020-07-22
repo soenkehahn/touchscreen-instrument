@@ -36,12 +36,8 @@ impl Generators {
     pub fn handle_note_events(&mut self, voices: [NoteEvent; POLYPHONY]) {
         for (i, event) in voices.iter().enumerate() {
             match event {
-                NoteEvent::NoteOff { .. } => {
-                    self.voices[i].note_off();
-                }
-                NoteEvent::NoteOn { frequency } => {
-                    self.voices[i].note_on(*frequency);
-                }
+                NoteEvent::NoteOff { .. } => self.voices[i].note_off(),
+                NoteEvent::NoteOn { frequency } => self.voices[i].note_on(*frequency),
             }
         }
     }
