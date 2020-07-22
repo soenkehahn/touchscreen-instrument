@@ -37,7 +37,7 @@ impl Generators {
         for (voice, event) in self.voices.iter_mut().zip(voice_events.iter()) {
             match event {
                 NoteEvent::NoteOff => voice.note_off(),
-                NoteEvent::NoteOn { frequency } => voice.note_on(*frequency),
+                NoteEvent::NoteOn(frequency) => voice.note_on(*frequency),
             }
         }
     }
@@ -322,7 +322,7 @@ pub mod test {
                     let mut generators = sine_generators();
                     let voices = {
                         let mut result = mk_voices(NoteEvent::NoteOff);
-                        result[i] = NoteEvent::NoteOn { frequency: 42.0 };
+                        result[i] = NoteEvent::NoteOn(42.0);
                         result
                     };
                     generators.handle_note_events(voices);
@@ -347,7 +347,7 @@ pub mod test {
                     let mut generators = sine_generators();
                     let voices = {
                         let mut result = mk_voices(NoteEvent::NoteOff);
-                        result[i] = NoteEvent::NoteOn { frequency: 42.0 };
+                        result[i] = NoteEvent::NoteOn(42.0);
                         result
                     };
                     generators.handle_note_events(voices);

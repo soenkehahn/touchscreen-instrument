@@ -90,7 +90,7 @@ impl MidiConverter {
 
         for (voice, event) in self.voices.iter_mut().zip(voice_events.iter()) {
             match (&voice, event) {
-                (None, NoteEvent::NoteOn { frequency }) => {
+                (None, NoteEvent::NoteOn(frequency)) => {
                     let midi_note = frequency_to_midi(*frequency);
                     send_midi(&mut callback, [0b1001_0000, midi_note, 127]);
                     *voice = Some(midi_note);
@@ -99,7 +99,7 @@ impl MidiConverter {
                     send_midi(&mut callback, [0b1000_0000, *midi_note, 0]);
                     *voice = None;
                 }
-                (Some(old_midi_note), NoteEvent::NoteOn { frequency }) => {
+                (Some(old_midi_note), NoteEvent::NoteOn(frequency)) => {
                     let new_midi_note = frequency_to_midi(*frequency);
                     if *old_midi_note != new_midi_note {
                         send_midi(&mut callback, [0b1000_0000, *old_midi_note, 0]);
@@ -158,7 +158,7 @@ mod test {
             #[test]
             fn converts_note_on_events() {
                 expect_raw_midi(
-                    vec![vec![NoteOn { frequency: 440.0 }]],
+                    vec![vec![NoteOn(440.0)]],
                     vec![make_midi(&[0b10010000, 69, 127])],
                 );
             }
@@ -166,9 +166,7 @@ mod test {
             #[test]
             fn converts_other_notes_correctly() {
                 expect_raw_midi(
-                    vec![vec![NoteOn {
-                        frequency: midi_to_frequency(60),
-                    }]],
+                    vec![vec![NoteOn(midi_to_frequency(60))]],
                     vec![make_midi(&[0b10010000, 60, 127])],
                 );
             }
@@ -176,12 +174,7 @@ mod test {
             #[test]
             fn converts_note_off_events_correctly() {
                 expect_raw_midi(
-                    vec![
-                        vec![NoteOn {
-                            frequency: midi_to_frequency(57),
-                        }],
-                        vec![],
-                    ],
+                    vec![vec![NoteOn(midi_to_frequency(57))], vec![]],
                     vec![
                         make_midi(&[0b10010000, 57, 127]),
                         make_midi(&[0b10000000, 57, 0]),
@@ -192,13 +185,7 @@ mod test {
             #[test]
             fn two_consecutive_note_off_events_trigger_only_one_note_off() {
                 expect_raw_midi(
-                    vec![
-                        vec![NoteOn {
-                            frequency: midi_to_frequency(57),
-                        }],
-                        vec![],
-                        vec![],
-                    ],
+                    vec![vec![NoteOn(midi_to_frequency(57))], vec![], vec![]],
                     vec![
                         make_midi(&[0b10010000, 57, 127]),
                         make_midi(&[0b10000000, 57, 0]),
@@ -210,12 +197,8 @@ mod test {
             fn two_consecutive_note_on_events_trigger_a_note_off_in_between() {
                 expect_raw_midi(
                     vec![
-                        vec![NoteOn {
-                            frequency: midi_to_frequency(57),
-                        }],
-                        vec![NoteOn {
-                            frequency: midi_to_frequency(60),
-                        }],
+                        vec![NoteOn(midi_to_frequency(57))],
+                        vec![NoteOn(midi_to_frequency(60))],
                     ],
                     vec![
                         make_midi(&[0b10010000, 57, 127]),
@@ -229,12 +212,8 @@ mod test {
             fn two_consecutive_note_on_events_of_the_same_pitch_trigger_only_one_event() {
                 expect_raw_midi(
                     vec![
-                        vec![NoteOn {
-                            frequency: midi_to_frequency(60),
-                        }],
-                        vec![NoteOn {
-                            frequency: midi_to_frequency(60),
-                        }],
+                        vec![NoteOn(midi_to_frequency(60))],
+                        vec![NoteOn(midi_to_frequency(60))],
                     ],
                     vec![make_midi(&[0b10010000, 60, 127])],
                 );
@@ -244,12 +223,8 @@ mod test {
             fn two_consecutive_note_on_events_leave_the_converter_in_a_valid_state() {
                 expect_raw_midi(
                     vec![
-                        vec![NoteOn {
-                            frequency: midi_to_frequency(57),
-                        }],
-                        vec![NoteOn {
-                            frequency: midi_to_frequency(60),
-                        }],
+                        vec![NoteOn(midi_to_frequency(57))],
+                        vec![NoteOn(midi_to_frequency(60))],
                         vec![],
                     ],
                     vec![
@@ -269,25 +244,10 @@ mod test {
             fn allows_to_play_two_notes_simultaneously() {
                 expect_raw_midi_poly(
                     vec![
-                        vec![(
-                            0,
-                            NoteOn {
-                                frequency: midi_to_frequency(60),
-                            },
-                        )],
+                        vec![(0, NoteOn(midi_to_frequency(60)))],
                         vec![
-                            (
-                                0,
-                                NoteOn {
-                                    frequency: midi_to_frequency(60),
-                                },
-                            ),
-                            (
-                                1,
-                                NoteOn {
-                                    frequency: midi_to_frequency(62),
-                                },
-                            ),
+                            (0, NoteOn(midi_to_frequency(60))),
+                            (1, NoteOn(midi_to_frequency(62))),
                         ],
                     ],
                     vec![
@@ -301,32 +261,12 @@ mod test {
             fn handles_overlapping_legato_melodies_correctly() {
                 expect_raw_midi_poly(
                     vec![
-                        vec![(
-                            0,
-                            NoteOn {
-                                frequency: midi_to_frequency(60),
-                            },
-                        )],
+                        vec![(0, NoteOn(midi_to_frequency(60)))],
                         vec![
-                            (
-                                0,
-                                NoteOn {
-                                    frequency: midi_to_frequency(60),
-                                },
-                            ),
-                            (
-                                1,
-                                NoteOn {
-                                    frequency: midi_to_frequency(62),
-                                },
-                            ),
+                            (0, NoteOn(midi_to_frequency(60))),
+                            (1, NoteOn(midi_to_frequency(62))),
                         ],
-                        vec![(
-                            1,
-                            NoteOn {
-                                frequency: midi_to_frequency(62),
-                            },
-                        )],
+                        vec![(1, NoteOn(midi_to_frequency(62)))],
                         vec![],
                     ],
                     vec![
@@ -342,32 +282,12 @@ mod test {
             fn handles_note_offs_for_temporary_additional_notes_correctly() {
                 expect_raw_midi_poly(
                     vec![
-                        vec![(
-                            0,
-                            NoteOn {
-                                frequency: midi_to_frequency(60),
-                            },
-                        )],
+                        vec![(0, NoteOn(midi_to_frequency(60)))],
                         vec![
-                            (
-                                0,
-                                NoteOn {
-                                    frequency: midi_to_frequency(60),
-                                },
-                            ),
-                            (
-                                1,
-                                NoteOn {
-                                    frequency: midi_to_frequency(62),
-                                },
-                            ),
+                            (0, NoteOn(midi_to_frequency(60))),
+                            (1, NoteOn(midi_to_frequency(62))),
                         ],
-                        vec![(
-                            0,
-                            NoteOn {
-                                frequency: midi_to_frequency(60),
-                            },
-                        )],
+                        vec![(0, NoteOn(midi_to_frequency(60)))],
                         vec![],
                     ],
                     vec![
@@ -382,12 +302,7 @@ mod test {
             #[test]
             fn does_not_rely_on_the_first_slot_being_used() {
                 expect_raw_midi_poly(
-                    vec![vec![(
-                        1,
-                        NoteOn {
-                            frequency: midi_to_frequency(60),
-                        },
-                    )]],
+                    vec![vec![(1, NoteOn(midi_to_frequency(60)))]],
                     vec![make_midi(&[0b10010000, 60, 127])],
                 );
             }
@@ -395,12 +310,7 @@ mod test {
             #[test]
             fn uses_the_last_slot() {
                 expect_raw_midi_poly(
-                    vec![vec![(
-                        POLYPHONY - 1,
-                        NoteOn {
-                            frequency: midi_to_frequency(60),
-                        },
-                    )]],
+                    vec![vec![(POLYPHONY - 1, NoteOn(midi_to_frequency(60)))]],
                     vec![make_midi(&[0b10010000, 60, 127])],
                 );
             }

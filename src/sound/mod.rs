@@ -35,7 +35,7 @@ pub trait Player {
 #[derive(Debug, PartialEq, Clone)]
 pub enum NoteEvent {
     NoteOff,
-    NoteOn { frequency: f32 },
+    NoteOn(f32),
 }
 
 #[cfg(test)]

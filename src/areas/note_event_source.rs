@@ -35,7 +35,7 @@ impl Iterator for NoteEventSource {
                 } => (
                     tracking_id,
                     match self.areas.frequency(position) {
-                        Some(frequency) => NoteEvent::NoteOn { frequency },
+                        Some(frequency) => NoteEvent::NoteOn(frequency),
                         None => NoteEvent::NoteOff,
                     },
                 ),
@@ -84,9 +84,7 @@ pub mod test {
             );
             assert_eq!(
                 frequencies.next().unwrap()[0],
-                NoteOn {
-                    frequency: midi_to_frequency(48),
-                }
+                NoteOn(midi_to_frequency(48))
             );
         }
 
@@ -111,9 +109,7 @@ pub mod test {
             );
             assert_eq!(
                 frequencies.next().unwrap()[0],
-                NoteOn {
-                    frequency: midi_to_frequency(49)
-                }
+                NoteOn(midi_to_frequency(49))
             );
         }
 
@@ -131,12 +127,7 @@ pub mod test {
                 );
                 assert_eq!(
                     frequencies.next(),
-                    Some(mk_test_voices(vec![(
-                        i,
-                        NoteOn {
-                            frequency: midi_to_frequency(48)
-                        }
-                    )]))
+                    Some(mk_test_voices(vec![(i, NoteOn(midi_to_frequency(48)))]))
                 );
             }
         }
@@ -157,9 +148,7 @@ pub mod test {
                     frequencies.next(),
                     Some(mk_test_voices(vec![(
                         (tracking_id % (POLYPHONY as i32)) as usize,
-                        NoteOn {
-                            frequency: midi_to_frequency(48)
-                        }
+                        NoteOn(midi_to_frequency(48))
                     )]))
                 );
             }
@@ -186,28 +175,13 @@ pub mod test {
             assert_eq!(
                 frequencies.next(),
                 Some(mk_test_voices(vec![
-                    (
-                        0,
-                        NoteOn {
-                            frequency: midi_to_frequency(48)
-                        }
-                    ),
-                    (
-                        1,
-                        NoteOn {
-                            frequency: midi_to_frequency(48)
-                        }
-                    )
+                    (0, NoteOn(midi_to_frequency(48))),
+                    (1, NoteOn(midi_to_frequency(48)))
                 ]))
             );
             assert_eq!(
                 frequencies.next(),
-                Some(mk_test_voices(vec![(
-                    1,
-                    NoteOn {
-                        frequency: midi_to_frequency(48)
-                    }
-                )]))
+                Some(mk_test_voices(vec![(1, NoteOn(midi_to_frequency(48)))]))
             );
         }
     }
