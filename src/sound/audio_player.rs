@@ -71,8 +71,8 @@ impl AudioPlayer {
 
 impl Player for AudioPlayer {
     fn consume(&self, note_event_source: NoteEventSource) {
-        for event in note_event_source {
-            self.sender.send(event);
+        for voices in note_event_source {
+            self.sender.send(voices);
         }
     }
 }
