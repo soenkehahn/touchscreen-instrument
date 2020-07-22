@@ -95,7 +95,7 @@ impl MidiConverter {
                     send_midi(&mut callback, [0b1001_0000, midi_note, 127]);
                     *voice = Some(midi_note);
                 }
-                (Some(midi_note), NoteEvent::NoteOff { .. }) => {
+                (Some(midi_note), NoteEvent::NoteOff) => {
                     send_midi(&mut callback, [0b1000_0000, *midi_note, 0]);
                     *voice = None;
                 }
@@ -107,7 +107,7 @@ impl MidiConverter {
                         *voice = Some(new_midi_note);
                     }
                 }
-                (None, NoteEvent::NoteOff { .. }) => {}
+                (None, NoteEvent::NoteOff) => {}
             }
         }
     }
