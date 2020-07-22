@@ -11,10 +11,20 @@ use crate::areas::note_event_source::NoteEventSource;
 
 const TAU: f32 = ::std::f32::consts::PI * 2.0;
 
-pub const POLYPHONY: usize = 10;
+pub const POLYPHONY: usize = 20;
 
 pub fn mk_voices<T: Clone>(element: T) -> [T; POLYPHONY] {
     [
+        element.clone(),
+        element.clone(),
+        element.clone(),
+        element.clone(),
+        element.clone(),
+        element.clone(),
+        element.clone(),
+        element.clone(),
+        element.clone(),
+        element.clone(),
         element.clone(),
         element.clone(),
         element.clone(),
