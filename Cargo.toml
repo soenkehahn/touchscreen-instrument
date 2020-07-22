@@ -17,5 +17,8 @@ enum_derive = "*"
 skipchannel = "*"
 chrono = "*"
 
+[dev-dependencies]
+pretty_assertions = "*"
+
 [features]
 ci = []

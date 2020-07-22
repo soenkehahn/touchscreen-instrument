@@ -11,6 +11,8 @@ use crate::areas::note_event_source::NoteEventSource;
 
 const TAU: f32 = ::std::f32::consts::PI * 2.0;
 
+pub const POLYPHONY: usize = 20;
+
 pub trait Player {
     fn consume(&self, note_event_source: NoteEventSource);
 }
@@ -21,11 +23,15 @@ pub enum NoteEvent {
     NoteOn { slot: usize, frequency: f32 },
 }
 
-impl NoteEvent {
-    fn get_slot(&self) -> usize {
-        match self {
-            NoteEvent::NoteOff { slot } => *slot,
-            NoteEvent::NoteOn { slot, .. } => *slot,
+#[cfg(test)]
+pub mod test {
+    use super::*;
+
+    pub fn mk_voices(note_ons: Vec<(usize, NoteEvent)>) -> [NoteEvent; POLYPHONY] {
+        let mut result = [NoteEvent::NoteOff { slot: 0 }; POLYPHONY];
+        for (i, note) in note_ons {
+            result[i] = note;
         }
+        result
     }
 }

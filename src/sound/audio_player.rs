@@ -4,7 +4,7 @@ use super::Player;
 use crate::cli;
 use crate::get_binary_name;
 use crate::sound::midi_controller::MidiController;
-use crate::sound::{NoteEvent, NoteEventSource};
+use crate::sound::{NoteEvent, NoteEventSource, POLYPHONY};
 use crate::ErrorString;
 use jack::*;
 use skipchannel::*;
@@ -12,7 +12,7 @@ use std::*;
 
 pub struct AudioPlayer {
     async_client: AsyncClient<Logger, AudioProcessHandler>,
-    sender: Sender<NoteEvent>,
+    sender: Sender<[NoteEvent; POLYPHONY]>,
 }
 
 impl AudioPlayer {
@@ -86,7 +86,7 @@ pub struct AudioProcessHandler {
     logger: Logger,
     audio_ports: Stereo<Port<AudioOut>>,
     midi_controller: MidiController,
-    receiver: Receiver<NoteEvent>,
+    receiver: Receiver<[NoteEvent; POLYPHONY]>,
     generators: Generators,
 }
 
@@ -98,8 +98,8 @@ impl AudioProcessHandler {
     }
 
     fn handle_note_events(&mut self) {
-        if let Some(event) = self.receiver.recv() {
-            Generators::handle_note_event(&mut self.generators, event);
+        if let Some(voices) = self.receiver.recv() {
+            Generators::handle_note_events(&mut self.generators, voices);
         }
     }
 
