@@ -66,17 +66,17 @@ impl ProcessHandler for MidiProcessHandler {
 }
 
 struct MidiConverter {
-    active_notes: [Option<u8>; POLYPHONY],
+    voices: [Option<u8>; POLYPHONY],
 }
 
 impl MidiConverter {
     fn new() -> MidiConverter {
         MidiConverter {
-            active_notes: [None; POLYPHONY],
+            voices: [None; POLYPHONY],
         }
     }
 
-    fn connect<F>(&mut self, voices: [NoteEvent; POLYPHONY], mut callback: F)
+    fn connect<F>(&mut self, voice_events: [NoteEvent; POLYPHONY], mut callback: F)
     where
         F: FnMut(RawMidi),
     {
@@ -88,23 +88,23 @@ impl MidiConverter {
             });
         };
 
-        for (i, event) in voices.iter().enumerate() {
-            match (self.active_notes[i], event) {
+        for (voice, event) in self.voices.iter_mut().zip(voice_events.iter()) {
+            match (&voice, event) {
                 (None, NoteEvent::NoteOn { frequency }) => {
                     let midi_note = frequency_to_midi(*frequency);
                     send_midi(&mut callback, [0b1001_0000, midi_note, 127]);
-                    self.active_notes[i] = Some(midi_note);
+                    *voice = Some(midi_note);
                 }
                 (Some(midi_note), NoteEvent::NoteOff { .. }) => {
-                    send_midi(&mut callback, [0b1000_0000, midi_note, 0]);
-                    self.active_notes[i] = None;
+                    send_midi(&mut callback, [0b1000_0000, *midi_note, 0]);
+                    *voice = None;
                 }
                 (Some(old_midi_note), NoteEvent::NoteOn { frequency }) => {
                     let new_midi_note = frequency_to_midi(*frequency);
-                    if old_midi_note != new_midi_note {
-                        send_midi(&mut callback, [0b1000_0000, old_midi_note, 0]);
+                    if *old_midi_note != new_midi_note {
+                        send_midi(&mut callback, [0b1000_0000, *old_midi_note, 0]);
                         send_midi(&mut callback, [0b1001_0000, new_midi_note, 127]);
-                        self.active_notes[i] = Some(new_midi_note);
+                        *voice = Some(new_midi_note);
                     }
                 }
                 (None, NoteEvent::NoteOff { .. }) => {}
