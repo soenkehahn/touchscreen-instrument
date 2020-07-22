@@ -11,18 +11,52 @@ use crate::areas::note_event_source::NoteEventSource;
 
 const TAU: f32 = ::std::f32::consts::PI * 2.0;
 
+pub const POLYPHONY: usize = 20;
+
+pub fn mk_voices<T: Clone>(element: T) -> [T; POLYPHONY] {
+    [
+        element.clone(),
+        element.clone(),
+        element.clone(),
+        element.clone(),
+        element.clone(),
+        element.clone(),
+        element.clone(),
+        element.clone(),
+        element.clone(),
+        element.clone(),
+        element.clone(),
+        element.clone(),
+        element.clone(),
+        element.clone(),
+        element.clone(),
+        element.clone(),
+        element.clone(),
+        element.clone(),
+        element.clone(),
+        element,
+    ]
+}
+
 pub trait Player {
     fn consume(&self, note_event_source: NoteEventSource);
 }
 
-#[derive(Debug, PartialEq, Clone, Copy)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum NoteEvent {
     NoteOff,
     NoteOn(f32),
 }
 
-impl Default for NoteEvent {
-    fn default() -> NoteEvent {
-        NoteEvent::NoteOff
+#[cfg(test)]
+pub mod test {
+    use super::*;
+
+    pub fn mk_test_voices(note_ons: Vec<(usize, NoteEvent)>) -> [NoteEvent; POLYPHONY] {
+        let mut result = mk_voices(NoteEvent::NoteOff);
+        for (i, note) in note_ons {
+            result[i] = note;
+        }
+        result
     }
 }

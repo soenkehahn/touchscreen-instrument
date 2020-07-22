@@ -1,7 +1,7 @@
 use crate::cli;
 use crate::sound::wave_form::WaveForm;
 use crate::sound::NoteEvent;
-use crate::sound::TAU;
+use crate::sound::{POLYPHONY, TAU};
 use crate::utils::Slots;
 
 struct Envelope {
@@ -29,19 +29,15 @@ impl Generators {
                 release: 0.005,
             },
             wave_form: WaveForm::new(&cli_args.wave_form_config),
-            voices: vec![VoiceState::default(); slots],
+            voices: vec![VoiceState::default(); POLYPHONY],
         }
     }
 
-    pub fn handle_note_events(&mut self, slots: Slots<NoteEvent>) {
-        for (event, voice) in slots.iter().zip(self.voices.iter_mut()) {
+    pub fn handle_note_events(&mut self, voice_events: [NoteEvent; POLYPHONY]) {
+        for (voice, event) in self.voices.iter_mut().zip(voice_events.iter()) {
             match event {
-                NoteEvent::NoteOff => {
-                    voice.note_off();
-                }
-                NoteEvent::NoteOn(frequency) => {
-                    voice.note_on(*frequency);
-                }
+                NoteEvent::NoteOff => voice.note_off(),
+                NoteEvent::NoteOn(frequency) => voice.note_on(*frequency),
             }
         }
     }
@@ -213,6 +209,7 @@ impl VoiceState {
 #[cfg(test)]
 pub mod test {
     use super::*;
+    use crate::sound::mk_voices;
 
     const SAMPLE_RATE: usize = 44100;
 
@@ -225,7 +222,7 @@ pub mod test {
                 release: 0.0,
             },
             wave_form: WaveForm::from_function(|x| x.sin(), SAMPLE_RATE),
-            voices: vec![VoiceState::default(); 10],
+            voices: vec![VoiceState::default(); POLYPHONY],
         }
     }
 
@@ -321,16 +318,16 @@ pub mod test {
 
             #[test]
             fn switches_on_the_voice_with_the_same_index_as_the_note_event() {
-                for i in 0..10 {
+                for i in 0..POLYPHONY {
                     let mut generators = sine_generators();
-                    let note_events = {
-                        let mut result = [NoteEvent::NoteOff; 10];
+                    let voices = {
+                        let mut result = mk_voices(NoteEvent::NoteOff);
                         result[i] = NoteEvent::NoteOn(42.0);
                         result
                     };
-                    generators.handle_note_events(note_events);
+                    generators.handle_note_events(voices);
                     let expected = {
-                        let mut result = vec![VoiceState::Muted; 10];
+                        let mut result = mk_voices(VoiceState::Muted);
                         result[i] = VoiceState::Playing {
                             frequency: 42.0,
                             phase: 0.0,
@@ -345,34 +342,33 @@ pub mod test {
             }
 
             #[test]
-            fn switches_off_voices_on_note_off_events() {
-                for i in 0..10 {
+            fn switches_off_the_correct_voice() {
+                for i in 0..POLYPHONY {
                     let mut generators = sine_generators();
-                    let mut note_events = [NoteEvent::NoteOff; 10];
-                    note_events[i] = NoteEvent::NoteOn(42.0);
-                    generators.handle_note_events(note_events);
-                    note_events[i] = NoteEvent::NoteOff;
-                    generators.handle_note_events(note_events);
+                    let voices = {
+                        let mut result = mk_voices(NoteEvent::NoteOff);
+                        result[i] = NoteEvent::NoteOn(42.0);
+                        result
+                    };
+                    generators.handle_note_events(voices);
+                    generators.handle_note_events(mk_voices(NoteEvent::NoteOff));
                     generators.generate(SAMPLE_RATE, &mut [0.0]);
-                    let expected = vec![VoiceState::Muted; 10];
-                    assert_eq!(generators.voices, expected);
+                    assert_eq!(generators.voices, mk_voices(VoiceState::Muted));
                 }
             }
         }
 
         mod generators_generate {
             use super::*;
-            use crate::utils::Slots;
 
             fn buffer() -> [f32; 10] {
                 [0.0; 10]
             }
 
             #[test]
-            fn new_creates_as_many_voices_as_there_are_slots() {
+            fn new_creates_as_many_voices_as_configured() {
                 let generators = Generators::new(&cli::test::args(vec![]));
-                let slots: Slots<()> = [(); 10];
-                assert_eq!(generators.voices.len(), slots.len());
+                assert_eq!(generators.voices.len(), POLYPHONY);
             }
 
             #[test]
@@ -534,7 +530,7 @@ pub mod test {
                 assert_eq!(buffer[0], 0.2);
             }
 
-            mod adsr {
+            mod envelope {
                 use super::*;
 
                 fn assert_elements_close(a: [f32; 10], b: [f32; 10]) {
