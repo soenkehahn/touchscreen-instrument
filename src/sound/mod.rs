@@ -19,8 +19,8 @@ pub trait Player {
 
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub enum NoteEvent {
-    NoteOff { slot: usize },
-    NoteOn { slot: usize, frequency: f32 },
+    NoteOff,
+    NoteOn { frequency: f32 },
 }
 
 #[cfg(test)]
@@ -28,7 +28,7 @@ pub mod test {
     use super::*;
 
     pub fn mk_voices(note_ons: Vec<(usize, NoteEvent)>) -> [NoteEvent; POLYPHONY] {
-        let mut result = [NoteEvent::NoteOff { slot: 0 }; POLYPHONY];
+        let mut result = [NoteEvent::NoteOff; POLYPHONY];
         for (i, note) in note_ons {
             result[i] = note;
         }

@@ -90,7 +90,7 @@ impl MidiConverter {
 
         for (i, event) in voices.iter().enumerate() {
             match (self.active_notes[i], event) {
-                (None, NoteEvent::NoteOn { frequency, .. }) => {
+                (None, NoteEvent::NoteOn { frequency }) => {
                     let midi_note = frequency_to_midi(*frequency);
                     send_midi(&mut callback, [0b1001_0000, midi_note, 127]);
                     self.active_notes[i] = Some(midi_note);
@@ -99,7 +99,7 @@ impl MidiConverter {
                     send_midi(&mut callback, [0b1000_0000, midi_note, 0]);
                     self.active_notes[i] = None;
                 }
-                (Some(old_midi_note), NoteEvent::NoteOn { frequency, .. }) => {
+                (Some(old_midi_note), NoteEvent::NoteOn { frequency }) => {
                     let new_midi_note = frequency_to_midi(*frequency);
                     if old_midi_note != new_midi_note {
                         send_midi(&mut callback, [0b1000_0000, old_midi_note, 0]);
@@ -158,10 +158,7 @@ mod test {
             #[test]
             fn converts_note_on_events() {
                 expect_raw_midi(
-                    vec![vec![NoteOn {
-                        slot: 0,
-                        frequency: 440.0,
-                    }]],
+                    vec![vec![NoteOn { frequency: 440.0 }]],
                     vec![make_midi(&[0b10010000, 69, 127])],
                 );
             }
@@ -170,7 +167,6 @@ mod test {
             fn converts_other_notes_correctly() {
                 expect_raw_midi(
                     vec![vec![NoteOn {
-                        slot: 0,
                         frequency: midi_to_frequency(60),
                     }]],
                     vec![make_midi(&[0b10010000, 60, 127])],
@@ -182,7 +178,6 @@ mod test {
                 expect_raw_midi(
                     vec![
                         vec![NoteOn {
-                            slot: 0,
                             frequency: midi_to_frequency(57),
                         }],
                         vec![],
@@ -199,7 +194,6 @@ mod test {
                 expect_raw_midi(
                     vec![
                         vec![NoteOn {
-                            slot: 0,
                             frequency: midi_to_frequency(57),
                         }],
                         vec![],
@@ -217,11 +211,9 @@ mod test {
                 expect_raw_midi(
                     vec![
                         vec![NoteOn {
-                            slot: 0,
                             frequency: midi_to_frequency(57),
                         }],
                         vec![NoteOn {
-                            slot: 0,
                             frequency: midi_to_frequency(60),
                         }],
                     ],
@@ -238,11 +230,9 @@ mod test {
                 expect_raw_midi(
                     vec![
                         vec![NoteOn {
-                            slot: 0,
                             frequency: midi_to_frequency(60),
                         }],
                         vec![NoteOn {
-                            slot: 0,
                             frequency: midi_to_frequency(60),
                         }],
                     ],
@@ -255,11 +245,9 @@ mod test {
                 expect_raw_midi(
                     vec![
                         vec![NoteOn {
-                            slot: 0,
                             frequency: midi_to_frequency(57),
                         }],
                         vec![NoteOn {
-                            slot: 0,
                             frequency: midi_to_frequency(60),
                         }],
                         vec![],
@@ -284,7 +272,6 @@ mod test {
                         vec![(
                             0,
                             NoteOn {
-                                slot: 0,
                                 frequency: midi_to_frequency(60),
                             },
                         )],
@@ -292,14 +279,12 @@ mod test {
                             (
                                 0,
                                 NoteOn {
-                                    slot: 0,
                                     frequency: midi_to_frequency(60),
                                 },
                             ),
                             (
                                 1,
                                 NoteOn {
-                                    slot: 1,
                                     frequency: midi_to_frequency(62),
                                 },
                             ),
@@ -319,7 +304,6 @@ mod test {
                         vec![(
                             0,
                             NoteOn {
-                                slot: 0,
                                 frequency: midi_to_frequency(60),
                             },
                         )],
@@ -327,14 +311,12 @@ mod test {
                             (
                                 0,
                                 NoteOn {
-                                    slot: 0,
                                     frequency: midi_to_frequency(60),
                                 },
                             ),
                             (
                                 1,
                                 NoteOn {
-                                    slot: 1,
                                     frequency: midi_to_frequency(62),
                                 },
                             ),
@@ -342,7 +324,6 @@ mod test {
                         vec![(
                             1,
                             NoteOn {
-                                slot: 1,
                                 frequency: midi_to_frequency(62),
                             },
                         )],
@@ -364,7 +345,6 @@ mod test {
                         vec![(
                             0,
                             NoteOn {
-                                slot: 0,
                                 frequency: midi_to_frequency(60),
                             },
                         )],
@@ -372,14 +352,12 @@ mod test {
                             (
                                 0,
                                 NoteOn {
-                                    slot: 0,
                                     frequency: midi_to_frequency(60),
                                 },
                             ),
                             (
                                 1,
                                 NoteOn {
-                                    slot: 1,
                                     frequency: midi_to_frequency(62),
                                 },
                             ),
@@ -387,7 +365,6 @@ mod test {
                         vec![(
                             0,
                             NoteOn {
-                                slot: 0,
                                 frequency: midi_to_frequency(60),
                             },
                         )],
@@ -408,7 +385,6 @@ mod test {
                     vec![vec![(
                         1,
                         NoteOn {
-                            slot: 1,
                             frequency: midi_to_frequency(60),
                         },
                     )]],
@@ -422,7 +398,6 @@ mod test {
                     vec![vec![(
                         POLYPHONY - 1,
                         NoteOn {
-                            slot: 0,
                             frequency: midi_to_frequency(60),
                         },
                     )]],

@@ -39,7 +39,7 @@ impl Generators {
                 NoteEvent::NoteOff { .. } => {
                     self.voices[i].note_off();
                 }
-                NoteEvent::NoteOn { frequency, .. } => {
+                NoteEvent::NoteOn { frequency } => {
                     self.voices[i].note_on(*frequency);
                 }
             }
@@ -324,11 +324,8 @@ pub mod test {
                 for i in 0..POLYPHONY {
                     let mut generators = sine_generators();
                     let voices = {
-                        let mut result = [NoteEvent::NoteOff { slot: 0 }; POLYPHONY];
-                        result[i] = NoteEvent::NoteOn {
-                            slot: i,
-                            frequency: 42.0,
-                        };
+                        let mut result = [NoteEvent::NoteOff; POLYPHONY];
+                        result[i] = NoteEvent::NoteOn { frequency: 42.0 };
                         result
                     };
                     generators.handle_note_events(voices);
@@ -352,15 +349,12 @@ pub mod test {
                 for i in 0..POLYPHONY {
                     let mut generators = sine_generators();
                     let voices = {
-                        let mut result = [NoteEvent::NoteOff { slot: 0 }; POLYPHONY];
-                        result[i] = NoteEvent::NoteOn {
-                            slot: i,
-                            frequency: 42.0,
-                        };
+                        let mut result = [NoteEvent::NoteOff; POLYPHONY];
+                        result[i] = NoteEvent::NoteOn { frequency: 42.0 };
                         result
                     };
                     generators.handle_note_events(voices);
-                    generators.handle_note_events([NoteEvent::NoteOff { slot: 0 }; POLYPHONY]);
+                    generators.handle_note_events([NoteEvent::NoteOff; POLYPHONY]);
                     generators.generate(SAMPLE_RATE, &mut [0.0]);
                     assert_eq!(generators.voices, [VoiceState::Muted; POLYPHONY]);
                 }

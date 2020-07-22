@@ -128,11 +128,9 @@ struct SlotState {
 #[derive(Debug, PartialEq, Clone)]
 pub enum TouchState {
     NoTouch {
-        slot: usize,
         tracking_id: i32,
     },
     Touch {
-        slot: usize,
         tracking_id: i32,
         position: Position,
     },
@@ -210,13 +208,11 @@ impl TouchStateChunkSource {
                 let slot_state = self.slots[slot];
                 let touch_state = if slot_state.btn_touch {
                     TouchState::Touch {
-                        slot,
                         tracking_id: slot_state.tracking_id,
                         position: slot_state.position,
                     }
                 } else {
                     TouchState::NoTouch {
-                        slot,
                         tracking_id: slot_state.tracking_id,
                     }
                 };
@@ -365,7 +361,6 @@ mod test {
                 assert_eq!(
                     touch_states.collect::<Vec<TouchState>>(),
                     vec![Touch {
-                        slot: 0,
                         tracking_id: 0,
                         position: Position { x: 23, y: 42 }
                     }]
@@ -387,7 +382,6 @@ mod test {
                     assert_eq!(
                         touch_states.collect::<Vec<TouchState>>(),
                         vec![Touch {
-                            slot: 0,
                             tracking_id: 42,
                             position: Position { x: 0, y: 0 }
                         },]
@@ -410,14 +404,10 @@ mod test {
                         touch_states.collect::<Vec<TouchState>>(),
                         vec![
                             Touch {
-                                slot: 0,
                                 tracking_id: 42,
                                 position: Position { x: 0, y: 0 },
                             },
-                            NoTouch {
-                                slot: 0,
-                                tracking_id: 42,
-                            },
+                            NoTouch { tracking_id: 42 },
                         ]
                     );
                 }
@@ -440,12 +430,10 @@ mod test {
                     touch_states.collect::<Vec<TouchState>>(),
                     vec![
                         Touch {
-                            slot: 0,
                             tracking_id: 0,
                             position: Position { x: 23, y: 42 }
                         },
                         Touch {
-                            slot: 0,
                             tracking_id: 0,
                             position: Position { x: 51, y: 84 }
                         }
@@ -469,12 +457,10 @@ mod test {
                     touch_states.collect::<Vec<TouchState>>(),
                     vec![
                         Touch {
-                            slot: 0,
                             tracking_id: 0,
                             position: Position { x: 23, y: 42 },
                         },
                         Touch {
-                            slot: 0,
                             tracking_id: 0,
                             position: Position { x: 51, y: 42 }
                         },
@@ -498,12 +484,10 @@ mod test {
                     touch_states.collect::<Vec<TouchState>>(),
                     vec![
                         Touch {
-                            slot: 0,
                             tracking_id: 0,
                             position: Position { x: 23, y: 42 },
                         },
                         Touch {
-                            slot: 0,
                             tracking_id: 0,
                             position: Position { x: 23, y: 84 }
                         },
@@ -527,14 +511,10 @@ mod test {
                     touch_states.collect::<Vec<TouchState>>(),
                     vec![
                         Touch {
-                            slot: 0,
                             tracking_id: 0,
                             position: Position { x: 23, y: 42 },
                         },
-                        NoTouch {
-                            slot: 0,
-                            tracking_id: 0,
-                        },
+                        NoTouch { tracking_id: 0 },
                     ]
                 );
             }
@@ -563,17 +543,14 @@ mod test {
                     touch_states.collect::<Vec<TouchState>>(),
                     vec![
                         Touch {
-                            slot: 0,
                             tracking_id: 0,
                             position: Position { x: 23, y: 42 }
                         },
                         Touch {
-                            slot: 1,
                             tracking_id: 1,
                             position: Position { x: 1000, y: 1000 }
                         },
                         Touch {
-                            slot: 0,
                             tracking_id: 0,
                             position: Position { x: 51, y: 84 }
                         },
@@ -608,21 +585,15 @@ mod test {
                     touch_states.collect::<Vec<TouchState>>(),
                     vec![
                         Touch {
-                            slot: 0,
                             tracking_id: 0,
                             position: Position { x: 23, y: 42 },
                         },
                         Touch {
-                            slot: 1,
                             tracking_id: 1,
                             position: Position { x: 1000, y: 1000 },
                         },
-                        NoTouch {
-                            slot: 1,
-                            tracking_id: 1
-                        },
+                        NoTouch { tracking_id: 1 },
                         Touch {
-                            slot: 0,
                             tracking_id: 0,
                             position: Position { x: 51, y: 84 },
                         },
@@ -661,16 +632,11 @@ mod test {
                     touch_states.collect::<Vec<TouchState>>(),
                     vec![
                         Touch {
-                            slot: 0,
                             tracking_id: 0,
                             position: Position { x: 23, y: 42 }
                         },
-                        NoTouch {
-                            slot: 0,
-                            tracking_id: 0,
-                        },
+                        NoTouch { tracking_id: 0 },
                         Touch {
-                            slot: 1,
                             tracking_id: 1,
                             position: Position { x: 1000, y: 1000 }
                         },
@@ -694,7 +660,6 @@ mod test {
                 assert_eq!(
                     touch_states.collect::<Vec<TouchState>>(),
                     vec![Touch {
-                        slot: 1,
                         tracking_id: 1,
                         position: Position { x: 23, y: 42 }
                     }]
@@ -717,14 +682,10 @@ mod test {
                     touch_states.collect::<Vec<TouchState>>(),
                     vec![
                         Touch {
-                            slot: 1,
                             tracking_id: 1,
                             position: Position { x: 23, y: 42 },
                         },
-                        NoTouch {
-                            slot: 1,
-                            tracking_id: 1,
-                        }
+                        NoTouch { tracking_id: 1 }
                     ]
                 );
             }

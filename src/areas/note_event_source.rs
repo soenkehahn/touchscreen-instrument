@@ -16,7 +16,7 @@ impl NoteEventSource {
         NoteEventSource {
             areas,
             touch_state_source: Box::new(touch_state_source),
-            state: [NoteEvent::NoteOff { slot: 0 }; POLYPHONY],
+            state: [NoteEvent::NoteOff; POLYPHONY],
         }
     }
 }
@@ -27,9 +27,7 @@ impl Iterator for NoteEventSource {
     fn next(&mut self) -> Option<Self::Item> {
         self.touch_state_source.next().map(|touchstate| {
             let (tracking_id, note_event) = match touchstate {
-                TouchState::NoTouch { tracking_id, .. } => {
-                    (tracking_id, NoteEvent::NoteOff { slot: 0 })
-                }
+                TouchState::NoTouch { tracking_id } => (tracking_id, NoteEvent::NoteOff),
                 TouchState::Touch {
                     position,
                     tracking_id,
@@ -37,8 +35,8 @@ impl Iterator for NoteEventSource {
                 } => (
                     tracking_id,
                     match self.areas.frequency(position) {
-                        Some(frequency) => NoteEvent::NoteOn { slot: 0, frequency },
-                        None => NoteEvent::NoteOff { slot: 0 },
+                        Some(frequency) => NoteEvent::NoteOn { frequency },
+                        None => NoteEvent::NoteOff,
                     },
                 ),
             };
@@ -79,7 +77,6 @@ pub mod test {
             let mut frequencies = NoteEventSource::new(
                 areas(48),
                 vec![TouchState::Touch {
-                    slot: 0,
                     tracking_id: 0,
                     position: Position { x: 798, y: 595 },
                 }]
@@ -88,7 +85,6 @@ pub mod test {
             assert_eq!(
                 frequencies.next().unwrap()[0],
                 NoteOn {
-                    slot: 0,
                     frequency: midi_to_frequency(48),
                 }
             );
@@ -98,13 +94,9 @@ pub mod test {
         fn yields_notouch_for_pauses() {
             let mut frequencies = NoteEventSource::new(
                 areas(48),
-                vec![TouchState::NoTouch {
-                    slot: 0,
-                    tracking_id: 0,
-                }]
-                .into_iter(),
+                vec![TouchState::NoTouch { tracking_id: 0 }].into_iter(),
             );
-            assert_eq!(frequencies.next().unwrap()[0], NoteOff { slot: 0 });
+            assert_eq!(frequencies.next().unwrap()[0], NoteOff);
         }
 
         #[test]
@@ -112,7 +104,6 @@ pub mod test {
             let mut frequencies = NoteEventSource::new(
                 areas(49),
                 vec![TouchState::Touch {
-                    slot: 0,
                     tracking_id: 0,
                     position: Position { x: 798, y: 595 },
                 }]
@@ -121,7 +112,6 @@ pub mod test {
             assert_eq!(
                 frequencies.next().unwrap()[0],
                 NoteOn {
-                    slot: 0,
                     frequency: midi_to_frequency(49)
                 }
             );
@@ -134,7 +124,6 @@ pub mod test {
                 let mut frequencies = NoteEventSource::new(
                     areas(48),
                     vec![TouchState::Touch {
-                        slot: 0,
                         tracking_id: i as i32,
                         position: Position { x: 798, y: 595 },
                     }]
@@ -145,7 +134,6 @@ pub mod test {
                     Some(mk_voices(vec![(
                         i,
                         NoteOn {
-                            slot: 0,
                             frequency: midi_to_frequency(48)
                         }
                     )]))
@@ -160,7 +148,6 @@ pub mod test {
                 let mut frequencies = NoteEventSource::new(
                     areas(48),
                     vec![TouchState::Touch {
-                        slot: 0,
                         tracking_id,
                         position: Position { x: 798, y: 595 },
                     }]
@@ -171,7 +158,6 @@ pub mod test {
                     Some(mk_voices(vec![(
                         (tracking_id % (POLYPHONY as i32)) as usize,
                         NoteOn {
-                            slot: 0,
                             frequency: midi_to_frequency(48)
                         }
                     )]))
@@ -185,19 +171,14 @@ pub mod test {
                 areas(48),
                 vec![
                     TouchState::Touch {
-                        slot: 0,
                         tracking_id: 0,
                         position: Position { x: 798, y: 595 },
                     },
                     TouchState::Touch {
-                        slot: 0,
                         tracking_id: 1,
                         position: Position { x: 798, y: 595 },
                     },
-                    TouchState::NoTouch {
-                        slot: 0,
-                        tracking_id: 0,
-                    },
+                    TouchState::NoTouch { tracking_id: 0 },
                 ]
                 .into_iter(),
             );
@@ -208,14 +189,12 @@ pub mod test {
                     (
                         0,
                         NoteOn {
-                            slot: 0,
                             frequency: midi_to_frequency(48)
                         }
                     ),
                     (
                         1,
                         NoteOn {
-                            slot: 0,
                             frequency: midi_to_frequency(48)
                         }
                     )
@@ -226,7 +205,6 @@ pub mod test {
                 Some(mk_voices(vec![(
                     1,
                     NoteOn {
-                        slot: 0,
                         frequency: midi_to_frequency(48)
                     }
                 )]))
