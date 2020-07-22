@@ -43,7 +43,7 @@ impl Iterator for NoteEventSource {
                 ),
             };
             self.state[(tracking_id % POLYPHONY as i32) as usize] = note_event;
-            self.state.clone()
+            self.state
         })
     }
 }
