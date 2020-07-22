@@ -73,14 +73,14 @@ impl Generators {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Copy)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum EnvelopePhase {
     Attacking { attack_amplitude: f32 },
     FullVolume,
     Releasing { release_amplitude: f32 },
 }
 
-#[derive(Debug, Clone, PartialEq, Copy)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum VoiceState {
     Playing {
         frequency: f32,
@@ -213,6 +213,7 @@ impl VoiceState {
 #[cfg(test)]
 pub mod test {
     use super::*;
+    use crate::sound::mk_voices;
 
     const SAMPLE_RATE: usize = 44100;
 
@@ -324,13 +325,13 @@ pub mod test {
                 for i in 0..POLYPHONY {
                     let mut generators = sine_generators();
                     let voices = {
-                        let mut result = [NoteEvent::NoteOff; POLYPHONY];
+                        let mut result = mk_voices(NoteEvent::NoteOff);
                         result[i] = NoteEvent::NoteOn { frequency: 42.0 };
                         result
                     };
                     generators.handle_note_events(voices);
                     let expected = {
-                        let mut result = [VoiceState::Muted; POLYPHONY];
+                        let mut result = mk_voices(VoiceState::Muted);
                         result[i] = VoiceState::Playing {
                             frequency: 42.0,
                             phase: 0.0,
@@ -349,14 +350,14 @@ pub mod test {
                 for i in 0..POLYPHONY {
                     let mut generators = sine_generators();
                     let voices = {
-                        let mut result = [NoteEvent::NoteOff; POLYPHONY];
+                        let mut result = mk_voices(NoteEvent::NoteOff);
                         result[i] = NoteEvent::NoteOn { frequency: 42.0 };
                         result
                     };
                     generators.handle_note_events(voices);
-                    generators.handle_note_events([NoteEvent::NoteOff; POLYPHONY]);
+                    generators.handle_note_events(mk_voices(NoteEvent::NoteOff));
                     generators.generate(SAMPLE_RATE, &mut [0.0]);
-                    assert_eq!(generators.voices, [VoiceState::Muted; POLYPHONY]);
+                    assert_eq!(generators.voices, mk_voices(VoiceState::Muted));
                 }
             }
         }

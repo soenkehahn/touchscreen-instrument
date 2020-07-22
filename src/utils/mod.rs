@@ -20,3 +20,18 @@ impl<T> Iterator for Blocking<T> {
 }
 
 pub type Slots<T> = [T; 10];
+
+pub fn mk_slots<T: Clone>(element: T) -> Slots<T> {
+    [
+        element.clone(),
+        element.clone(),
+        element.clone(),
+        element.clone(),
+        element.clone(),
+        element.clone(),
+        element.clone(),
+        element.clone(),
+        element.clone(),
+        element,
+    ]
+}

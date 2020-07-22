@@ -1,6 +1,6 @@
 use crate::areas::Areas;
 use crate::evdev::TouchState;
-use crate::sound::{NoteEvent, POLYPHONY};
+use crate::sound::{mk_voices, NoteEvent, POLYPHONY};
 
 pub struct NoteEventSource {
     areas: Areas,
@@ -16,7 +16,7 @@ impl NoteEventSource {
         NoteEventSource {
             areas,
             touch_state_source: Box::new(touch_state_source),
-            state: [NoteEvent::NoteOff; POLYPHONY],
+            state: mk_voices(NoteEvent::NoteOff),
         }
     }
 }
@@ -41,7 +41,7 @@ impl Iterator for NoteEventSource {
                 ),
             };
             self.state[(tracking_id % POLYPHONY as i32) as usize] = note_event;
-            self.state
+            self.state.clone()
         })
     }
 }
@@ -52,7 +52,7 @@ pub mod test {
     use super::*;
     use crate::evdev::Position;
     use crate::sound::midi::midi_to_frequency;
-    use crate::sound::test::mk_voices;
+    use crate::sound::test::mk_test_voices;
 
     mod note_event_source {
         use super::*;
@@ -131,7 +131,7 @@ pub mod test {
                 );
                 assert_eq!(
                     frequencies.next(),
-                    Some(mk_voices(vec![(
+                    Some(mk_test_voices(vec![(
                         i,
                         NoteOn {
                             frequency: midi_to_frequency(48)
@@ -155,7 +155,7 @@ pub mod test {
                 );
                 assert_eq!(
                     frequencies.next(),
-                    Some(mk_voices(vec![(
+                    Some(mk_test_voices(vec![(
                         (tracking_id % (POLYPHONY as i32)) as usize,
                         NoteOn {
                             frequency: midi_to_frequency(48)
@@ -185,7 +185,7 @@ pub mod test {
             frequencies.next();
             assert_eq!(
                 frequencies.next(),
-                Some(mk_voices(vec![
+                Some(mk_test_voices(vec![
                     (
                         0,
                         NoteOn {
@@ -202,7 +202,7 @@ pub mod test {
             );
             assert_eq!(
                 frequencies.next(),
-                Some(mk_voices(vec![(
+                Some(mk_test_voices(vec![(
                     1,
                     NoteOn {
                         frequency: midi_to_frequency(48)

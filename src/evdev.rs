@@ -1,5 +1,5 @@
 use crate::utils;
-use crate::utils::Slots;
+use crate::utils::{mk_slots, Slots};
 use crate::AddMessage;
 use crate::ErrorString;
 use ::evdev_rs::enums::{EventCode, EventType::*, EV_ABS, EV_SYN::*};
@@ -118,7 +118,7 @@ pub struct Position {
     pub y: i32,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 struct SlotState {
     tracking_id: i32,
     position: Position,
@@ -147,11 +147,11 @@ impl TouchStateChunkSource {
     fn from_syn_chunk_source(syn_chunk_source: SynChunkSource) -> TouchStateChunkSource {
         TouchStateChunkSource {
             syn_chunk_source,
-            slots: [SlotState {
+            slots: mk_slots(SlotState {
                 tracking_id: 0,
                 position: Position { x: 0, y: 0 },
                 btn_touch: false,
-            }; 10],
+            }),
             active_slot: 0,
         }
     }
@@ -197,7 +197,7 @@ impl TouchStateChunkSource {
         let mut result = vec![];
         for (slot, changed) in changed.iter().enumerate() {
             if *changed {
-                let slot_state = self.slots[slot];
+                let slot_state = &self.slots[slot];
                 let touch_state = if slot_state.btn_touch {
                     TouchState::Touch {
                         tracking_id: slot_state.tracking_id,

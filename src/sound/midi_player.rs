@@ -120,7 +120,7 @@ mod test {
     mod midi_converter {
         use super::*;
         use crate::sound::midi::midi_to_frequency;
-        use crate::sound::test::mk_voices;
+        use crate::sound::test::mk_test_voices;
         use NoteEvent::*;
 
         fn make_midi(bytes: &'static [u8]) -> RawMidi<'static> {
@@ -141,7 +141,7 @@ mod test {
             let mut converter = MidiConverter::new();
             let mut result = vec![];
             for events in chunks {
-                converter.connect(mk_voices(events), |raw_midi| {
+                converter.connect(mk_test_voices(events), |raw_midi| {
                     result.push(format!("{:?}", raw_midi.bytes));
                 });
             }
