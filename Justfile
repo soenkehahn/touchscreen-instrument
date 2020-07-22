@@ -10,7 +10,7 @@ build:
   cargo build --features=ci
 
 clippy:
-  cargo clippy
+  cargo clippy --all-targets --features=ci
 
 fmt:
   cargo fmt -- --check

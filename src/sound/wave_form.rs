@@ -65,8 +65,8 @@ mod test {
 
     #[test]
     fn allows_to_use_closures() {
-        let foo = 42.0;
-        let wave_form = WaveForm::from_function(move |phase: f32| phase + foo, 10000);
+        let closed_over = 42.0;
+        let wave_form = WaveForm::from_function(move |phase: f32| phase + closed_over, 10000);
         assert_eq!(wave_form.run(0.0), 42.0);
     }
 
@@ -104,8 +104,8 @@ mod test {
     #[test]
     fn does_not_crash_for_values_outside_the_range() {
         let wave_form = WaveForm::from_function(|x: f32| x * 2.0, 10000);
-        for x in vec![0.0, -0.1, -TAU, -(TAU + 0.1), TAU, TAU + 0.1, 100000.0] {
-            wave_form.run(x);
+        for x in &[0.0, -0.1, -TAU, -(TAU + 0.1), TAU, TAU + 0.1, 100000.0] {
+            wave_form.run(*x);
         }
     }
 

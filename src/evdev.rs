@@ -284,7 +284,7 @@ mod test {
 
             impl PositionSource {
                 pub fn next_slot(&mut self, n: usize) -> Option<TouchState> {
-                    self.next().map(|states| states[n].clone())
+                    self.next().map(|states| states[n])
                 }
             }
 

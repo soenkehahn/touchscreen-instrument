@@ -1,4 +1,5 @@
 #![cfg_attr(feature = "ci", deny(warnings))]
+#![allow(clippy::float_cmp)]
 
 #[macro_use]
 extern crate custom_derive;
