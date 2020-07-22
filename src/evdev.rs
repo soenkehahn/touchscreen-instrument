@@ -140,7 +140,7 @@ pub enum TouchState {
 struct TouchStateChunkSource {
     syn_chunk_source: SynChunkSource,
     slots: Slots<SlotState>,
-    active_slot: Option<usize>,
+    active_slot: usize,
 }
 
 impl TouchStateChunkSource {
@@ -152,7 +152,7 @@ impl TouchStateChunkSource {
                 position: Position { x: 0, y: 0 },
                 btn_touch: false,
             }; 10],
-            active_slot: None,
+            active_slot: 0,
         }
     }
 
@@ -162,35 +162,27 @@ impl TouchStateChunkSource {
             if let EV_ABS = event.event_type {
                 match event.event_code {
                     EventCode::EV_ABS(EV_ABS::ABS_MT_SLOT) => {
-                        self.active_slot = if event.value < self.slots.as_ref().len() as i32 {
-                            Some(event.value as usize)
-                        } else {
-                            None
+                        if event.value < self.slots.as_ref().len() as i32 {
+                            self.active_slot = event.value as usize
                         };
                     }
                     EventCode::EV_ABS(EV_ABS::ABS_MT_POSITION_X) => {
-                        if let Some(active_slot) = self.active_slot {
-                            changed[active_slot] = true;
-                            self.slots[active_slot].position.x = event.value;
-                        }
+                        changed[self.active_slot] = true;
+                        self.slots[self.active_slot].position.x = event.value;
                     }
                     EventCode::EV_ABS(EV_ABS::ABS_MT_POSITION_Y) => {
-                        if let Some(active_slot) = self.active_slot {
-                            changed[active_slot] = true;
-                            self.slots[active_slot].position.y = event.value;
-                        }
+                        changed[self.active_slot] = true;
+                        self.slots[self.active_slot].position.y = event.value;
                     }
                     EventCode::EV_ABS(EV_ABS::ABS_MT_TRACKING_ID) => {
-                        if let Some(active_slot) = self.active_slot {
-                            changed[active_slot] = true;
-                            match event.value {
-                                -1 => {
-                                    self.slots[active_slot].btn_touch = false;
-                                }
-                                tracking_id => {
-                                    self.slots[active_slot].tracking_id = tracking_id;
-                                    self.slots[active_slot].btn_touch = true;
-                                }
+                        changed[self.active_slot] = true;
+                        match event.value {
+                            -1 => {
+                                self.slots[self.active_slot].btn_touch = false;
+                            }
+                            tracking_id => {
+                                self.slots[self.active_slot].tracking_id = tracking_id;
+                                self.slots[self.active_slot].btn_touch = true;
                             }
                         }
                     }
@@ -602,14 +594,20 @@ mod test {
             }
 
             #[test]
-            fn assumes_no_active_slot_at_startup() {
+            fn assumes_slot_zero_as_active_at_startup() {
                 let touch_states = touch_states(vec![
                     mk_input_event(EV_ABS, EventCode::EV_ABS(ABS_MT_TRACKING_ID), 0),
                     mk_input_event(EV_ABS, EventCode::EV_ABS(ABS_MT_POSITION_X), 23),
                     mk_input_event(EV_ABS, EventCode::EV_ABS(ABS_MT_POSITION_Y), 42),
                     mk_input_event(EV_SYN, EventCode::EV_SYN(SYN_REPORT), 0),
                 ]);
-                assert_eq!(touch_states.collect::<Vec<TouchState>>(), vec![]);
+                assert_eq!(
+                    touch_states.collect::<Vec<TouchState>>(),
+                    vec![Touch {
+                        tracking_id: 0,
+                        position: Position { x: 23, y: 42 }
+                    },]
+                );
             }
 
             #[test]
@@ -697,7 +695,7 @@ mod test {
                     mk_input_event(EV_ABS, EventCode::EV_ABS(ABS_MT_TRACKING_ID), 0),
                     mk_input_event(EV_SYN, EventCode::EV_SYN(SYN_REPORT), 0),
                 ]);
-                assert_eq!(touch_states.collect::<Vec<TouchState>>(), vec![]);
+                let _ = touch_states.collect::<Vec<TouchState>>();
             }
         }
     }
