@@ -34,7 +34,7 @@ impl Iterator for NoteEventSource {
                     ..
                 } => (
                     tracking_id,
-                    match self.areas.frequency(position) {
+                    match self.areas.frequency(&position) {
                         Some(frequency) => NoteEvent::NoteOn(frequency),
                         None => NoteEvent::NoteOff,
                     },

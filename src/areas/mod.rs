@@ -73,6 +73,8 @@ impl Areas {
         let mut areas = vec![];
         for row in row_range.0..row_range.1 {
             for column in column_range.0..column_range.1 {
+                let u = u.clone();
+                let v = v.clone();
                 areas.push(Area::new(
                     Shape::Parallelogram {
                         base: Position {
@@ -93,7 +95,7 @@ impl Areas {
         }
     }
 
-    pub fn frequency(&self, position: Position) -> Option<f32> {
+    pub fn frequency(&self, position: &Position) -> Option<f32> {
         self.areas
             .iter()
             .find(|area| area.shape.contains(position))
