@@ -112,7 +112,7 @@ impl Iterator for SynChunkSource {
     }
 }
 
-#[derive(PartialEq, Debug, Clone, Copy)]
+#[derive(PartialEq, Debug, Clone)]
 pub struct Position {
     pub x: i32,
     pub y: i32,
@@ -201,7 +201,7 @@ impl TouchStateChunkSource {
                 let touch_state = if slot_state.btn_touch {
                     TouchState::Touch {
                         tracking_id: slot_state.tracking_id,
-                        position: slot_state.position,
+                        position: slot_state.position.clone(),
                     }
                 } else {
                     TouchState::NoTouch {

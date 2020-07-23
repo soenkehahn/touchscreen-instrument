@@ -79,8 +79,8 @@ impl Areas {
                             x: anchor.x + v.x * row + u.x * column,
                             y: anchor.y + u.y * column + v.y * row,
                         },
-                        u,
-                        v,
+                        u: u.clone(),
+                        v: v.clone(),
                     },
                     start_midi_note + column + row * row_interval,
                 ));
@@ -93,7 +93,7 @@ impl Areas {
         }
     }
 
-    pub fn frequency(&self, position: Position) -> Option<f32> {
+    pub fn frequency(&self, position: &Position) -> Option<f32> {
         self.areas
             .iter()
             .find(|area| area.shape.contains(position))

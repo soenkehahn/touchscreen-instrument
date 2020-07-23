@@ -10,8 +10,8 @@ pub enum Shape {
 }
 
 impl Shape {
-    pub fn contains(&self, position: Position) -> bool {
-        match *self {
+    pub fn contains(&self, position: &Position) -> bool {
+        match self {
             Shape::Parallelogram { base, u, v } => {
                 let translated_position = Position {
                     x: position.x - base.x,
@@ -74,25 +74,25 @@ mod test {
 
             #[test]
             fn detects_positions_inside() {
-                assert!(PARALLELOGRAM.contains(Position { x: 5, y: 5 }));
-                assert!(PARALLELOGRAM.contains(Position { x: 10, y: 10 }));
-                assert!(PARALLELOGRAM.contains(Position { x: 5, y: 9 }));
+                assert!(PARALLELOGRAM.contains(&Position { x: 5, y: 5 }));
+                assert!(PARALLELOGRAM.contains(&Position { x: 10, y: 10 }));
+                assert!(PARALLELOGRAM.contains(&Position { x: 5, y: 9 }));
             }
 
             #[test]
             fn returns_true_for_corners() {
-                assert!(PARALLELOGRAM.contains(Position { x: 0, y: 0 }));
-                assert!(PARALLELOGRAM.contains(Position { x: 5, y: 10 }));
-                assert!(PARALLELOGRAM.contains(Position { x: 15, y: 15 }));
-                assert!(PARALLELOGRAM.contains(Position { x: 10, y: 5 }));
+                assert!(PARALLELOGRAM.contains(&Position { x: 0, y: 0 }));
+                assert!(PARALLELOGRAM.contains(&Position { x: 5, y: 10 }));
+                assert!(PARALLELOGRAM.contains(&Position { x: 15, y: 15 }));
+                assert!(PARALLELOGRAM.contains(&Position { x: 10, y: 5 }));
             }
 
             #[test]
             fn detects_positions_outside() {
-                assert!(!PARALLELOGRAM.contains(Position { x: 2, y: 8 }));
-                assert!(!PARALLELOGRAM.contains(Position { x: 7, y: 13 }));
-                assert!(!PARALLELOGRAM.contains(Position { x: 13, y: 7 }));
-                assert!(!PARALLELOGRAM.contains(Position { x: 8, y: 2 }));
+                assert!(!PARALLELOGRAM.contains(&Position { x: 2, y: 8 }));
+                assert!(!PARALLELOGRAM.contains(&Position { x: 7, y: 13 }));
+                assert!(!PARALLELOGRAM.contains(&Position { x: 13, y: 7 }));
+                assert!(!PARALLELOGRAM.contains(&Position { x: 8, y: 2 }));
             }
 
             #[test]
@@ -102,10 +102,10 @@ mod test {
                     u: Position { x: 10, y: 0 },
                     v: Position { x: 0, y: 10 },
                 };
-                assert!(!parallelogram.contains(Position { x: 5, y: 5 }));
-                assert!(!parallelogram.contains(Position { x: 15, y: 5 }));
-                assert!(!parallelogram.contains(Position { x: 5, y: 15 }));
-                assert!(parallelogram.contains(Position { x: 15, y: 15 }));
+                assert!(!parallelogram.contains(&Position { x: 5, y: 5 }));
+                assert!(!parallelogram.contains(&Position { x: 15, y: 5 }));
+                assert!(!parallelogram.contains(&Position { x: 5, y: 15 }));
+                assert!(parallelogram.contains(&Position { x: 15, y: 15 }));
             }
         }
     }
