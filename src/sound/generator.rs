@@ -6,6 +6,8 @@ use crate::utils::Slots;
 
 pub struct Envelope {
     pub attack: f32,
+    decay: f32,
+    sustain: f32,
     pub release: f32,
 }
 
@@ -20,6 +22,10 @@ pub struct Generators {
 pub const MIN_ATTACK: f32 = 0.005;
 pub const MAX_ATTACK: f32 = 0.3;
 
+const MIN_DECAY: f32 = 0.005;
+
+const MAX_SUSTAIN: f32 = 1.0;
+
 pub const MIN_RELEASE: f32 = 0.005;
 pub const MAX_RELEASE: f32 = 1.0;
 
@@ -32,6 +38,8 @@ impl Generators {
             midi_controller_volume: 1.0,
             envelope: Envelope {
                 attack: MIN_ATTACK,
+                decay: MIN_DECAY,
+                sustain: MAX_SUSTAIN,
                 release: MIN_RELEASE,
             },
             wave_form: WaveForm::new(&cli_args.wave_form_config),
@@ -42,7 +50,7 @@ impl Generators {
     pub fn handle_note_events(&mut self, voice_events: [NoteEvent; POLYPHONY]) {
         for (voice, event) in self.voices.iter_mut().zip(voice_events.iter()) {
             match event {
-                NoteEvent::NoteOff => voice.note_off(),
+                NoteEvent::NoteOff => voice.note_off(&self.envelope),
                 NoteEvent::NoteOn(frequency) => voice.note_on(*frequency),
             }
         }
@@ -58,15 +66,10 @@ impl Generators {
                         ref envelope_phase,
                         ..
                     } => {
-                        let envelope_amplitude = match envelope_phase {
-                            EnvelopePhase::Attacking { attack_amplitude } => *attack_amplitude,
-                            EnvelopePhase::FullVolume => 1.0,
-                            EnvelopePhase::Releasing { release_amplitude } => *release_amplitude,
-                        };
                         *sample += self.wave_form.run(phase)
                             * self.amplitude
                             * self.midi_controller_volume
-                            * envelope_amplitude;
+                            * envelope_phase.get_amplitude(&self.envelope);
                     }
                     VoiceState::Muted => {}
                 }
@@ -77,9 +80,21 @@ impl Generators {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum EnvelopePhase {
-    Attacking { attack_amplitude: f32 },
-    FullVolume,
-    Releasing { release_amplitude: f32 },
+    Attacking { amplitude: f32 },
+    Decaying { amplitude: f32 },
+    Sustaining,
+    Releasing { amplitude: f32 },
+}
+
+impl EnvelopePhase {
+    fn get_amplitude(&self, envelope: &Envelope) -> f32 {
+        match self {
+            EnvelopePhase::Attacking { amplitude } => *amplitude,
+            EnvelopePhase::Decaying { amplitude } => *amplitude,
+            EnvelopePhase::Sustaining => envelope.sustain,
+            EnvelopePhase::Releasing { amplitude } => *amplitude,
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -99,55 +114,44 @@ impl Default for VoiceState {
 }
 
 impl VoiceState {
-    pub fn note_on(&mut self, frequency: f32) {
-        *self = match *self {
+    pub fn note_on(&mut self, new_frequency: f32) {
+        match *self {
             VoiceState::Playing {
-                ref envelope_phase,
-                phase,
+                ref mut frequency,
+                ref mut envelope_phase,
                 ..
-            } => VoiceState::Playing {
-                frequency,
-                phase,
-                envelope_phase: match envelope_phase {
-                    EnvelopePhase::Attacking {
-                        attack_amplitude, ..
-                    } => EnvelopePhase::Attacking {
-                        attack_amplitude: *attack_amplitude,
-                    },
-                    EnvelopePhase::FullVolume => EnvelopePhase::FullVolume,
-                    EnvelopePhase::Releasing { .. } => EnvelopePhase::Attacking {
-                        attack_amplitude: 0.0,
-                    },
-                },
-            },
-            VoiceState::Muted => VoiceState::Playing {
-                frequency,
-                phase: 0.0,
-                envelope_phase: EnvelopePhase::Attacking {
-                    attack_amplitude: 0.0,
-                },
-            },
+            } => {
+                *frequency = new_frequency;
+                match envelope_phase {
+                    EnvelopePhase::Attacking { .. } => {}
+                    EnvelopePhase::Decaying { .. } => {}
+                    EnvelopePhase::Sustaining => {}
+                    EnvelopePhase::Releasing { .. } => {
+                        *envelope_phase = EnvelopePhase::Attacking { amplitude: 0.0 };
+                    }
+                }
+            }
+            VoiceState::Muted => {
+                *self = VoiceState::Playing {
+                    frequency: new_frequency,
+                    phase: 0.0,
+                    envelope_phase: EnvelopePhase::Attacking { amplitude: 0.0 },
+                };
+            }
         };
     }
 
-    pub fn note_off(&mut self) {
-        *self = match *self {
+    pub fn note_off(&mut self, envelope: &Envelope) {
+        match *self {
             VoiceState::Playing {
-                frequency,
-                phase,
-                ref envelope_phase,
-            } => VoiceState::Playing {
-                frequency,
-                phase,
-                envelope_phase: EnvelopePhase::Releasing {
-                    release_amplitude: match envelope_phase {
-                        EnvelopePhase::Attacking { attack_amplitude } => *attack_amplitude,
-                        EnvelopePhase::FullVolume => 1.0,
-                        EnvelopePhase::Releasing { release_amplitude } => *release_amplitude,
-                    },
-                },
-            },
-            VoiceState::Muted => VoiceState::Muted,
+                ref mut envelope_phase,
+                ..
+            } => {
+                *envelope_phase = EnvelopePhase::Releasing {
+                    amplitude: envelope_phase.get_amplitude(&envelope),
+                };
+            }
+            VoiceState::Muted => {}
         }
     }
 
@@ -166,43 +170,44 @@ impl VoiceState {
     }
 
     fn step_envelope(&mut self, sample_rate: usize, envelope: &Envelope) {
-        let next = match *self {
+        match self {
             VoiceState::Playing {
-                frequency,
-                phase,
                 ref mut envelope_phase,
-            } => match envelope_phase {
-                EnvelopePhase::Attacking {
-                    ref mut attack_amplitude,
-                } => {
-                    *attack_amplitude += 1.0 / (sample_rate as f32 * envelope.attack);
-                    if *attack_amplitude >= 1.0 {
-                        Some(VoiceState::Playing {
-                            frequency,
-                            phase,
-                            envelope_phase: EnvelopePhase::FullVolume,
-                        })
-                    } else {
-                        None
+                ..
+            } => {
+                match envelope_phase {
+                    EnvelopePhase::Attacking { ref mut amplitude } => {
+                        *amplitude += 1.0 / (sample_rate as f32 * envelope.attack);
+                        if *amplitude >= 1.0 {
+                            *envelope_phase = EnvelopePhase::Decaying { amplitude: 1.0 };
+                        }
                     }
-                }
-                EnvelopePhase::FullVolume => None,
-                EnvelopePhase::Releasing {
-                    ref mut release_amplitude,
-                    ..
-                } => {
-                    *release_amplitude -= 1.0 / (sample_rate as f32 * envelope.release);
-                    if *release_amplitude <= 0.0 {
-                        Some(VoiceState::Muted)
-                    } else {
-                        None
+                    EnvelopePhase::Decaying { ref mut amplitude } => {
+                        *amplitude -=
+                            (1.0 - envelope.sustain) / (sample_rate as f32 * envelope.decay);
+                        if *amplitude <= envelope.sustain {
+                            *envelope_phase = EnvelopePhase::Sustaining;
+                        }
                     }
-                }
-            },
-            _ => None,
-        };
-        if let Some(n) = next {
-            *self = n;
+                    EnvelopePhase::Sustaining => {}
+                    EnvelopePhase::Releasing {
+                        ref mut amplitude, ..
+                    } => {
+                        let release_decrement =
+                            envelope.sustain / (sample_rate as f32 * envelope.release);
+                        let decay_decrement = if *amplitude > envelope.sustain {
+                            (1.0 - envelope.sustain) / (sample_rate as f32 * envelope.decay)
+                        } else {
+                            0.0
+                        };
+                        *amplitude -= release_decrement + decay_decrement;
+                        if *amplitude <= 0.0 {
+                            *self = VoiceState::Muted;
+                        }
+                    }
+                };
+            }
+            VoiceState::Muted => {}
         }
     }
 
@@ -251,6 +256,8 @@ pub mod test {
                         sample_rate,
                         &Envelope {
                             attack: 0.0,
+                            decay: MIN_DECAY,
+                            sustain: 1.0,
                             release: 0.0,
                         },
                     );
@@ -270,6 +277,8 @@ pub mod test {
                     SAMPLE_RATE,
                     &Envelope {
                         attack: 0.0,
+                        decay: MIN_DECAY,
+                        sustain: 1.0,
                         release: 0.0,
                     },
                 );
@@ -285,6 +294,8 @@ pub mod test {
                         SAMPLE_RATE,
                         &Envelope {
                             attack: 0.0,
+                            decay: MIN_DECAY,
+                            sustain: 1.0,
                             release: 0.0,
                         },
                     );
@@ -303,6 +314,8 @@ pub mod test {
                 midi_controller_volume: 1.0,
                 envelope: Envelope {
                     attack: 0.0,
+                    decay: MIN_DECAY,
+                    sustain: 1.0,
                     release: 0.0,
                 },
                 wave_form: WaveForm::from_function(|x| x.sin(), SAMPLE_RATE),
@@ -316,6 +329,8 @@ pub mod test {
                 midi_controller_volume: 1.0,
                 envelope: Envelope {
                     attack: 0.0,
+                    decay: MIN_DECAY,
+                    sustain: 1.0,
                     release: 0.0,
                 },
                 wave_form: WaveForm::from_function(|x| x.sin(), SAMPLE_RATE),
@@ -341,9 +356,7 @@ pub mod test {
                         result[i] = VoiceState::Playing {
                             frequency: 42.0,
                             phase: 0.0,
-                            envelope_phase: EnvelopePhase::Attacking {
-                                attack_amplitude: 0.0,
-                            },
+                            envelope_phase: EnvelopePhase::Attacking { amplitude: 0.0 },
                         };
                         result
                     };
@@ -371,8 +384,14 @@ pub mod test {
         mod generate {
             use super::*;
 
-            fn buffer() -> [f32; 10] {
-                [0.0; 10]
+            impl Generators {
+                fn note_on(&mut self, i: usize, frequency: f32) {
+                    self.voices[i].note_on(frequency);
+                }
+
+                fn note_off(&mut self, i: usize) {
+                    self.voices[i].note_off(&self.envelope)
+                }
             }
 
             #[test]
@@ -384,8 +403,8 @@ pub mod test {
             #[test]
             fn starts_at_zero() {
                 let mut generators = monophonic_sine_generators();
-                generators.voices[0].note_on(1.0);
-                let buffer = &mut buffer();
+                generators.note_on(0, 1.0);
+                let buffer = &mut [0.0; 10];
                 generators.generate(SAMPLE_RATE, buffer);
                 assert_eq!(buffer[0], (TAU / SAMPLE_RATE as f32).sin());
             }
@@ -393,8 +412,8 @@ pub mod test {
             #[test]
             fn generates_sine_waves() {
                 let mut generators = monophonic_sine_generators();
-                generators.voices[0].note_on(1.0);
-                let mut buffer = buffer();
+                generators.note_on(0, 1.0);
+                let mut buffer = [0.0; 10];
                 generators.generate(SAMPLE_RATE, &mut buffer);
                 assert_eq!(buffer[0], (TAU / SAMPLE_RATE as f32).sin());
                 assert_eq!(buffer[1], (2.0 * TAU / SAMPLE_RATE as f32).sin());
@@ -403,12 +422,12 @@ pub mod test {
             #[test]
             fn starts_with_phase_zero_after_pauses() {
                 let mut generators = monophonic_sine_generators();
-                generators.voices[0].note_on(1.0);
-                generators.generate(SAMPLE_RATE, &mut buffer());
-                generators.voices[0].note_off();
-                generators.generate(SAMPLE_RATE, &mut buffer());
-                generators.voices[0].note_on(1.0);
-                let mut buffer = buffer();
+                generators.note_on(0, 1.0);
+                generators.generate(SAMPLE_RATE, &mut [0.0; 10]);
+                generators.note_off(0);
+                generators.generate(SAMPLE_RATE, &mut [0.0; 10]);
+                generators.note_on(0, 1.0);
+                let mut buffer = [0.0; 10];
                 generators.generate(SAMPLE_RATE, &mut buffer);
                 assert_eq!(buffer[0], (TAU / SAMPLE_RATE as f32).sin());
             }
@@ -416,10 +435,10 @@ pub mod test {
             #[test]
             fn doesnt_reset_the_phase_when_changing_the_frequency_without_pause() {
                 let mut generators = monophonic_sine_generators();
-                generators.voices[0].note_on(1.0);
-                generators.generate(SAMPLE_RATE, &mut buffer());
-                generators.voices[0].note_on(1.1);
-                let mut buffer = buffer();
+                generators.note_on(0, 1.0);
+                generators.generate(SAMPLE_RATE, &mut [0.0; 10]);
+                generators.note_on(0, 1.1);
+                let mut buffer = [0.0; 10];
                 generators.generate(SAMPLE_RATE, &mut buffer);
                 assert!(buffer[0] != 0.0, "{} should not equal {}", buffer[0], 0.0);
             }
@@ -427,8 +446,8 @@ pub mod test {
             #[test]
             fn works_for_different_frequencies() {
                 let mut generators = monophonic_sine_generators();
-                generators.voices[0].note_on(300.0);
-                let mut buffer = buffer();
+                generators.note_on(0, 300.0);
+                let mut buffer = [0.0; 10];
                 generators.generate(SAMPLE_RATE, &mut buffer);
                 assert_eq!(buffer[0], (300.0 * TAU / SAMPLE_RATE as f32).sin());
                 assert_eq!(buffer[1], (2.0 * 300.0 * TAU / SAMPLE_RATE as f32).sin());
@@ -438,10 +457,10 @@ pub mod test {
             #[test]
             fn allows_to_change_the_frequency_later() {
                 let mut generators = monophonic_sine_generators();
-                generators.voices[0].note_on(300.0);
-                generators.generate(SAMPLE_RATE, &mut buffer());
-                generators.voices[0].note_on(500.0);
-                let mut buffer = buffer();
+                generators.note_on(0, 300.0);
+                generators.generate(SAMPLE_RATE, &mut [0.0; 10]);
+                generators.note_on(0, 500.0);
+                let mut buffer = [0.0; 10];
                 generators.generate(SAMPLE_RATE, &mut buffer);
                 assert_eq!(
                     buffer[0],
@@ -460,12 +479,14 @@ pub mod test {
                     midi_controller_volume: 1.0,
                     envelope: Envelope {
                         attack: 0.0,
+                        decay: MIN_DECAY,
+                        sustain: 1.0,
                         release: 0.0,
                     },
                     wave_form: WaveForm::from_function(|x| x.sin(), 10000),
                     voices: vec![VoiceState::default()],
                 };
-                let mut buffer = buffer();
+                let mut buffer = [0.0; 10];
                 generators.generate(SAMPLE_RATE, &mut buffer);
                 assert_eq!(buffer[1], 0.0);
                 assert_eq!(buffer[2], 0.0);
@@ -474,10 +495,10 @@ pub mod test {
             #[test]
             fn can_be_muted() {
                 let mut generators = monophonic_sine_generators();
-                generators.voices[0].note_on(1.0);
-                generators.generate(SAMPLE_RATE, &mut buffer());
-                generators.voices[0].note_off();
-                let mut buffer = buffer();
+                generators.note_on(0, 1.0);
+                generators.generate(SAMPLE_RATE, &mut [0.0; 10]);
+                generators.note_off(0);
+                let mut buffer = [0.0; 10];
                 generators.generate(SAMPLE_RATE, &mut buffer);
                 assert_eq!(buffer[1], 0.0);
                 assert_eq!(buffer[2], 0.0);
@@ -490,13 +511,15 @@ pub mod test {
                     midi_controller_volume: 1.0,
                     envelope: Envelope {
                         attack: 0.0,
+                        decay: MIN_DECAY,
+                        sustain: 1.0,
                         release: 0.0,
                     },
                     wave_form: WaveForm::from_function(|phase| phase * 5.0, 10000),
                     voices: vec![VoiceState::default()],
                 };
-                generators.voices[0].note_on(1.0);
-                let mut buffer = buffer();
+                generators.note_on(0, 1.0);
+                let mut buffer = [0.0; 10];
                 generators.generate(SAMPLE_RATE, &mut buffer);
                 assert_close(buffer[0], 5.0 * TAU / SAMPLE_RATE as f32);
                 assert_close(buffer[1], 2.0 * 5.0 * TAU / SAMPLE_RATE as f32);
@@ -509,13 +532,15 @@ pub mod test {
                     midi_controller_volume: 1.0,
                     envelope: Envelope {
                         attack: 0.0,
+                        decay: MIN_DECAY,
+                        sustain: 1.0,
                         release: 0.0,
                     },
                     wave_form: WaveForm::from_function(|_phase| 0.4, 10000),
                     voices: vec![VoiceState::default()],
                 };
-                generators.voices[0].note_on(1.0);
-                let mut buffer = buffer();
+                generators.note_on(0, 1.0);
+                let mut buffer = [0.0; 10];
                 generators.generate(SAMPLE_RATE, &mut buffer);
                 assert_eq!(buffer[0], 0.1);
             }
@@ -527,15 +552,17 @@ pub mod test {
                     midi_controller_volume: 1.0,
                     envelope: Envelope {
                         attack: 0.0,
+                        decay: MIN_DECAY,
+                        sustain: 1.0,
                         release: 0.0,
                     },
                     wave_form: WaveForm::from_function(|_phase| 0.4, 10000),
                     voices: vec![VoiceState::default()],
                 };
-                generators.voices[0].note_on(1.0);
-                generators.generate(SAMPLE_RATE, &mut buffer());
+                generators.note_on(0, 1.0);
+                generators.generate(SAMPLE_RATE, &mut [0.0; 10]);
                 generators.midi_controller_volume = 0.5;
-                let mut buffer = buffer();
+                let mut buffer = [0.0; 10];
                 generators.generate(SAMPLE_RATE, &mut buffer);
                 assert_eq!(buffer[0], 0.2);
             }
@@ -543,107 +570,230 @@ pub mod test {
             mod envelope {
                 use super::*;
 
-                fn assert_elements_close(a: [f32; 10], b: [f32; 10]) {
-                    let epsilon = 0.000001;
-                    let mut close = true;
-                    for (x, y) in a.iter().zip(b.iter()) {
-                        if (x - y).abs() > epsilon {
-                            println!("{} != {}", x, y);
-                            close = false;
+                const SAMPLE_RATE: usize = 10;
+
+                macro_rules! test_generators {
+                    ($generators:expr, $expected:expr,) => {
+                        test_generators!($generators, $expected)
+                    };
+                    ($generators:expr, $expected:expr) => {
+                        let mut buffer = [0.0; 10];
+                        $generators.generate(SAMPLE_RATE, &mut buffer);
+                        println!("test_generators:");
+                        let epsilon = 0.000001;
+                        let mut close = true;
+                        for (x, y) in buffer.iter().zip($expected.iter()) {
+                            if (x - y).abs() > epsilon {
+                                println!("{} != {}", x, y);
+                                close = false;
+                            } else {
+                                println!("{} ~= {}", x, y);
+                            }
                         }
+                        assert!(close, "not close enough: {:?} and {:?}", buffer, $expected);
+                    };
+                }
+
+                fn mk_generators(envelope: Envelope, wave_form: fn(f32) -> f32) -> Generators {
+                    Generators {
+                        amplitude: 1.0,
+                        midi_controller_volume: 1.0,
+                        envelope,
+                        wave_form: WaveForm::from_function(wave_form, 10000),
+                        voices: vec![VoiceState::default()],
                     }
-                    assert!(close, "not close enough: {:?} and {:?}", a, b);
                 }
 
                 #[test]
                 fn allows_to_specify_an_attack_time() {
-                    let mut generators = Generators {
-                        amplitude: 1.0,
-                        midi_controller_volume: 1.0,
-                        envelope: Envelope {
+                    let mut generators = mk_generators(
+                        Envelope {
                             attack: 0.5,
+                            decay: MIN_DECAY,
+                            sustain: 1.0,
                             release: 0.0,
                         },
-                        wave_form: WaveForm::from_function(|_phase| 0.5, 10000),
-                        voices: vec![VoiceState::default()],
-                    };
-                    generators.voices[0].note_on(1.0);
-                    let mut buffer = buffer();
-                    generators.generate(10, &mut buffer);
-                    assert_elements_close(
-                        buffer,
+                        |_phase| 0.5,
+                    );
+                    generators.note_on(0, 1.0);
+                    test_generators!(
+                        generators,
                         [0.1, 0.2, 0.3, 0.4, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5],
                     );
                 }
 
                 #[test]
                 fn does_not_reenter_an_attack_phase_for_subsequent_note_ons_when_playing() {
-                    let mut generators = Generators {
-                        amplitude: 1.0,
-                        midi_controller_volume: 1.0,
-                        envelope: Envelope {
+                    let mut generators = mk_generators(
+                        Envelope {
                             attack: 0.5,
+                            decay: MIN_DECAY,
+                            sustain: 1.0,
                             release: 0.0,
                         },
-                        wave_form: WaveForm::from_function(|_phase| 0.5, 10000),
-                        voices: vec![VoiceState::default()],
-                    };
-                    generators.voices[0].note_on(1.0);
-                    generators.generate(10, &mut buffer());
-                    generators.voices[0].note_on(1.0);
-                    let mut second_buffer = buffer();
-                    generators.generate(10, &mut second_buffer);
-                    assert_elements_close(second_buffer, [0.5; 10]);
+                        |_phase| 0.5,
+                    );
+                    generators.note_on(0, 1.0);
+                    generators.generate(SAMPLE_RATE, &mut [0.0; 10]);
+                    generators.note_on(0, 1.0);
+                    test_generators!(generators, [0.5; 10]);
                 }
 
                 #[test]
                 fn does_not_restart_an_attack_phase_for_subsequent_note_ons_while_in_attack_phase()
                 {
-                    let mut generators = Generators {
-                        amplitude: 1.0,
-                        midi_controller_volume: 1.0,
-                        envelope: Envelope {
+                    let mut generators = mk_generators(
+                        Envelope {
                             attack: 2.0,
+                            decay: MIN_DECAY,
+                            sustain: 1.0,
                             release: 0.0,
                         },
-                        wave_form: WaveForm::from_function(|_phase| 1.0, 10000),
-                        voices: vec![VoiceState::default()],
-                    };
-                    generators.voices[0].note_on(1.0);
-                    generators.generate(10, &mut buffer());
-                    generators.voices[0].note_on(1.0);
-                    let mut second_buffer = buffer();
-                    generators.generate(10, &mut second_buffer);
+                        |_phase| 1.0,
+                    );
+                    generators.note_on(0, 1.0);
+                    generators.generate(SAMPLE_RATE, &mut [0.0; 10]);
+                    generators.note_on(0, 1.0);
                     let expected = {
-                        let mut result = buffer();
+                        let mut result = [0.0; 10];
                         for (i, cell) in result.iter_mut().enumerate() {
                             *cell = 0.5 + (i as f32 + 1.0) * 0.05;
                         }
                         result
                     };
-                    assert_elements_close(second_buffer, expected);
+                    test_generators!(generators, expected);
                 }
 
                 #[test]
                 fn allows_to_specify_a_release_time() {
-                    let mut generators = Generators {
-                        amplitude: 1.0,
-                        midi_controller_volume: 1.0,
-                        envelope: Envelope {
+                    let mut generators = mk_generators(
+                        Envelope {
                             attack: 0.0,
+                            decay: MIN_DECAY,
+                            sustain: 1.0,
                             release: 0.5,
                         },
-                        wave_form: WaveForm::from_function(|_phase| 0.5, 10000),
-                        voices: vec![VoiceState::default()],
-                    };
-                    generators.voices[0].note_on(1.0);
-                    generators.generate(10, &mut buffer());
-                    generators.voices[0].note_off();
-                    let mut buffer = buffer();
-                    generators.generate(10, &mut buffer);
-                    assert_elements_close(
-                        buffer,
+                        |_phase| 0.5,
+                    );
+                    generators.note_on(0, 1.0);
+                    generators.generate(SAMPLE_RATE, &mut [0.0; 10]);
+                    generators.note_off(0);
+                    test_generators!(
+                        generators,
                         [0.4, 0.3, 0.2, 0.1, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                    );
+                }
+
+                #[test]
+                fn allows_to_specify_a_decay_time() {
+                    let mut generators = mk_generators(
+                        Envelope {
+                            attack: 0.0,
+                            decay: 0.5,
+                            sustain: 0.0,
+                            release: 0.0,
+                        },
+                        |_phase| 1.0,
+                    );
+                    generators.note_on(0, 1.0);
+                    test_generators!(
+                        generators,
+                        [1.0, 0.8, 0.6, 0.4, 0.2, 0.0, 0.0, 0.0, 0.0, 0.0],
+                    );
+                }
+
+                #[test]
+                fn allows_to_specify_a_sustain_level() {
+                    let mut generators = mk_generators(
+                        Envelope {
+                            attack: 0.0,
+                            decay: 0.5,
+                            sustain: 0.9,
+                            release: 0.0,
+                        },
+                        |_phase| 1.0,
+                    );
+                    generators.note_on(0, 1.0);
+                    test_generators!(
+                        generators,
+                        [1.0, 0.98, 0.96, 0.94, 0.92, 0.9, 0.9, 0.9, 0.9, 0.9],
+                    );
+                }
+
+                #[test]
+                fn full_adsr_test() {
+                    let mut generators = mk_generators(
+                        Envelope {
+                            attack: 0.5,
+                            decay: 1.0,
+                            sustain: 0.9,
+                            release: 0.9,
+                        },
+                        |_phase| 1.0,
+                    );
+                    generators.note_on(0, 1.0);
+                    test_generators!(
+                        generators,
+                        [0.2, 0.4, 0.6, 0.8, 1.0, 0.99, 0.98, 0.97, 0.96, 0.95],
+                    );
+                    test_generators!(
+                        generators,
+                        [0.94, 0.93, 0.92, 0.91, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9],
+                    );
+                    generators.note_off(0);
+                    test_generators!(
+                        generators,
+                        [0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1, 0.0, 0.0],
+                    );
+                }
+
+                #[test]
+                fn stays_in_decaying_state_when_receiving_subsequent_note_on_event() {
+                    let mut generators = mk_generators(
+                        Envelope {
+                            attack: 0.0,
+                            decay: 2.0,
+                            sustain: 0.9,
+                            release: 0.0,
+                        },
+                        |_phase| 1.0,
+                    );
+                    generators.note_on(0, 1.0);
+                    test_generators!(
+                        generators,
+                        [1.0, 0.995, 0.99, 0.985, 0.98, 0.975, 0.97, 0.965, 0.96, 0.955],
+                    );
+                    generators.note_on(0, 1.0);
+                    test_generators!(
+                        generators,
+                        [0.95, 0.945, 0.94, 0.935, 0.93, 0.925, 0.92, 0.915, 0.91, 0.905],
+                    );
+                }
+
+                #[test]
+                fn combines_decay_and_release_decrements_on_note_off_events_when_in_decaying_state()
+                {
+                    let sustain = 0.5;
+                    let decay_decrement = 0.03;
+                    let release_decrement = 0.02;
+                    let mut generators = mk_generators(
+                        Envelope {
+                            attack: 0.0,
+                            decay: (1.0 - sustain) / (SAMPLE_RATE as f32 * decay_decrement),
+                            sustain,
+                            release: sustain / (SAMPLE_RATE as f32 * release_decrement),
+                        },
+                        |_phase| 1.0,
+                    );
+                    generators.note_on(0, 1.0);
+                    test_generators!(
+                        generators,
+                        [1.0, 0.97, 0.94, 0.91, 0.88, 0.85, 0.82, 0.79, 0.76, 0.73],
+                    );
+                    generators.note_off(0);
+                    test_generators!(
+                        generators,
+                        [0.68, 0.63, 0.58, 0.53, 0.48, 0.46, 0.44, 0.42, 0.4, 0.38],
                     );
                 }
             }
@@ -654,8 +804,8 @@ pub mod test {
                 #[test]
                 fn does_not_overwrite_the_buffer_when_muted() {
                     let mut generators = monophonic_sine_generators();
-                    generators.voices[0].note_off();
-                    let mut buffer = buffer();
+                    generators.note_off(0);
+                    let mut buffer = [0.0; 10];
                     buffer[5] = 23.0;
                     generators.generate(SAMPLE_RATE, &mut buffer);
                     assert_eq!(buffer[5], 23.0);
@@ -668,13 +818,15 @@ pub mod test {
                         midi_controller_volume: 1.0,
                         envelope: Envelope {
                             attack: 0.0,
+                            decay: MIN_DECAY,
+                            sustain: 1.0,
                             release: 0.0,
                         },
                         wave_form: WaveForm::from_function(|_phase| 0.5, 10000),
                         voices: vec![VoiceState::default()],
                     };
-                    generators.voices[0].note_on(440.0);
-                    let mut buffer = buffer();
+                    generators.note_on(0, 440.0);
+                    let mut buffer = [0.0; 10];
                     buffer[0] = 0.1;
                     generators.generate(10, &mut buffer);
                     assert_eq!(buffer[0], 0.1 + 0.5 * 0.5);
@@ -688,15 +840,17 @@ pub mod test {
                         midi_controller_volume: 1.0,
                         envelope: Envelope {
                             attack: 0.0,
+                            decay: MIN_DECAY,
+                            sustain: 1.0,
                             release: 1.0,
                         },
                         wave_form: WaveForm::from_function(|_phase| 0.5, 10000),
                         voices: vec![VoiceState::default()],
                     };
-                    let mut buffer = buffer();
-                    generators.voices[0].note_on(440.0);
+                    let mut buffer = [0.0; 10];
+                    generators.note_on(0, 440.0);
                     generators.generate(sample_rate, &mut buffer);
-                    generators.voices[0].note_off();
+                    generators.note_off(0);
                     buffer[0] = 0.1;
                     buffer[1] = 0.1;
                     generators.generate(sample_rate, &mut buffer);
