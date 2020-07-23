@@ -219,32 +219,6 @@ pub mod test {
 
     const SAMPLE_RATE: usize = 44100;
 
-    pub fn sine_generators() -> Generators {
-        Generators {
-            amplitude: 1.0,
-            midi_controller_volume: 1.0,
-            envelope: Envelope {
-                attack: 0.0,
-                release: 0.0,
-            },
-            wave_form: WaveForm::from_function(|x| x.sin(), SAMPLE_RATE),
-            voices: vec![VoiceState::default(); POLYPHONY],
-        }
-    }
-
-    fn monophonic_sine_generators() -> Generators {
-        Generators {
-            amplitude: 1.0,
-            midi_controller_volume: 1.0,
-            envelope: Envelope {
-                attack: 0.0,
-                release: 0.0,
-            },
-            wave_form: WaveForm::from_function(|x| x.sin(), SAMPLE_RATE),
-            voices: vec![VoiceState::default()],
-        }
-    }
-
     fn assert_close(a: f32, b: f32) {
         let epsilon = 0.004;
         if (a - b).abs() > epsilon {
@@ -318,8 +292,38 @@ pub mod test {
                 assert_close(voice.get_phase(), 0.0);
             }
         }
+    }
 
-        mod generators_handle_note_events {
+    pub mod generators {
+        use super::*;
+
+        pub fn sine_generators() -> Generators {
+            Generators {
+                amplitude: 1.0,
+                midi_controller_volume: 1.0,
+                envelope: Envelope {
+                    attack: 0.0,
+                    release: 0.0,
+                },
+                wave_form: WaveForm::from_function(|x| x.sin(), SAMPLE_RATE),
+                voices: vec![VoiceState::default(); POLYPHONY],
+            }
+        }
+
+        fn monophonic_sine_generators() -> Generators {
+            Generators {
+                amplitude: 1.0,
+                midi_controller_volume: 1.0,
+                envelope: Envelope {
+                    attack: 0.0,
+                    release: 0.0,
+                },
+                wave_form: WaveForm::from_function(|x| x.sin(), SAMPLE_RATE),
+                voices: vec![VoiceState::default()],
+            }
+        }
+
+        mod handle_note_events {
             use super::*;
 
             #[test]
@@ -364,7 +368,7 @@ pub mod test {
             }
         }
 
-        mod generators_generate {
+        mod generate {
             use super::*;
 
             fn buffer() -> [f32; 10] {

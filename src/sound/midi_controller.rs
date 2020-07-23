@@ -251,7 +251,7 @@ impl HarmonicsState {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::sound::generator::test::sine_generators;
+    use crate::sound::generator::test::generators::sine_generators;
     use crate::utils::thread_worker::test::wait_for;
 
     fn compare_wave_forms(a: &WaveForm, b: &WaveForm) -> Result<(), String> {
