@@ -1,3 +1,4 @@
+use crate::sound::generator;
 use crate::sound::generator::Generators;
 use crate::sound::hammond::mk_hammond;
 use crate::sound::wave_form::WaveForm;
@@ -6,31 +7,48 @@ use crate::ErrorString;
 use jack::*;
 
 #[derive(Debug, PartialEq)]
+enum MidiControllerEvent {
+    Volume(f32),
+    Envelope(EnvelopeEvent),
+    HarmonicVolume(HarmonicVolume),
+}
+
+#[derive(Debug, PartialEq)]
+enum EnvelopeEvent {
+    Attack(f32),
+    Release(f32),
+}
+
+#[derive(Debug, PartialEq)]
 struct HarmonicVolume {
     index: usize,
     volume: f32,
 }
 
-#[derive(Debug, PartialEq)]
-enum MidiControllerEvent {
-    Volume(f32),
-    HarmonicVolume(HarmonicVolume),
-}
-
 impl MidiControllerEvent {
-    fn convert_volume(byte: &u8) -> f32 {
+    fn convert_midi_value(byte: &u8) -> f32 {
         f32::min(1.0, *byte as f32 / 127.0)
     }
 
     fn from_raw_midi(event: RawMidi<'_>) -> Option<MidiControllerEvent> {
         match event.bytes {
             [176, 11, volume] => Some(MidiControllerEvent::Volume(
-                MidiControllerEvent::convert_volume(volume),
+                MidiControllerEvent::convert_midi_value(volume),
             )),
+            [176, 14, value] => Some(MidiControllerEvent::Envelope(EnvelopeEvent::Attack(
+                MidiControllerEvent::convert_midi_value(value)
+                    * (generator::MAX_ATTACK - generator::MIN_ATTACK)
+                    + generator::MIN_ATTACK,
+            ))),
+            [176, 15, value] => Some(MidiControllerEvent::Envelope(EnvelopeEvent::Release(
+                MidiControllerEvent::convert_midi_value(value)
+                    * (generator::MAX_RELEASE - generator::MIN_RELEASE)
+                    + generator::MIN_RELEASE,
+            ))),
             [176, slider @ 3..=10, volume] => {
                 Some(MidiControllerEvent::HarmonicVolume(HarmonicVolume {
                     index: *slider as usize - 3,
-                    volume: MidiControllerEvent::convert_volume(volume),
+                    volume: MidiControllerEvent::convert_midi_value(volume),
                 }))
             }
             _ => None,
@@ -53,6 +71,31 @@ mod from_raw_midi_to_midi_controller_event {
                 Some(MidiControllerEvent::Volume(64.0 / 127.0)),
             ),
             ([176, 11, 128], Some(MidiControllerEvent::Volume(1.0))),
+            // envelope values
+            (
+                [176, 14, 0],
+                Some(MidiControllerEvent::Envelope(EnvelopeEvent::Attack(
+                    generator::MIN_ATTACK,
+                ))),
+            ),
+            (
+                [176, 14, 127],
+                Some(MidiControllerEvent::Envelope(EnvelopeEvent::Attack(
+                    generator::MAX_ATTACK,
+                ))),
+            ),
+            (
+                [176, 15, 0],
+                Some(MidiControllerEvent::Envelope(EnvelopeEvent::Release(
+                    generator::MIN_RELEASE,
+                ))),
+            ),
+            (
+                [176, 15, 127],
+                Some(MidiControllerEvent::Envelope(EnvelopeEvent::Release(
+                    generator::MAX_RELEASE,
+                ))),
+            ),
             // first harmonic
             (
                 [176, 3, 0],
@@ -168,6 +211,10 @@ impl EventHandler {
     ) {
         match event {
             MidiControllerEvent::Volume(volume) => generators.midi_controller_volume = volume,
+            MidiControllerEvent::Envelope(event) => match event {
+                EnvelopeEvent::Attack(attack) => generators.envelope.attack = attack,
+                EnvelopeEvent::Release(release) => generators.envelope.release = release,
+            },
             MidiControllerEvent::HarmonicVolume(values) => self.hammond_generator.enqueue(values),
         }
     }
@@ -235,14 +282,36 @@ mod test {
         }
 
         #[test]
-        fn adjusts_wave_form_in_generators() -> Result<(), String> {
-            let event_handler = EventHandler::new();
+        fn adjusts_envelope_attack_values() {
+            let events = vec![RawMidi {
+                time: 0,
+                bytes: &[176, 14, 127],
+            }];
             let mut generators = sine_generators();
-            let expected = mk_hammond(vec![42.0 / 127.0], generators.wave_form.table.len());
+            EventHandler::new().handle_events(&mut generators, events.into_iter());
+            assert_eq!(generators.envelope.attack, generator::MAX_ATTACK);
+        }
+
+        #[test]
+        fn adjusts_envelope_release_value() {
+            let events = vec![RawMidi {
+                time: 0,
+                bytes: &[176, 15, 127],
+            }];
+            let mut generators = sine_generators();
+            EventHandler::new().handle_events(&mut generators, events.into_iter());
+            assert_eq!(generators.envelope.release, generator::MAX_RELEASE);
+        }
+
+        #[test]
+        fn adjusts_wave_form_in_generators() -> Result<(), String> {
             let events = vec![RawMidi {
                 time: 0,
                 bytes: &[176, 3, 42],
             }];
+            let mut generators = sine_generators();
+            let event_handler = EventHandler::new();
+            let expected = mk_hammond(vec![42.0 / 127.0], generators.wave_form.table.len());
             event_handler.handle_events(&mut generators, events.into_iter());
             wait_for(|| {
                 event_handler.handle_events(&mut generators, vec![].into_iter());

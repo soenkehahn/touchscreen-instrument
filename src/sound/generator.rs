@@ -4,18 +4,24 @@ use crate::sound::NoteEvent;
 use crate::sound::{POLYPHONY, TAU};
 use crate::utils::Slots;
 
-struct Envelope {
-    attack: f32,
-    release: f32,
+pub struct Envelope {
+    pub attack: f32,
+    pub release: f32,
 }
 
 pub struct Generators {
     amplitude: f32,
     pub midi_controller_volume: f32,
-    envelope: Envelope,
+    pub envelope: Envelope,
     pub wave_form: WaveForm,
     pub voices: Vec<VoiceState>,
 }
+
+pub const MIN_ATTACK: f32 = 0.005;
+pub const MAX_ATTACK: f32 = 0.3;
+
+pub const MIN_RELEASE: f32 = 0.005;
+pub const MAX_RELEASE: f32 = 1.0;
 
 impl Generators {
     pub fn new(cli_args: &cli::Args) -> Generators {
@@ -25,8 +31,8 @@ impl Generators {
             amplitude: cli_args.volume / slots as f32,
             midi_controller_volume: 1.0,
             envelope: Envelope {
-                attack: 0.005,
-                release: 0.005,
+                attack: MIN_ATTACK,
+                release: MIN_RELEASE,
             },
             wave_form: WaveForm::new(&cli_args.wave_form_config),
             voices: vec![VoiceState::default(); POLYPHONY],
