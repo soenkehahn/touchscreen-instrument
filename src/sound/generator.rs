@@ -6,8 +6,8 @@ use crate::utils::Slots;
 
 pub struct Envelope {
     pub attack: f32,
-    decay: f32,
-    sustain: f32,
+    pub decay: f32,
+    pub sustain: f32,
     pub release: f32,
 }
 
@@ -22,9 +22,11 @@ pub struct Generators {
 pub const MIN_ATTACK: f32 = 0.005;
 pub const MAX_ATTACK: f32 = 0.3;
 
-const MIN_DECAY: f32 = 0.005;
+pub const MIN_DECAY: f32 = 0.005;
+pub const MAX_DECAY: f32 = 1.0;
 
-const MAX_SUSTAIN: f32 = 1.0;
+pub const MIN_SUSTAIN: f32 = 0.0;
+pub const MAX_SUSTAIN: f32 = 1.0;
 
 pub const MIN_RELEASE: f32 = 0.005;
 pub const MAX_RELEASE: f32 = 1.0;

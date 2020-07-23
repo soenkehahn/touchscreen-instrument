@@ -16,6 +16,8 @@ enum MidiControllerEvent {
 #[derive(Debug, PartialEq)]
 enum EnvelopeEvent {
     Attack(f32),
+    Decay(f32),
+    Sustain(f32),
     Release(f32),
 }
 
@@ -26,29 +28,51 @@ struct HarmonicVolume {
 }
 
 impl MidiControllerEvent {
-    fn convert_midi_value(byte: &u8) -> f32 {
-        f32::min(1.0, *byte as f32 / 127.0)
+    fn convert_midi_value(byte: u8) -> f32 {
+        f32::min(1.0, byte as f32 / 127.0)
+    }
+
+    fn convert_to_range(min: f32, max: f32, byte: u8) -> f32 {
+        MidiControllerEvent::convert_midi_value(byte) * (max - min) + min
     }
 
     fn from_raw_midi(event: RawMidi<'_>) -> Option<MidiControllerEvent> {
         match event.bytes {
             [176, 11, volume] => Some(MidiControllerEvent::Volume(
-                MidiControllerEvent::convert_midi_value(volume),
+                MidiControllerEvent::convert_midi_value(*volume),
             )),
             [176, 14, value] => Some(MidiControllerEvent::Envelope(EnvelopeEvent::Attack(
-                MidiControllerEvent::convert_midi_value(value)
-                    * (generator::MAX_ATTACK - generator::MIN_ATTACK)
-                    + generator::MIN_ATTACK,
+                MidiControllerEvent::convert_to_range(
+                    generator::MIN_ATTACK,
+                    generator::MAX_ATTACK,
+                    *value,
+                ),
             ))),
-            [176, 15, value] => Some(MidiControllerEvent::Envelope(EnvelopeEvent::Release(
-                MidiControllerEvent::convert_midi_value(value)
-                    * (generator::MAX_RELEASE - generator::MIN_RELEASE)
-                    + generator::MIN_RELEASE,
+            [176, 15, value] => Some(MidiControllerEvent::Envelope(EnvelopeEvent::Decay(
+                MidiControllerEvent::convert_to_range(
+                    generator::MIN_DECAY,
+                    generator::MAX_DECAY,
+                    *value,
+                ),
+            ))),
+            [176, 16, value] => Some(MidiControllerEvent::Envelope(EnvelopeEvent::Sustain(
+                MidiControllerEvent::convert_to_range(
+                    generator::MIN_SUSTAIN,
+                    generator::MAX_SUSTAIN,
+                    *value,
+                ),
+            ))),
+            [176, 17, value] => Some(MidiControllerEvent::Envelope(EnvelopeEvent::Release(
+                MidiControllerEvent::convert_to_range(
+                    generator::MIN_RELEASE,
+                    generator::MAX_RELEASE,
+                    *value,
+                ),
             ))),
             [176, slider @ 3..=10, volume] => {
                 Some(MidiControllerEvent::HarmonicVolume(HarmonicVolume {
                     index: *slider as usize - 3,
-                    volume: MidiControllerEvent::convert_midi_value(volume),
+                    volume: MidiControllerEvent::convert_midi_value(*volume),
                 }))
             }
             _ => None,
@@ -86,12 +110,36 @@ mod from_raw_midi_to_midi_controller_event {
             ),
             (
                 [176, 15, 0],
+                Some(MidiControllerEvent::Envelope(EnvelopeEvent::Decay(
+                    generator::MIN_DECAY,
+                ))),
+            ),
+            (
+                [176, 15, 127],
+                Some(MidiControllerEvent::Envelope(EnvelopeEvent::Decay(
+                    generator::MAX_DECAY,
+                ))),
+            ),
+            (
+                [176, 16, 0],
+                Some(MidiControllerEvent::Envelope(EnvelopeEvent::Sustain(
+                    generator::MIN_SUSTAIN,
+                ))),
+            ),
+            (
+                [176, 16, 127],
+                Some(MidiControllerEvent::Envelope(EnvelopeEvent::Sustain(
+                    generator::MAX_SUSTAIN,
+                ))),
+            ),
+            (
+                [176, 17, 0],
                 Some(MidiControllerEvent::Envelope(EnvelopeEvent::Release(
                     generator::MIN_RELEASE,
                 ))),
             ),
             (
-                [176, 15, 127],
+                [176, 17, 127],
                 Some(MidiControllerEvent::Envelope(EnvelopeEvent::Release(
                     generator::MAX_RELEASE,
                 ))),
@@ -213,6 +261,8 @@ impl EventHandler {
             MidiControllerEvent::Volume(volume) => generators.midi_controller_volume = volume,
             MidiControllerEvent::Envelope(event) => match event {
                 EnvelopeEvent::Attack(attack) => generators.envelope.attack = attack,
+                EnvelopeEvent::Decay(decay) => generators.envelope.decay = decay,
+                EnvelopeEvent::Sustain(sustain) => generators.envelope.sustain = sustain,
                 EnvelopeEvent::Release(release) => generators.envelope.release = release,
             },
             MidiControllerEvent::HarmonicVolume(values) => self.hammond_generator.enqueue(values),
@@ -293,10 +343,32 @@ mod test {
         }
 
         #[test]
-        fn adjusts_envelope_release_value() {
+        fn adjusts_envelope_decay_values() {
             let events = vec![RawMidi {
                 time: 0,
                 bytes: &[176, 15, 127],
+            }];
+            let mut generators = sine_generators();
+            EventHandler::new().handle_events(&mut generators, events.into_iter());
+            assert_eq!(generators.envelope.decay, generator::MAX_DECAY);
+        }
+
+        #[test]
+        fn adjusts_envelope_sustain_values() {
+            let events = vec![RawMidi {
+                time: 0,
+                bytes: &[176, 16, 0],
+            }];
+            let mut generators = sine_generators();
+            EventHandler::new().handle_events(&mut generators, events.into_iter());
+            assert_eq!(generators.envelope.sustain, generator::MIN_SUSTAIN);
+        }
+
+        #[test]
+        fn adjusts_envelope_release_value() {
+            let events = vec![RawMidi {
+                time: 0,
+                bytes: &[176, 17, 127],
             }];
             let mut generators = sine_generators();
             EventHandler::new().handle_events(&mut generators, events.into_iter());
