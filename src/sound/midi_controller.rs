@@ -211,12 +211,10 @@ impl EventHandler {
     ) {
         match event {
             MidiControllerEvent::Volume(volume) => generators.midi_controller_volume = volume,
-            MidiControllerEvent::Envelope(EnvelopeEvent::Attack(attack)) => {
-                generators.envelope.attack = attack
-            }
-            MidiControllerEvent::Envelope(EnvelopeEvent::Release(release)) => {
-                generators.envelope.release = release
-            }
+            MidiControllerEvent::Envelope(event) => match event {
+                EnvelopeEvent::Attack(attack) => generators.envelope.attack = attack,
+                EnvelopeEvent::Release(release) => generators.envelope.release = release,
+            },
             MidiControllerEvent::HarmonicVolume(values) => self.hammond_generator.enqueue(values),
         }
     }
