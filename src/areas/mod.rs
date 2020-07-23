@@ -73,16 +73,14 @@ impl Areas {
         let mut areas = vec![];
         for row in row_range.0..row_range.1 {
             for column in column_range.0..column_range.1 {
-                let u = u.clone();
-                let v = v.clone();
                 areas.push(Area::new(
                     Shape::Parallelogram {
                         base: Position {
                             x: anchor.x + v.x * row + u.x * column,
                             y: anchor.y + u.y * column + v.y * row,
                         },
-                        u,
-                        v,
+                        u: u.clone(),
+                        v: v.clone(),
                     },
                     start_midi_note + column + row * row_interval,
                 ));
