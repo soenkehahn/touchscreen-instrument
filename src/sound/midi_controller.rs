@@ -7,17 +7,22 @@ use crate::ErrorString;
 use jack::*;
 
 #[derive(Debug, PartialEq)]
-struct HarmonicVolume {
-    index: usize,
-    volume: f32,
+enum MidiControllerEvent {
+    Volume(f32),
+    Envelope(EnvelopeEvent),
+    HarmonicVolume(HarmonicVolume),
 }
 
 #[derive(Debug, PartialEq)]
-enum MidiControllerEvent {
-    Volume(f32),
+enum EnvelopeEvent {
     Attack(f32),
     Release(f32),
-    HarmonicVolume(HarmonicVolume),
+}
+
+#[derive(Debug, PartialEq)]
+struct HarmonicVolume {
+    index: usize,
+    volume: f32,
 }
 
 impl MidiControllerEvent {
@@ -30,16 +35,16 @@ impl MidiControllerEvent {
             [176, 11, volume] => Some(MidiControllerEvent::Volume(
                 MidiControllerEvent::convert_midi_value(volume),
             )),
-            [176, 14, value] => Some(MidiControllerEvent::Attack(
+            [176, 14, value] => Some(MidiControllerEvent::Envelope(EnvelopeEvent::Attack(
                 MidiControllerEvent::convert_midi_value(value)
                     * (generator::MAX_ATTACK - generator::MIN_ATTACK)
                     + generator::MIN_ATTACK,
-            )),
-            [176, 15, value] => Some(MidiControllerEvent::Release(
+            ))),
+            [176, 15, value] => Some(MidiControllerEvent::Envelope(EnvelopeEvent::Release(
                 MidiControllerEvent::convert_midi_value(value)
                     * (generator::MAX_RELEASE - generator::MIN_RELEASE)
                     + generator::MIN_RELEASE,
-            )),
+            ))),
             [176, slider @ 3..=10, volume] => {
                 Some(MidiControllerEvent::HarmonicVolume(HarmonicVolume {
                     index: *slider as usize - 3,
@@ -69,19 +74,27 @@ mod from_raw_midi_to_midi_controller_event {
             // envelope values
             (
                 [176, 14, 0],
-                Some(MidiControllerEvent::Attack(generator::MIN_ATTACK)),
+                Some(MidiControllerEvent::Envelope(EnvelopeEvent::Attack(
+                    generator::MIN_ATTACK,
+                ))),
             ),
             (
                 [176, 14, 127],
-                Some(MidiControllerEvent::Attack(generator::MAX_ATTACK)),
+                Some(MidiControllerEvent::Envelope(EnvelopeEvent::Attack(
+                    generator::MAX_ATTACK,
+                ))),
             ),
             (
                 [176, 15, 0],
-                Some(MidiControllerEvent::Release(generator::MIN_RELEASE)),
+                Some(MidiControllerEvent::Envelope(EnvelopeEvent::Release(
+                    generator::MIN_RELEASE,
+                ))),
             ),
             (
                 [176, 15, 127],
-                Some(MidiControllerEvent::Release(generator::MAX_RELEASE)),
+                Some(MidiControllerEvent::Envelope(EnvelopeEvent::Release(
+                    generator::MAX_RELEASE,
+                ))),
             ),
             // first harmonic
             (
@@ -198,8 +211,12 @@ impl EventHandler {
     ) {
         match event {
             MidiControllerEvent::Volume(volume) => generators.midi_controller_volume = volume,
-            MidiControllerEvent::Attack(attack) => generators.envelope.attack = attack,
-            MidiControllerEvent::Release(release) => generators.envelope.release = release,
+            MidiControllerEvent::Envelope(EnvelopeEvent::Attack(attack)) => {
+                generators.envelope.attack = attack
+            }
+            MidiControllerEvent::Envelope(EnvelopeEvent::Release(release)) => {
+                generators.envelope.release = release
+            }
             MidiControllerEvent::HarmonicVolume(values) => self.hammond_generator.enqueue(values),
         }
     }
