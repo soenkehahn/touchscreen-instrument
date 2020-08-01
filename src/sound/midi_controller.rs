@@ -38,7 +38,7 @@ impl MidiControllerEvent {
 
     fn from_raw_midi(event: RawMidi<'_>) -> Option<MidiControllerEvent> {
         match event.bytes {
-            [176, 11, volume] => Some(MidiControllerEvent::Volume(
+            [176, 11, volume] | [183, 1, volume] => Some(MidiControllerEvent::Volume(
                 MidiControllerEvent::convert_midi_value(*volume),
             )),
             [176, 14, value] => Some(MidiControllerEvent::Envelope(EnvelopeEvent::Attack(
@@ -95,6 +95,9 @@ mod from_raw_midi_to_midi_controller_event {
                 Some(MidiControllerEvent::Volume(64.0 / 127.0)),
             ),
             ([176, 11, 128], Some(MidiControllerEvent::Volume(1.0))),
+            // volume pedal
+            ([183, 1, 0], Some(MidiControllerEvent::Volume(0.0))),
+            ([183, 1, 127], Some(MidiControllerEvent::Volume(1.0))),
             // envelope values
             (
                 [176, 14, 0],
