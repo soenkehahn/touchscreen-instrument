@@ -98,11 +98,6 @@ mod from_raw_midi_to_midi_controller_event {
             // volume pedal
             ([183, 1, 0], Some(MidiControllerEvent::Volume(0.0))),
             ([183, 1, 127], Some(MidiControllerEvent::Volume(1.0))),
-            (
-                [176, 11, 64],
-                Some(MidiControllerEvent::Volume(64.0 / 127.0)),
-            ),
-            ([176, 11, 128], Some(MidiControllerEvent::Volume(1.0))),
             // envelope values
             (
                 [176, 14, 0],
