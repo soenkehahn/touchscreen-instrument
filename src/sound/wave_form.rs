@@ -3,9 +3,8 @@ use crate::sound::TAU;
 use std::fmt::Debug;
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum WaveFormConfig {
-    Rectangle,
-    Harmonics(Vec<f32>),
+pub struct WaveFormConfig {
+    pub harmonics: Vec<f32>,
 }
 
 #[derive(Clone, PartialEq)]
@@ -23,15 +22,7 @@ impl WaveForm {
     const TABLE_SIZE: usize = 44100;
 
     pub fn new(wave_form_config: &WaveFormConfig) -> WaveForm {
-        match wave_form_config {
-            WaveFormConfig::Rectangle => WaveForm::from_function(
-                |phase| if phase < TAU / 2.0 { -1.0 } else { 1.0 },
-                WaveForm::TABLE_SIZE,
-            ),
-            WaveFormConfig::Harmonics(ref harmonics) => {
-                mk_hammond(harmonics.clone(), WaveForm::TABLE_SIZE)
-            }
-        }
+        mk_hammond(wave_form_config.harmonics.clone(), WaveForm::TABLE_SIZE)
     }
 
     pub fn from_function<F: Fn(f32) -> f32>(function: F, size: usize) -> WaveForm {
