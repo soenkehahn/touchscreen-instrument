@@ -1,17 +1,17 @@
 use crate::areas::Areas;
-use crate::evdev::TouchState;
+use crate::evdev::{Foo, TrackedTouchState};
 use crate::sound::{mk_voices, NoteEvent, POLYPHONY};
 
 pub struct NoteEventSource {
     areas: Areas,
-    touch_state_source: Box<dyn Iterator<Item = TouchState>>,
+    touch_state_source: Box<dyn Iterator<Item = TrackedTouchState>>,
     state: [NoteEvent; POLYPHONY],
 }
 
 impl NoteEventSource {
     pub fn new(
         areas: Areas,
-        touch_state_source: impl Iterator<Item = TouchState> + 'static,
+        touch_state_source: impl Iterator<Item = TrackedTouchState> + 'static,
     ) -> NoteEventSource {
         NoteEventSource {
             areas,
@@ -27,11 +27,13 @@ impl Iterator for NoteEventSource {
     fn next(&mut self) -> Option<Self::Item> {
         self.touch_state_source.next().map(|touchstate| {
             let (tracking_id, note_event) = match touchstate {
-                TouchState::NoTouch { tracking_id } => (tracking_id, NoteEvent::NoteOff),
-                TouchState::Touch {
-                    position,
+                TrackedTouchState {
                     tracking_id,
-                    ..
+                    touch_state: Foo::NoTouch,
+                } => (tracking_id, NoteEvent::NoteOff),
+                TrackedTouchState {
+                    tracking_id,
+                    touch_state: Foo::Touch { position },
                 } => (
                     tracking_id,
                     match self.areas.frequency(&position) {
@@ -76,9 +78,11 @@ pub mod test {
         fn yields_frequencies() {
             let mut frequencies = NoteEventSource::new(
                 areas(48),
-                vec![TouchState::Touch {
+                vec![TrackedTouchState {
                     tracking_id: 0,
-                    position: Position { x: 798, y: 595 },
+                    touch_state: Foo::Touch {
+                        position: Position { x: 798, y: 595 },
+                    },
                 }]
                 .into_iter(),
             );
@@ -92,7 +96,11 @@ pub mod test {
         fn yields_notouch_for_pauses() {
             let mut frequencies = NoteEventSource::new(
                 areas(48),
-                vec![TouchState::NoTouch { tracking_id: 0 }].into_iter(),
+                vec![TrackedTouchState {
+                    tracking_id: 0,
+                    touch_state: Foo::NoTouch,
+                }]
+                .into_iter(),
             );
             assert_eq!(frequencies.next().unwrap()[0], NoteOff);
         }
@@ -101,9 +109,11 @@ pub mod test {
         fn allows_to_specify_the_starting_note() {
             let mut frequencies = NoteEventSource::new(
                 areas(49),
-                vec![TouchState::Touch {
+                vec![TrackedTouchState {
                     tracking_id: 0,
-                    position: Position { x: 798, y: 595 },
+                    touch_state: Foo::Touch {
+                        position: Position { x: 798, y: 595 },
+                    },
                 }]
                 .into_iter(),
             );
@@ -119,9 +129,11 @@ pub mod test {
                 println!("i: {}", i);
                 let mut frequencies = NoteEventSource::new(
                     areas(48),
-                    vec![TouchState::Touch {
+                    vec![TrackedTouchState {
                         tracking_id: i as i32,
-                        position: Position { x: 798, y: 595 },
+                        touch_state: Foo::Touch {
+                            position: Position { x: 798, y: 595 },
+                        },
                     }]
                     .into_iter(),
                 );
@@ -138,9 +150,11 @@ pub mod test {
                 println!("tracking_id: {}", tracking_id);
                 let mut frequencies = NoteEventSource::new(
                     areas(48),
-                    vec![TouchState::Touch {
+                    vec![TrackedTouchState {
                         tracking_id,
-                        position: Position { x: 798, y: 595 },
+                        touch_state: Foo::Touch {
+                            position: Position { x: 798, y: 595 },
+                        },
                     }]
                     .into_iter(),
                 );
@@ -159,15 +173,22 @@ pub mod test {
             let mut frequencies = NoteEventSource::new(
                 areas(48),
                 vec![
-                    TouchState::Touch {
+                    TrackedTouchState {
                         tracking_id: 0,
-                        position: Position { x: 798, y: 595 },
+                        touch_state: Foo::Touch {
+                            position: Position { x: 798, y: 595 },
+                        },
                     },
-                    TouchState::Touch {
+                    TrackedTouchState {
                         tracking_id: 1,
-                        position: Position { x: 798, y: 595 },
+                        touch_state: Foo::Touch {
+                            position: Position { x: 798, y: 595 },
+                        },
                     },
-                    TouchState::NoTouch { tracking_id: 0 },
+                    TrackedTouchState {
+                        tracking_id: 0,
+                        touch_state: Foo::NoTouch,
+                    },
                 ]
                 .into_iter(),
             );

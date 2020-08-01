@@ -126,14 +126,15 @@ struct SlotState {
 }
 
 #[derive(Debug, PartialEq, Clone)]
-pub enum TouchState {
-    NoTouch {
-        tracking_id: i32,
-    },
-    Touch {
-        tracking_id: i32,
-        position: Position,
-    },
+pub struct TrackedTouchState {
+    pub tracking_id: i32,
+    pub touch_state: Foo,
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub enum Foo {
+    NoTouch,
+    Touch { position: Position },
 }
 
 #[derive(Debug)]
@@ -193,19 +194,22 @@ impl TouchStateChunkSource {
         changed
     }
 
-    fn get_touch_state_chunk(&self, changed: Slots<bool>) -> Vec<TouchState> {
+    fn get_touch_state_chunk(&self, changed: Slots<bool>) -> Vec<TrackedTouchState> {
         let mut result = vec![];
         for (slot, changed) in changed.iter().enumerate() {
             if *changed {
                 let slot_state = &self.slots[slot];
                 let touch_state = if slot_state.btn_touch {
-                    TouchState::Touch {
+                    TrackedTouchState {
                         tracking_id: slot_state.tracking_id,
-                        position: slot_state.position.clone(),
+                        touch_state: Foo::Touch {
+                            position: slot_state.position.clone(),
+                        },
                     }
                 } else {
-                    TouchState::NoTouch {
+                    TrackedTouchState {
                         tracking_id: slot_state.tracking_id,
+                        touch_state: Foo::NoTouch,
                     }
                 };
                 result.push(touch_state)
@@ -216,7 +220,7 @@ impl TouchStateChunkSource {
 }
 
 impl Iterator for TouchStateChunkSource {
-    type Item = Vec<TouchState>;
+    type Item = Vec<TrackedTouchState>;
 
     fn next(&mut self) -> Option<Self::Item> {
         match self.syn_chunk_source.next() {
@@ -248,7 +252,7 @@ impl TouchStateSource {
 }
 
 impl Iterator for TouchStateSource {
-    type Item = TouchState;
+    type Item = TrackedTouchState;
 
     fn next(&mut self) -> Option<Self::Item> {
         self.0.next()
@@ -257,7 +261,7 @@ impl Iterator for TouchStateSource {
 
 #[cfg(test)]
 mod test {
-    use super::TouchState::*;
+    use super::Foo::*;
     use super::*;
     use ::evdev_rs::enums::{EventCode, EventType, EV_ABS::*};
     use ::evdev_rs::TimeVal;
@@ -351,10 +355,12 @@ mod test {
                     mk_input_event(EV_SYN, EventCode::EV_SYN(SYN_REPORT), 0),
                 ]);
                 assert_eq!(
-                    touch_states.collect::<Vec<TouchState>>(),
-                    vec![Touch {
+                    touch_states.collect::<Vec<TrackedTouchState>>(),
+                    vec![TrackedTouchState {
                         tracking_id: 0,
-                        position: Position { x: 23, y: 42 }
+                        touch_state: Touch {
+                            position: Position { x: 23, y: 42 }
+                        }
                     }]
                 );
             }
@@ -372,11 +378,13 @@ mod test {
                         mk_input_event(EV_SYN, EventCode::EV_SYN(SYN_REPORT), 0),
                     ]);
                     assert_eq!(
-                        touch_states.collect::<Vec<TouchState>>(),
-                        vec![Touch {
+                        touch_states.collect::<Vec<TrackedTouchState>>(),
+                        vec![TrackedTouchState {
                             tracking_id: 42,
-                            position: Position { x: 0, y: 0 }
-                        },]
+                            touch_state: Touch {
+                                position: Position { x: 0, y: 0 }
+                            },
+                        }]
                     );
                 }
 
@@ -393,13 +401,18 @@ mod test {
                         mk_input_event(EV_SYN, EventCode::EV_SYN(SYN_REPORT), 0),
                     ]);
                     assert_eq!(
-                        touch_states.collect::<Vec<TouchState>>(),
+                        touch_states.collect::<Vec<TrackedTouchState>>(),
                         vec![
-                            Touch {
+                            TrackedTouchState {
                                 tracking_id: 42,
-                                position: Position { x: 0, y: 0 },
+                                touch_state: Touch {
+                                    position: Position { x: 0, y: 0 },
+                                }
                             },
-                            NoTouch { tracking_id: 42 },
+                            TrackedTouchState {
+                                tracking_id: 42,
+                                touch_state: NoTouch,
+                            }
                         ]
                     );
                 }
@@ -419,15 +432,19 @@ mod test {
                     mk_input_event(EV_SYN, EventCode::EV_SYN(SYN_REPORT), 0),
                 ]);
                 assert_eq!(
-                    touch_states.collect::<Vec<TouchState>>(),
+                    touch_states.collect::<Vec<TrackedTouchState>>(),
                     vec![
-                        Touch {
+                        TrackedTouchState {
                             tracking_id: 0,
-                            position: Position { x: 23, y: 42 }
+                            touch_state: Touch {
+                                position: Position { x: 23, y: 42 }
+                            }
                         },
-                        Touch {
+                        TrackedTouchState {
                             tracking_id: 0,
-                            position: Position { x: 51, y: 84 }
+                            touch_state: Touch {
+                                position: Position { x: 51, y: 84 }
+                            }
                         }
                     ]
                 );
@@ -446,16 +463,20 @@ mod test {
                     mk_input_event(EV_SYN, EventCode::EV_SYN(SYN_REPORT), 0),
                 ]);
                 assert_eq!(
-                    touch_states.collect::<Vec<TouchState>>(),
+                    touch_states.collect::<Vec<TrackedTouchState>>(),
                     vec![
-                        Touch {
+                        TrackedTouchState {
                             tracking_id: 0,
-                            position: Position { x: 23, y: 42 },
+                            touch_state: Touch {
+                                position: Position { x: 23, y: 42 },
+                            }
                         },
-                        Touch {
+                        TrackedTouchState {
                             tracking_id: 0,
-                            position: Position { x: 51, y: 42 }
-                        },
+                            touch_state: Touch {
+                                position: Position { x: 51, y: 42 }
+                            },
+                        }
                     ]
                 );
             }
@@ -473,16 +494,20 @@ mod test {
                     mk_input_event(EV_SYN, EventCode::EV_SYN(SYN_REPORT), 0),
                 ]);
                 assert_eq!(
-                    touch_states.collect::<Vec<TouchState>>(),
+                    touch_states.collect::<Vec<TrackedTouchState>>(),
                     vec![
-                        Touch {
+                        TrackedTouchState {
                             tracking_id: 0,
-                            position: Position { x: 23, y: 42 },
+                            touch_state: Touch {
+                                position: Position { x: 23, y: 42 },
+                            }
                         },
-                        Touch {
+                        TrackedTouchState {
                             tracking_id: 0,
-                            position: Position { x: 23, y: 84 }
-                        },
+                            touch_state: Touch {
+                                position: Position { x: 23, y: 84 }
+                            },
+                        }
                     ]
                 );
             }
@@ -500,13 +525,18 @@ mod test {
                     mk_input_event(EV_SYN, EventCode::EV_SYN(SYN_REPORT), 0),
                 ]);
                 assert_eq!(
-                    touch_states.collect::<Vec<TouchState>>(),
+                    touch_states.collect::<Vec<TrackedTouchState>>(),
                     vec![
-                        Touch {
+                        TrackedTouchState {
                             tracking_id: 0,
-                            position: Position { x: 23, y: 42 },
+                            touch_state: Touch {
+                                position: Position { x: 23, y: 42 },
+                            }
                         },
-                        NoTouch { tracking_id: 0 },
+                        TrackedTouchState {
+                            tracking_id: 0,
+                            touch_state: NoTouch,
+                        }
                     ]
                 );
             }
@@ -532,19 +562,25 @@ mod test {
                     mk_input_event(EV_SYN, EventCode::EV_SYN(SYN_REPORT), 0),
                 ]);
                 assert_eq!(
-                    touch_states.collect::<Vec<TouchState>>(),
+                    touch_states.collect::<Vec<TrackedTouchState>>(),
                     vec![
-                        Touch {
+                        TrackedTouchState {
                             tracking_id: 0,
-                            position: Position { x: 23, y: 42 }
+                            touch_state: Touch {
+                                position: Position { x: 23, y: 42 }
+                            }
                         },
-                        Touch {
+                        TrackedTouchState {
                             tracking_id: 1,
-                            position: Position { x: 1000, y: 1000 }
+                            touch_state: Touch {
+                                position: Position { x: 1000, y: 1000 }
+                            }
                         },
-                        Touch {
+                        TrackedTouchState {
                             tracking_id: 0,
-                            position: Position { x: 51, y: 84 }
+                            touch_state: Touch {
+                                position: Position { x: 51, y: 84 }
+                            }
                         },
                     ]
                 );
@@ -574,20 +610,29 @@ mod test {
                     mk_input_event(EV_SYN, EventCode::EV_SYN(SYN_REPORT), 0),
                 ]);
                 assert_eq!(
-                    touch_states.collect::<Vec<TouchState>>(),
+                    touch_states.collect::<Vec<TrackedTouchState>>(),
                     vec![
-                        Touch {
+                        TrackedTouchState {
                             tracking_id: 0,
-                            position: Position { x: 23, y: 42 },
+                            touch_state: Touch {
+                                position: Position { x: 23, y: 42 },
+                            }
                         },
-                        Touch {
+                        TrackedTouchState {
                             tracking_id: 1,
-                            position: Position { x: 1000, y: 1000 },
+                            touch_state: Touch {
+                                position: Position { x: 1000, y: 1000 },
+                            }
                         },
-                        NoTouch { tracking_id: 1 },
-                        Touch {
+                        TrackedTouchState {
+                            tracking_id: 1,
+                            touch_state: NoTouch
+                        },
+                        TrackedTouchState {
                             tracking_id: 0,
-                            position: Position { x: 51, y: 84 },
+                            touch_state: Touch {
+                                position: Position { x: 51, y: 84 },
+                            }
                         },
                     ]
                 );
@@ -602,11 +647,13 @@ mod test {
                     mk_input_event(EV_SYN, EventCode::EV_SYN(SYN_REPORT), 0),
                 ]);
                 assert_eq!(
-                    touch_states.collect::<Vec<TouchState>>(),
-                    vec![Touch {
+                    touch_states.collect::<Vec<TrackedTouchState>>(),
+                    vec![TrackedTouchState {
                         tracking_id: 0,
-                        position: Position { x: 23, y: 42 }
-                    },]
+                        touch_state: Touch {
+                            position: Position { x: 23, y: 42 }
+                        },
+                    }]
                 );
             }
 
@@ -627,16 +674,23 @@ mod test {
                     mk_input_event(EV_SYN, EventCode::EV_SYN(SYN_REPORT), 0),
                 ]);
                 assert_eq!(
-                    touch_states.collect::<Vec<TouchState>>(),
+                    touch_states.collect::<Vec<TrackedTouchState>>(),
                     vec![
-                        Touch {
+                        TrackedTouchState {
                             tracking_id: 0,
-                            position: Position { x: 23, y: 42 }
+                            touch_state: Touch {
+                                position: Position { x: 23, y: 42 }
+                            }
                         },
-                        NoTouch { tracking_id: 0 },
-                        Touch {
+                        TrackedTouchState {
+                            tracking_id: 0,
+                            touch_state: NoTouch
+                        },
+                        TrackedTouchState {
                             tracking_id: 1,
-                            position: Position { x: 1000, y: 1000 }
+                            touch_state: Touch {
+                                position: Position { x: 1000, y: 1000 }
+                            }
                         },
                     ]
                 );
@@ -656,10 +710,12 @@ mod test {
                     mk_input_event(EV_SYN, EventCode::EV_SYN(SYN_REPORT), 0),
                 ]);
                 assert_eq!(
-                    touch_states.collect::<Vec<TouchState>>(),
-                    vec![Touch {
+                    touch_states.collect::<Vec<TrackedTouchState>>(),
+                    vec![TrackedTouchState {
                         tracking_id: 1,
-                        position: Position { x: 23, y: 42 }
+                        touch_state: Touch {
+                            position: Position { x: 23, y: 42 }
+                        }
                     }]
                 );
             }
@@ -677,13 +733,18 @@ mod test {
                     mk_input_event(EV_SYN, EventCode::EV_SYN(SYN_REPORT), 0),
                 ]);
                 assert_eq!(
-                    touch_states.collect::<Vec<TouchState>>(),
+                    touch_states.collect::<Vec<TrackedTouchState>>(),
                     vec![
-                        Touch {
+                        TrackedTouchState {
                             tracking_id: 1,
-                            position: Position { x: 23, y: 42 },
+                            touch_state: Touch {
+                                position: Position { x: 23, y: 42 },
+                            }
                         },
-                        NoTouch { tracking_id: 1 }
+                        TrackedTouchState {
+                            tracking_id: 1,
+                            touch_state: NoTouch
+                        }
                     ]
                 );
             }
@@ -695,7 +756,7 @@ mod test {
                     mk_input_event(EV_ABS, EventCode::EV_ABS(ABS_MT_TRACKING_ID), 0),
                     mk_input_event(EV_SYN, EventCode::EV_SYN(SYN_REPORT), 0),
                 ]);
-                let _ = touch_states.collect::<Vec<TouchState>>();
+                let _ = touch_states.collect::<Vec<TrackedTouchState>>();
             }
         }
     }
