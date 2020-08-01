@@ -11,7 +11,7 @@ use skipchannel::*;
 use std::*;
 
 pub struct AudioPlayer {
-    async_client: AsyncClient<Logger, AudioProcessHandler>,
+    _async_client: AsyncClient<Logger, AudioProcessHandler>,
     sender: Sender<[NoteEvent; POLYPHONY]>,
 }
 
@@ -25,10 +25,6 @@ impl AudioPlayer {
             left: client.register_port("left-output", AudioOut)?,
             right: client.register_port("right-output", AudioOut)?,
         };
-        let port_clones = Stereo {
-            left: audio_ports.left.clone_unowned(),
-            right: audio_ports.right.clone_unowned(),
-        };
 
         let logger = Logger::new_and_spawn();
         let (sender, receiver) = skipchannel();
@@ -41,31 +37,10 @@ impl AudioPlayer {
         };
         let async_client = client.activate_async(logger, process_handler)?;
         let audio_player = AudioPlayer {
-            async_client,
+            _async_client: async_client,
             sender,
         };
-        if cli_args.auto_connect {
-            audio_player.connect_to_system_ports(port_clones)?;
-        }
         Ok(audio_player)
-    }
-
-    fn connect_to_system_ports(&self, ports: Stereo<Port<Unowned>>) -> Result<(), ErrorString> {
-        self.connect_to_port(&ports.left, "system:playback_1")?;
-        self.connect_to_port(&ports.right, "system:playback_2")?;
-        Ok(())
-    }
-
-    fn connect_to_port(&self, source_port: &Port<Unowned>, name: &str) -> Result<(), ErrorString> {
-        let destination_port = self
-            .async_client
-            .as_client()
-            .port_by_name(name)
-            .ok_or_else(|| format!("Couldn't find audio port {}", name))?;
-        self.async_client
-            .as_client()
-            .connect_ports(source_port, &destination_port)?;
-        Ok(())
     }
 }
 
