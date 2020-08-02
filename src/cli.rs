@@ -42,7 +42,7 @@ where
         ).arg(
             Arg::with_name("harmonics")
                 .long("harmonics")
-                .help("switches to the hammond sound and takes harmonics as arguments, separated by commas, e.g. '1,0.5,0.25'")
+                .help("sets the harmonics weights, separated by commas, e.g. '1,0.5,0.25' (default: 1)")
                 .takes_value(true),
         ).arg(
             Arg::with_name("midi")
@@ -90,13 +90,15 @@ fn parse_layout_type(input: Option<&str>) -> Result<LayoutType, ErrorString> {
 
 fn parse_wave_form_config(input: Option<&str>) -> Result<WaveFormConfig, ErrorString> {
     match input {
-        None => Ok(WaveFormConfig::Rectangle),
+        None => Ok(WaveFormConfig {
+            harmonics: vec![1.0],
+        }),
         Some(harmonics) => {
             let mut vector: Vec<f32> = vec![];
             for harmonic in harmonics.split(',') {
                 vector.push(harmonic.parse()?)
             }
-            Ok(WaveFormConfig::Harmonics(vector))
+            Ok(WaveFormConfig { harmonics: vector })
         }
     }
 }
@@ -120,7 +122,9 @@ pub mod test {
             volume: 1.0,
             layout_type: LayoutType::default(),
             midi: false,
-            wave_form_config: WaveFormConfig::Rectangle,
+            wave_form_config: WaveFormConfig {
+                harmonics: vec![1.0],
+            },
             dev_mode: false,
         };
         assert_eq!(args(vec![]), expected)
@@ -150,7 +154,9 @@ pub mod test {
     fn allows_to_specify_harmonics() {
         assert_eq!(
             args(vec!["--harmonics", "0.1,0.2"]).wave_form_config,
-            WaveFormConfig::Harmonics(vec![0.1, 0.2])
+            WaveFormConfig {
+                harmonics: vec![0.1, 0.2]
+            }
         );
     }
 
@@ -158,7 +164,9 @@ pub mod test {
     fn allows_to_specify_harmonics_as_integers() {
         assert_eq!(
             args(vec!["--harmonics", "1,0,1"]).wave_form_config,
-            WaveFormConfig::Harmonics(vec![1.0, 0.0, 1.0])
+            WaveFormConfig {
+                harmonics: vec![1.0, 0.0, 1.0]
+            }
         );
     }
 }

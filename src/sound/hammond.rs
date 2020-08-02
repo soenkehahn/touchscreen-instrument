@@ -6,13 +6,13 @@ struct Harmonic {
     volume: f32,
 }
 
-pub fn mk_hammond(harmonics: Vec<f32>, size: usize) -> WaveForm {
+pub fn mk_hammond(harmonics: &[f32], size: usize) -> WaveForm {
     let with_harmonics: Vec<Harmonic> = harmonics
-        .into_iter()
+        .iter()
         .enumerate()
         .map(|(index, volume)| Harmonic {
             harmonic: (index + 1) as f32,
-            volume,
+            volume: *volume,
         })
         .collect();
     WaveForm::from_function(
@@ -41,32 +41,32 @@ mod test {
 
     #[test]
     fn first_harmonic_produces_sine_wave() {
-        let wave_form = mk_hammond(vec![1.0], 10000);
+        let wave_form = mk_hammond(&[1.0], 10000);
         assert_eq_wave_form(wave_form, |x| x.sin());
     }
 
     #[test]
     fn second_harmonic_is_an_octave() {
-        let wave_form = mk_hammond(vec![0.0, 1.0], 10000);
+        let wave_form = mk_hammond(&[0.0, 1.0], 10000);
         assert_eq_wave_form(wave_form, |x| (x * 2.0).sin());
     }
 
     #[test]
     fn sine_waves_are_summed_up() {
-        let wave_form = mk_hammond(vec![1.0, 1.0], 10000);
+        let wave_form = mk_hammond(&[1.0, 1.0], 10000);
         assert_eq_wave_form(wave_form, |x| x.sin() + (x * 2.0).sin());
     }
 
     #[test]
     fn harmonic_volumes_can_be_fractions() {
-        let wave_form = mk_hammond(vec![0.5], 10000);
+        let wave_form = mk_hammond(&[0.5], 10000);
         assert_eq_wave_form(wave_form, |x| x.sin() * 0.5);
     }
 
     #[test]
     fn supports_at_least_8_harmonics() {
         let harmonics = vec![0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0];
-        let wave_form = mk_hammond(harmonics, 10000);
+        let wave_form = mk_hammond(&harmonics, 10000);
         assert_eq_wave_form(wave_form, |x| (x * 8.0).sin());
     }
 }
