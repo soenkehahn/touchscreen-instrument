@@ -22,7 +22,7 @@ impl WaveForm {
     const TABLE_SIZE: usize = 44100;
 
     pub fn new(wave_form_config: &WaveFormConfig) -> WaveForm {
-        mk_hammond(wave_form_config.harmonics.clone(), WaveForm::TABLE_SIZE)
+        mk_hammond(&wave_form_config.harmonics, WaveForm::TABLE_SIZE)
     }
 
     pub fn from_function<F: Fn(f32) -> f32>(function: F, size: usize) -> WaveForm {

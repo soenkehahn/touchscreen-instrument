@@ -297,7 +297,7 @@ impl HarmonicsState {
     }
 
     fn mk_wave_form(&self) -> WaveForm {
-        mk_hammond(self.harmonics.to_vec(), 44100)
+        mk_hammond(&self.harmonics, 44100)
     }
 }
 
@@ -386,7 +386,7 @@ mod test {
             }];
             let mut generators = sine_generators();
             let event_handler = EventHandler::new();
-            let expected = mk_hammond(vec![42.0 / 127.0], generators.wave_form.table.len());
+            let expected = mk_hammond(&[42.0 / 127.0], generators.wave_form.table.len());
             event_handler.handle_events(&mut generators, events.into_iter());
             wait_for(|| {
                 event_handler.handle_events(&mut generators, vec![].into_iter());
@@ -421,7 +421,7 @@ mod test {
                 volume: 0.7,
             });
             let result = harmonics_state.mk_wave_form();
-            compare_wave_forms(&result, &mk_hammond(vec![0.7], result.table.len()))
+            compare_wave_forms(&result, &mk_hammond(&[0.7], result.table.len()))
         }
 
         #[test]
@@ -432,7 +432,7 @@ mod test {
                 volume: 0.7,
             });
             let result = harmonics_state.mk_wave_form();
-            compare_wave_forms(&result, &mk_hammond(vec![0.0, 0.7], result.table.len()))
+            compare_wave_forms(&result, &mk_hammond(&[0.0, 0.7], result.table.len()))
         }
 
         #[test]
@@ -447,7 +447,7 @@ mod test {
                 volume: 0.4,
             });
             let result = harmonics_state.mk_wave_form();
-            compare_wave_forms(&result, &mk_hammond(vec![1.0, 0.4], result.table.len()))
+            compare_wave_forms(&result, &mk_hammond(&[1.0, 0.4], result.table.len()))
         }
 
         #[test]
@@ -460,7 +460,7 @@ mod test {
             compare_wave_forms(
                 &result,
                 &mk_hammond(
-                    vec![0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2],
+                    &[0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2],
                     result.table.len(),
                 ),
             )
