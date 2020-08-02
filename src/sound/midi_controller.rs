@@ -87,7 +87,9 @@ impl MidiControllerEvent {
             [176, slider @ 3..=10, volume] => {
                 Some(MidiControllerEvent::HarmonicVolume(HarmonicVolume {
                     index: *slider as usize - 3,
-                    volume: MidiControllerEvent::convert_midi_value(*volume),
+                    volume: MidiControllerEvent::range_to_volume_factor(
+                        MidiControllerEvent::convert_midi_value(*volume),
+                    ),
                 }))
             }
             _ => None,
@@ -202,7 +204,7 @@ mod from_raw_midi_to_midi_controller_event {
                 [176, 3, 64],
                 Some(MidiControllerEvent::HarmonicVolume(HarmonicVolume {
                     index: 0,
-                    volume: 64.0 / 127.0,
+                    volume: MidiControllerEvent::range_to_volume_factor(64.0 / 127.0),
                 })),
             ),
             (
@@ -217,7 +219,7 @@ mod from_raw_midi_to_midi_controller_event {
                 [176, 4, 64],
                 Some(MidiControllerEvent::HarmonicVolume(HarmonicVolume {
                     index: 1,
-                    volume: 64.0 / 127.0,
+                    volume: MidiControllerEvent::range_to_volume_factor(64.0 / 127.0),
                 })),
             ),
             // eighth harmonic
@@ -225,7 +227,7 @@ mod from_raw_midi_to_midi_controller_event {
                 [176, 10, 64],
                 Some(MidiControllerEvent::HarmonicVolume(HarmonicVolume {
                     index: 7,
-                    volume: 64.0 / 127.0,
+                    volume: MidiControllerEvent::range_to_volume_factor(64.0 / 127.0),
                 })),
             ),
             // unmapped events
@@ -425,7 +427,10 @@ mod test {
             }];
             let mut generators = sine_generators();
             let event_handler = EventHandler::new();
-            let expected = mk_hammond(&[42.0 / 127.0], generators.wave_form.table.len());
+            let expected = mk_hammond(
+                &[MidiControllerEvent::range_to_volume_factor(42.0 / 127.0)],
+                generators.wave_form.table.len(),
+            );
             event_handler.handle_events(&mut generators, events.into_iter());
             wait_for(|| {
                 event_handler.handle_events(&mut generators, vec![].into_iter());
