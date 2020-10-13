@@ -65,20 +65,14 @@ impl ::std::fmt::Debug for SynChunkSource {
 
 fn is_syn_dropped_event(event: &InputEvent) -> bool {
     match event.event_type {
-        EV_SYN => match event.event_code {
-            EventCode::EV_SYN(SYN_DROPPED) => true,
-            _ => false,
-        },
+        EV_SYN => matches!(event.event_code, EventCode::EV_SYN(SYN_DROPPED)),
         _ => false,
     }
 }
 
 fn is_syn_report_event(event: &InputEvent) -> bool {
     match event.event_type {
-        EV_SYN => match event.event_code {
-            EventCode::EV_SYN(SYN_REPORT) => true,
-            _ => false,
-        },
+        EV_SYN => matches!(event.event_code, EventCode::EV_SYN(SYN_REPORT)),
         _ => false,
     }
 }
