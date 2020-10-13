@@ -3,7 +3,7 @@ version: 2
 jobs:
   build:
     docker:
-      - image: rust:1.46.0
+      - image: rust:1.47.0
 
     steps:
       - checkout
