@@ -28,33 +28,32 @@ struct HarmonicVolume {
 }
 
 impl MidiControllerEvent {
-    fn convert_midi_value(byte: u8) -> f32 {
+    fn midi_to_float(byte: u8) -> f32 {
         f32::min(1.0, byte as f32 / 127.0)
     }
 
     fn convert_to_range(min: f32, max: f32, byte: u8) -> f32 {
-        MidiControllerEvent::convert_midi_value(byte) * (max - min) + min
+        MidiControllerEvent::midi_to_float(byte) * (max - min) + min
     }
 
-    fn range_to_volume_factor(range: f32) -> f32 {
+    fn convert_to_volume_factor(byte: u8) -> f32 {
+        let value = MidiControllerEvent::midi_to_float(byte);
         const B: f32 = 4.0;
         const ROLL_OFF_LIMIT: f32 = 0.1;
         // from https://www.dr-lex.be/info-stuff/volumecontrols.html
-        let roll_off_factor = if range < ROLL_OFF_LIMIT {
-            range / ROLL_OFF_LIMIT
+        let roll_off_factor = if value < ROLL_OFF_LIMIT {
+            value / ROLL_OFF_LIMIT
         } else {
             1.0
         };
         let a = 1.0 / B.exp();
-        f32::min(1.0, a * (range * B).exp() * roll_off_factor)
+        f32::min(1.0, a * (value * B).exp() * roll_off_factor)
     }
 
     fn from_raw_midi(event: RawMidi<'_>) -> Option<MidiControllerEvent> {
         match event.bytes {
             [176, 11, volume] | [183, 1, volume] => Some(MidiControllerEvent::Volume(
-                MidiControllerEvent::range_to_volume_factor(
-                    MidiControllerEvent::convert_midi_value(*volume),
-                ),
+                MidiControllerEvent::convert_to_volume_factor(*volume),
             )),
             [176, 14, value] => Some(MidiControllerEvent::Envelope(EnvelopeEvent::Attack(
                 MidiControllerEvent::convert_to_range(
@@ -87,7 +86,7 @@ impl MidiControllerEvent {
             [176, slider @ 3..=10, volume] => {
                 Some(MidiControllerEvent::HarmonicVolume(HarmonicVolume {
                     index: *slider as usize - 3,
-                    volume: MidiControllerEvent::convert_midi_value(*volume),
+                    volume: MidiControllerEvent::convert_to_volume_factor(*volume),
                 }))
             }
             _ => None,
@@ -105,8 +104,8 @@ mod from_raw_midi_to_midi_controller_event {
         #[test]
         fn is_strictly_monotonic() {
             for (i, j) in (0..=126).zip(1..=127) {
-                let previous = MidiControllerEvent::range_to_volume_factor(i as f32 / 127.0);
-                let next = MidiControllerEvent::range_to_volume_factor(j as f32 / 127.0);
+                let previous = MidiControllerEvent::convert_to_volume_factor(i);
+                let next = MidiControllerEvent::convert_to_volume_factor(j);
                 assert!(
                     previous < next,
                     format!(
@@ -127,7 +126,7 @@ mod from_raw_midi_to_midi_controller_event {
             (
                 [176, 11, 64],
                 Some(MidiControllerEvent::Volume(
-                    MidiControllerEvent::range_to_volume_factor(64.0 / 127.0),
+                    MidiControllerEvent::convert_to_volume_factor(64),
                 )),
             ),
             ([176, 11, 128], Some(MidiControllerEvent::Volume(1.0))),
@@ -202,7 +201,7 @@ mod from_raw_midi_to_midi_controller_event {
                 [176, 3, 64],
                 Some(MidiControllerEvent::HarmonicVolume(HarmonicVolume {
                     index: 0,
-                    volume: 64.0 / 127.0,
+                    volume: MidiControllerEvent::convert_to_volume_factor(64),
                 })),
             ),
             (
@@ -217,7 +216,7 @@ mod from_raw_midi_to_midi_controller_event {
                 [176, 4, 64],
                 Some(MidiControllerEvent::HarmonicVolume(HarmonicVolume {
                     index: 1,
-                    volume: 64.0 / 127.0,
+                    volume: MidiControllerEvent::convert_to_volume_factor(64),
                 })),
             ),
             // eighth harmonic
@@ -225,7 +224,7 @@ mod from_raw_midi_to_midi_controller_event {
                 [176, 10, 64],
                 Some(MidiControllerEvent::HarmonicVolume(HarmonicVolume {
                     index: 7,
-                    volume: 64.0 / 127.0,
+                    volume: MidiControllerEvent::convert_to_volume_factor(64),
                 })),
             ),
             // unmapped events
@@ -369,7 +368,7 @@ mod test {
             event_handler.handle_events(&mut generators, events.into_iter());
             assert_eq!(
                 generators.midi_controller_volume,
-                MidiControllerEvent::range_to_volume_factor(64.0 / 127.0)
+                MidiControllerEvent::convert_to_volume_factor(64)
             );
         }
 
@@ -425,7 +424,10 @@ mod test {
             }];
             let mut generators = sine_generators();
             let event_handler = EventHandler::new();
-            let expected = mk_hammond(&[42.0 / 127.0], generators.wave_form.table.len());
+            let expected = mk_hammond(
+                &[MidiControllerEvent::convert_to_volume_factor(42)],
+                generators.wave_form.table.len(),
+            );
             event_handler.handle_events(&mut generators, events.into_iter());
             wait_for(|| {
                 event_handler.handle_events(&mut generators, vec![].into_iter());
