@@ -320,9 +320,9 @@ struct HarmonicsState {
 
 impl HarmonicsState {
     fn new() -> HarmonicsState {
-        HarmonicsState {
-            harmonics: [0.0; 8],
-        }
+        let mut harmonics = [0.0; 8];
+        harmonics[0] = 1.0;
+        HarmonicsState { harmonics }
     }
 
     fn set_harmonic_volume(&mut self, HarmonicVolume { index, volume }: HarmonicVolume) {
@@ -436,6 +436,30 @@ mod test {
             })?;
             Ok(())
         }
+
+        #[test]
+        fn adjusts_wave_form_in_generators_keeping_first_harmonic() -> Result<(), String> {
+            let mut generators = sine_generators();
+            let expected_default = mk_hammond(&[1.0], generators.wave_form.table.len());
+            compare_wave_forms(&generators.wave_form, &expected_default)?;
+
+            let events = vec![RawMidi {
+                time: 0,
+                bytes: &[176, 4, 42],
+            }];
+            let event_handler = EventHandler::new();
+            let expected = mk_hammond(
+                &[1.0, MidiControllerEvent::convert_to_volume_factor(42)],
+                generators.wave_form.table.len(),
+            );
+            event_handler.handle_events(&mut generators, events.into_iter());
+            wait_for(|| {
+                event_handler.handle_events(&mut generators, vec![].into_iter());
+                compare_wave_forms(&generators.wave_form, &expected)?;
+                Ok(())
+            })?;
+            Ok(())
+        }
     }
 
     mod handle_midi_controller_event {
@@ -473,7 +497,7 @@ mod test {
                 volume: 0.7,
             });
             let result = harmonics_state.mk_wave_form();
-            compare_wave_forms(&result, &mk_hammond(&[0.0, 0.7], result.table.len()))
+            compare_wave_forms(&result, &mk_hammond(&[1.0, 0.7], result.table.len()))
         }
 
         #[test]
