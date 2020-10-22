@@ -22,9 +22,9 @@ enum EnvelopeEvent {
 }
 
 #[derive(Debug, PartialEq)]
-struct HarmonicVolume {
-    index: usize,
-    volume: f32,
+pub struct HarmonicVolume {
+    pub index: usize,
+    pub volume: f32,
 }
 
 impl MidiControllerEvent {
@@ -314,18 +314,19 @@ impl EventHandler {
     }
 }
 
-struct HarmonicsState {
-    harmonics: [f32; 8],
+#[derive(Debug, Clone, PartialEq)]
+pub struct HarmonicsState {
+    pub harmonics: [f32; 8],
 }
 
 impl HarmonicsState {
-    fn new() -> HarmonicsState {
+    pub fn new() -> HarmonicsState {
         let mut harmonics = [0.0; 8];
         harmonics[0] = 1.0;
         HarmonicsState { harmonics }
     }
 
-    fn set_harmonic_volume(&mut self, HarmonicVolume { index, volume }: HarmonicVolume) {
+    pub fn set_harmonic_volume(&mut self, HarmonicVolume { index, volume }: HarmonicVolume) {
         if index < self.harmonics.len() {
             self.harmonics[index] = volume;
         }

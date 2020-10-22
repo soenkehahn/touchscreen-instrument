@@ -1,4 +1,4 @@
-use crate::sound::wave_form::WaveFormConfig;
+use crate::sound::midi_controller::{HarmonicVolume, HarmonicsState};
 use crate::ErrorString;
 use crate::LayoutType;
 use clap::{App, Arg};
@@ -9,7 +9,7 @@ pub struct Args {
     pub volume: f32,
     pub layout_type: LayoutType,
     pub midi: bool,
-    pub wave_form_config: WaveFormConfig,
+    pub harmonics_state: HarmonicsState,
     pub dev_mode: bool,
 }
 
@@ -59,7 +59,7 @@ where
     Ok(Args {
         volume: parse_volume(matches.value_of("volume"))?,
         layout_type: parse_layout_type(matches.value_of("layout"))?,
-        wave_form_config: parse_wave_form_config(matches.value_of("harmonics"))?,
+        harmonics_state: parse_harmonics_state(matches.value_of("harmonics"))?,
         midi: matches.is_present("midi"),
         dev_mode: matches.is_present("dev-mode"),
     })
@@ -88,19 +88,25 @@ fn parse_layout_type(input: Option<&str>) -> Result<LayoutType, ErrorString> {
     }
 }
 
-fn parse_wave_form_config(input: Option<&str>) -> Result<WaveFormConfig, ErrorString> {
+fn parse_harmonics_state(input: Option<&str>) -> Result<HarmonicsState, ErrorString> {
+    let mut result = HarmonicsState::new();
     match input {
-        None => Ok(WaveFormConfig {
-            harmonics: vec![1.0],
-        }),
-        Some(harmonics) => {
-            let mut vector: Vec<f32> = vec![];
-            for harmonic in harmonics.split(',') {
-                vector.push(harmonic.parse()?)
-            }
-            Ok(WaveFormConfig { harmonics: vector })
+        None => {
+            result.set_harmonic_volume(HarmonicVolume {
+                index: 0,
+                volume: 1.0,
+            });
         }
-    }
+        Some(harmonics) => {
+            for (index, harmonic) in harmonics.split(',').enumerate() {
+                result.set_harmonic_volume(HarmonicVolume {
+                    index,
+                    volume: harmonic.parse()?,
+                });
+            }
+        }
+    };
+    Ok(result)
 }
 
 #[cfg(test)]
@@ -122,8 +128,8 @@ pub mod test {
             volume: 1.0,
             layout_type: LayoutType::default(),
             midi: false,
-            wave_form_config: WaveFormConfig {
-                harmonics: vec![1.0],
+            harmonics_state: HarmonicsState {
+                harmonics: [1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
             },
             dev_mode: false,
         };
@@ -153,9 +159,9 @@ pub mod test {
     #[test]
     fn allows_to_specify_harmonics() {
         assert_eq!(
-            args(vec!["--harmonics", "0.1,0.2"]).wave_form_config,
-            WaveFormConfig {
-                harmonics: vec![0.1, 0.2]
+            args(vec!["--harmonics", "0.1,0.2"]).harmonics_state,
+            HarmonicsState {
+                harmonics: [0.1, 0.2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
             }
         );
     }
@@ -163,9 +169,9 @@ pub mod test {
     #[test]
     fn allows_to_specify_harmonics_as_integers() {
         assert_eq!(
-            args(vec!["--harmonics", "1,0,1"]).wave_form_config,
-            WaveFormConfig {
-                harmonics: vec![1.0, 0.0, 1.0]
+            args(vec!["--harmonics", "1,0,1"]).harmonics_state,
+            HarmonicsState {
+                harmonics: [1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0]
             }
         );
     }

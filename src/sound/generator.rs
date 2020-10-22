@@ -44,7 +44,7 @@ impl Generators {
                 sustain: MAX_SUSTAIN,
                 release: MIN_RELEASE,
             },
-            wave_form: WaveForm::new(&cli_args.wave_form_config),
+            wave_form: WaveForm::new(&cli_args.harmonics_state),
             voices: vec![VoiceState::default(); POLYPHONY],
         }
     }

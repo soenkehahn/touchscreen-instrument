@@ -1,4 +1,5 @@
 use crate::sound::hammond::mk_hammond;
+use crate::sound::midi_controller::HarmonicsState;
 use crate::sound::TAU;
 use std::fmt::Debug;
 
@@ -21,8 +22,8 @@ impl Debug for WaveForm {
 impl WaveForm {
     const TABLE_SIZE: usize = 44100;
 
-    pub fn new(wave_form_config: &WaveFormConfig) -> WaveForm {
-        mk_hammond(&wave_form_config.harmonics, WaveForm::TABLE_SIZE)
+    pub fn new(harmonics_state: &HarmonicsState) -> WaveForm {
+        mk_hammond(&harmonics_state.harmonics, WaveForm::TABLE_SIZE)
     }
 
     pub fn from_function<F: Fn(f32) -> f32>(function: F, size: usize) -> WaveForm {
