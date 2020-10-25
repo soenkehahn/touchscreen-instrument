@@ -3,11 +3,6 @@ use crate::sound::midi_controller::HarmonicsState;
 use crate::sound::TAU;
 use std::fmt::Debug;
 
-#[derive(Debug, Clone, PartialEq)]
-pub struct WaveFormConfig {
-    pub harmonics: Vec<f32>,
-}
-
 #[derive(Clone, PartialEq)]
 pub struct WaveForm {
     pub table: Vec<f32>,
