@@ -1,3 +1,5 @@
+# WARNING: This repo now lives here: https://gitlab.com/soenkehahn/touchscreen-instrument
+
 # touchscreen-instrument
 
 This is a musical instrument running on linux using an external monitor with
